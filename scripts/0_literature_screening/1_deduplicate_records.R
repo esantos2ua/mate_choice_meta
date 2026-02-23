@@ -18,14 +18,6 @@ articles <- fread("data/0_literature_screening/combined_records_final.csv")
 
 articles
 
-# 0. Clean up some weird things. ---------------------------------------------
-#' [This is nasty custom code based on problems from below. Don't expect it to work the same for you...]
-# articles[, pages := gsub("[–—-]", "-", pages)]
-# articles[, pages := gsub(" ", "", pages)]
-# articles$pages
-# articles[, journal := str_to_title(journal)]
-# unique(articles$journal)
-
 
 # 1. Convert title to lowercase -------------------------------------------
 
@@ -33,6 +25,7 @@ articles
 articles[, title_lwr := str_to_lower(title)]
 head(unique(articles$title_lwr))
 articles[, title_lwr := gsub("[[:punct:]]", " ", title_lwr)]
+
 # remove double spaces:
 articles[, title_lwr := gsub(" {2,}", " ", title_lwr)]
 articles[, title_lwr := trimws(title_lwr)]
@@ -169,8 +162,5 @@ articles.final[, .(n = .N), by = .(screener)]
 
 invisible(lapply(articles.final$screener,
               function(x) write_csv(articles.final[screener == x, ], paste0("builds/0_literature_screening/deduplicated_and_randomly_split/", x, ".csv"))))
-
-
-
 
 
