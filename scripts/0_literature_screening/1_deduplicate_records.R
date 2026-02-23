@@ -136,6 +136,9 @@ articles.final <- articles.final[, !c("title_lwr", "n_title_matches", "has_abstr
 
 articles.final
 
+# Filtering only articles >= 2019, which is what we need to screen:
+articles.final <- articles.final[year >= 2019, ]
+
 
 # Split by screener ----------------------------------------------------------------
 screeners <- c("Aleksandra", "Aneta", "Anna", "Ayumi", "Cassidy", "Christine",
@@ -143,24 +146,47 @@ screeners <- c("Aleksandra", "Aneta", "Anna", "Ayumi", "Cassidy", "Christine",
                                "Sergio", "Shinichi", "Losia", "Eduardo")
 length(screeners)
 
+# Separate primary team from checkers (Losia & Eduardo)
+primary_list <- setdiff(screeners, c("Eduardo", "Losia"))
+secondary_list <- c("Eduardo", "Losia")
 
 # Shuffle dataset:
 articles.final <- articles.final[sample(.N), ]
 articles.final
 
-assignments <- lapply(screeners, function(x) rep(x, 73)) |> unlist()
-length(assignments)
-nrow(articles.final)
+# Dynamic assignment:
+n_total <- nrow(articles.final)
 
+# Function to create vector that fits the dataset
+create_assignments <- function(names, total_rows) { 
+  reps_needed <- ceiling(total_rows / length(names))
+  
+  full_vector <- rep(names, each = reps_needed)
+  return(full_vector[1:total_rows])
+  }
 
-articles.final[, screener := assignments[1:nrow(articles.final)] ]
-articles.final[is.na(screener), ]
-articles.final[, .(n = .N), by = .(screener)]
+#assignments <- lapply(screeners, function(x) rep(x, 73)) |> unlist()
+#length(assignments)
+#nrow(articles.final)
 
+#articles.final[, screener := assignments[1:nrow(articles.final)] ]
+# Assign to primary team:
+articles.final[, primary_screener := create_assignments(primary_list, n_total)]
+
+# Assign to Eduardo and Losia:
+articles.final[, secondary_screener := create_assignments(secondary_list, n_total)]
+
+articles.final[is.na(primary_screener), ]
+articles.final[, .(n = .N), by = .(primary_screener)]
+
+articles.final[is.na(secondary_screener), ]
+articles.final[, .(n = .N), by = .(secondary_screener)]
+
+message("Earliest year in dataset: ", min(articles.final$year))
 
 # Save person-specific file ----------------------------------------------------------------
 
-invisible(lapply(articles.final$screener,
-              function(x) write_csv(articles.final[screener == x, ], paste0("builds/0_literature_screening/deduplicated_and_randomly_split/", x, ".csv"))))
+invisible(lapply(articles.final$primary_screener,
+              function(x) write_csv(articles.final[primary_screener == x, ], paste0("builds/0_literature_screening/deduplicated_and_randomly_split/", x, ".csv"))))
 
 
