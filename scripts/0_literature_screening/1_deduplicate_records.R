@@ -186,7 +186,7 @@ message("Earliest year in dataset: ", min(articles.final$year))
 
 # Save person-specific file ----------------------------------------------------------------
 
-invisible(lapply(articles.final$primary_screener,
+invisible(lapply(unique(articles.final$primary_screener),
               function(x) write_csv(articles.final[primary_screener == x, ], paste0("builds/0_literature_screening/deduplicated_and_randomly_split/", x, ".csv"))))
 
 
