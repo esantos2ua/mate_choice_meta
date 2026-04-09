@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mate-Choice Copying Meta-Analysis</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:    #2a7f7f;
+      --teal-lt: #e6f4f4;
+      --teal-dk: #1a5252;
+      --gold:    #c8962a;
+      --gold-lt: #fdf4e3;
+      --ink:     #1e1e2e;
+      --muted:   #5a5a72;
+      --border:  #d6dbe8;
+      --bg:      #f7f8fb;
+      --card:    #ffffff;
+      --code-bg: #f0f4f8;
+      --radius:  10px;
+      --shadow:  0 2px 12px rgba(0,0,0,.08);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.7;
+    }
+
+    /* ── Nav ──────────────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--teal-dk);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      flex-wrap: wrap;
+    }
+
+    nav .brand {
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 1rem 1.5rem 1rem 0;
+      border-right: 1px solid rgba(255,255,255,.2);
+      margin-right: .5rem;
+      white-space: nowrap;
+    }
+
+    nav a {
+      color: rgba(255,255,255,.82);
+      text-decoration: none;
+      font-size: .88rem;
+      padding: .7rem .75rem;
+      transition: color .15s;
+    }
+
+    nav a:hover { color: #fff; }
+
+    /* ── Hero ─────────────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, var(--teal-dk) 0%, var(--teal) 60%, #3a9e8e 100%);
+      color: #fff;
+      padding: 5rem 2rem 4rem;
+      text-align: center;
+    }
+
+    .hero .badge {
+      display: inline-block;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 20px;
+      padding: .25rem .9rem;
+      font-size: .8rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 800;
+      line-height: 1.2;
+      max-width: 800px;
+      margin: 0 auto .8rem;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      opacity: .88;
+      max-width: 640px;
+      margin: 0 auto 2rem;
+    }
+
+    .hero-chips {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: .6rem;
+    }
+
+    .chip {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 6px;
+      padding: .3rem .8rem;
+      font-size: .83rem;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    /* ── Section headers ──────────────────────────────────────────── */
+    .section-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: .35rem;
+    }
+
+    h2 {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--ink);
+      margin-bottom: .4rem;
+    }
+
+    .section-intro {
+      color: var(--muted);
+      max-width: 680px;
+      margin-bottom: 2rem;
+      font-size: .97rem;
+    }
+
+    section { margin-bottom: 4rem; }
+
+    /* ── Card ─────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.8rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: .6rem;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .card p, .card li { font-size: .93rem; color: var(--muted); }
+
+    .card ul { padding-left: 1.2rem; }
+    .card ul li { margin-bottom: .3rem; }
+
+    /* ── Stat grid ────────────────────────────────────────────────── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.3rem 1.2rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card .num {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--teal);
+      line-height: 1;
+      margin-bottom: .3rem;
+    }
+
+    .stat-card .label {
+      font-size: .8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    /* ── Card grid ────────────────────────────────────────────────── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── Pipeline ─────────────────────────────────────────────────── */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+    }
+
+    .pipeline-step {
+      display: flex;
+      gap: 1.4rem;
+      align-items: flex-start;
+    }
+
+    .pipeline-step:not(:last-child) .step-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .step-num {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border-radius: 50%;
+      background: var(--teal);
+      color: #fff;
+      font-weight: 700;
+      font-size: .9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-line {
+      width: 2px;
+      flex: 1;
+      min-height: 24px;
+      background: var(--border);
+      margin: 4px auto;
+    }
+
+    .step-body {
+      flex: 1;
+      padding-bottom: 1.8rem;
+    }
+
+    .step-body h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .3rem;
+    }
+
+    .step-body p { font-size: .9rem; color: var(--muted); }
+
+    .step-tag {
+      display: inline-block;
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      border-radius: 4px;
+      padding: .15rem .55rem;
+      margin-bottom: .4rem;
+      text-transform: uppercase;
+    }
+
+    .tag-r      { background: #e8f1ff; color: #2554b5; }
+    .tag-ai     { background: #f3e8ff; color: #7e2fa8; }
+    .tag-human  { background: #fef3e2; color: #a05e00; }
+    .tag-output { background: #e6f9f0; color: #1a7a47; }
+
+    /* ── Code block ───────────────────────────────────────────────── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      overflow-x: auto;
+      font-size: .82rem;
+      line-height: 1.6;
+      margin-top: .8rem;
+    }
+
+    code { font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace; }
+
+    /* ── Inline highlight ─────────────────────────────────────────── */
+    .hl { background: var(--teal-lt); border-radius: 4px; padding: .1em .4em; font-size: .87em; font-family: monospace; color: var(--teal-dk); }
+
+    /* ── Decision table ───────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+      margin-top: 1rem;
+    }
+
+    thead th {
+      background: var(--teal-dk);
+      color: #fff;
+      padding: .6rem .9rem;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    tbody tr:nth-child(even) { background: var(--teal-lt); }
+    tbody tr:hover           { background: #dff0f0; }
+
+    td { padding: .55rem .9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+    td:first-child { font-weight: 600; color: var(--teal-dk); }
+
+    /* ── Agent cards ──────────────────────────────────────────────── */
+    .agent-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .agent-card {
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+      border: 1px solid var(--border);
+    }
+
+    .agent-card.extractor  { background: #f0f4ff; border-color: #b0c0f0; }
+    .agent-card.verifier   { background: #fdf4e3; border-color: #e8c97a; }
+    .agent-card.arbiter    { background: #e9f9f0; border-color: #8ed4ac; }
+
+    .agent-card .agent-title {
+      font-weight: 700;
+      font-size: .95rem;
+      margin-bottom: .5rem;
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+    }
+
+    .agent-card p { font-size: .87rem; color: var(--muted); }
+    .agent-card ul { padding-left: 1.1rem; }
+    .agent-card li { font-size: .85rem; color: var(--muted); margin-bottom: .2rem; }
+
+    /* ── Screener table wrapper ───────────────────────────────────── */
+    .screener-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: .6rem;
+      margin-top: 1rem;
+    }
+
+    .screener-pill {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .5rem .8rem;
+      text-align: center;
+      font-size: .84rem;
+    }
+
+    .screener-pill .sname { font-weight: 600; }
+    .screener-pill .scount { color: var(--teal); font-size: .78rem; }
+    .screener-pill.validator { border-color: var(--gold); background: var(--gold-lt); }
+    .screener-pill.validator .sname { color: var(--gold); }
+
+    /* ── Callout ──────────────────────────────────────────────────── */
+    .callout {
+      border-left: 4px solid var(--teal);
+      background: var(--teal-lt);
+      border-radius: 0 8px 8px 0;
+      padding: .85rem 1.2rem;
+      font-size: .9rem;
+      color: var(--teal-dk);
+      margin: 1.2rem 0;
+    }
+
+    .callout.warn {
+      border-color: var(--gold);
+      background: var(--gold-lt);
+      color: #7a5a00;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────────── */
+    footer {
+      background: var(--teal-dk);
+      color: rgba(255,255,255,.7);
+      text-align: center;
+      padding: 2rem 1rem;
+      font-size: .85rem;
+    }
+
+    footer a { color: rgba(255,255,255,.9); }
+
+    /* ── Responsive ───────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      nav { padding: 0 1rem; }
+      nav a { padding: .6rem .4rem; font-size: .8rem; }
+      .hero { padding: 3rem 1rem 2.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ─────────────────────────────────────────────────── -->
+<nav>
+  <div class="brand">🐟 Mate-Choice Meta</div>
+  <a href="#overview">Overview</a>
+  <a href="#data-sources">Data Sources</a>
+  <a href="#pipeline">Processing Pipeline</a>
+  <a href="#screening">Screening</a>
+  <a href="#extraction">Data Extraction</a>
+  <a href="#analyses">Analyses</a>
+  <a href="#team">Team</a>
+</nav>
+
+<!-- ── Hero ───────────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="badge">Systematic Meta-Analysis · In Progress</div>
+  <h1>Mate-Choice Copying Across Animal Taxa</h1>
+  <p>A pre-registered, systematic meta-analysis examining the prevalence and mechanisms of
+     non-independent mate selection driven by social observation.</p>
+  <div class="hero-chips">
+    <span class="chip">🔬 Behavioral Ecology</span>
+    <span class="chip">📊 Meta-Analysis</span>
+    <span class="chip">🤖 AI-Assisted Extraction</span>
+    <span class="chip">📅 Literature: 2019–2026</span>
+    <span class="chip">🗂 2,083 records screened</span>
+  </div>
+</header>
+
+<!-- ── Main content ───────────────────────────────────────────────── -->
+<main>
+
+  <!-- ── Overview ─────────────────────────────────────────────────── -->
+  <section id="overview">
+    <div class="section-label">01 · Overview</div>
+    <h2>Research Question</h2>
+    <p class="section-intro">
+      Mate-choice copying (MCC) occurs when an individual's preference for a potential mate
+      is influenced by observing other individuals' choices. This project synthesises the
+      quantitative evidence for MCC across animal taxa, tests for moderating variables (species,
+      sex, experimental design), and explicitly models lab-level non-independence arising from
+      "hub labs" that dominate this research area.
+    </p>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="num">2,083</div>
+        <div class="label">Raw Records</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">495</div>
+        <div class="label">Screened (≥ 2019)</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">17</div>
+        <div class="label">Screeners &amp; Validators</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">4</div>
+        <div class="label">Extraction Steps</div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>🎯 Primary Aim</h3>
+        <p>Estimate the overall effect size for mate-choice copying and quantify between-study
+           heterogeneity using multi-level meta-analytic models.</p>
+      </div>
+      <div class="card">
+        <h3>🧬 Scope</h3>
+        <p>Covers fish, birds, mammals, and invertebrates. Includes laboratory and semi-natural
+           experiments published from 2019 onward.</p>
+      </div>
+      <div class="card">
+        <h3>🔗 Non-Independence Control</h3>
+        <p>Co-authorship networks are used to identify "hub labs" whose repeated publications
+           may introduce statistical non-independence into the synthesis.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Data Sources ──────────────────────────────────────────────── -->
+  <section id="data-sources">
+    <div class="section-label">02 · Data Sources</div>
+    <h2>Literature Search</h2>
+    <p class="section-intro">
+      Records were retrieved from two major bibliographic databases and combined in
+      <strong>Rayyan</strong> format before import into R for deduplication.
+    </p>
+
+    <div class="card-grid" style="margin-bottom:1.5rem">
+      <div class="card">
+        <h3>🗃 Scopus</h3>
+        <p>Searched with terms covering mate choice, copying, non-independent mate selection,
+           and social information. Exported in RIS/CSV Rayyan format.</p>
+      </div>
+      <div class="card">
+        <h3>🗃 Web of Science</h3>
+        <p>Parallel search with identical Boolean query. Duplicate entries across databases
+           were resolved programmatically (see Pipeline section).</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📄 Master Dataset: <code>combined_records_final.csv</code></h3>
+      <p style="margin-bottom:.8rem">
+        The combined export contains <strong>2,083 records</strong> spanning 1953–2026, with the
+        bulk of records concentrated between 2008 and 2022. Key fields:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Description</th><th>Completeness notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>title</td><td>Article title (used for primary deduplication)</td><td>~100%</td></tr>
+          <tr><td>doi</td><td>Digital Object Identifier (secondary dedup key)</td><td>~80%</td></tr>
+          <tr><td>abstract</td><td>Full abstract text</td><td>~90%</td></tr>
+          <tr><td>authors</td><td>Author list</td><td>~95%</td></tr>
+          <tr><td>year / journal</td><td>Publication metadata</td><td>~100%</td></tr>
+          <tr><td>source_file</td><td>Which database CSV contributed the record</td><td>100%</td></tr>
+          <tr><td>pubmed_id / pmc_id</td><td>Cross-database identifiers</td><td>Partial</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout" style="margin-top:1.2rem">
+        <strong>Provenance tracking:</strong> The <code>source_file</code> field is preserved through
+        all deduplication steps and appended to the <code>abstract</code> field in the final output,
+        ensuring every record retains a complete audit trail of which database(s) it originated from.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Processing Pipeline ───────────────────────────────────────── -->
+  <section id="pipeline">
+    <div class="section-label">03 · Data Processing Pipeline</div>
+    <h2>Deduplication &amp; Assignment</h2>
+    <p class="section-intro">
+      All cleaning and assignment is handled by a single reproducible R script:
+      <code>scripts/0_literature_screening/1_deduplicate_records.R</code>
+    </p>
+
+    <div class="pipeline" style="margin-bottom:2rem">
+
+      <!-- Step A -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num">1</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-r">R · data.table</span>
+          <h4>Load &amp; Inspect</h4>
+          <p>Import <code>combined_records_final.csv</code> (2,083 rows, 22 columns) with
+             <code>data.table::fread()</code>. Initial inspection flags records missing
+             abstract, authors, or DOI for quality scoring in later steps.</p>
+        </div>
+      </div>
+
+      <!-- Step B -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num">2</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-r">R · stringr</span>
+          <h4>Title-Based Deduplication</h4>
+          <p>Titles are normalised to a canonical form before matching. Duplicate groups are
+             resolved by selecting the highest-quality record.</p>
+          <pre><code># Normalise title
+articles[, title_lwr := str_to_lower(title)]
+articles[, title_lwr := gsub("[[:punct:]]", " ", title_lwr)]
+articles[, title_lwr := gsub(" {2,}", " ", title_lwr)]
+articles[, title_lwr := trimws(title_lwr)]
+
+# Quality score (0–3): abstract + authors + DOI
+articles[, quality := has_abstract + has_authors + has_doi]
+
+# Keep highest-quality record per title group
+articles.title.dedupe <- articles[
+  , .SD[which.max(quality), ], by = .(title_lwr)
+]</code></pre>
+        </div>
+      </div>
+
+      <!-- Step C -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num">3</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-r">R · data.table</span>
+          <h4>DOI-Based Deduplication</h4>
+          <p>A second deduplication pass on the DOI field catches cases where titles differ
+             slightly across databases but resolve to the same article. The helper function
+             <code>split_conc()</code> uniquely concatenates source-file strings across all
+             merged duplicates before selecting the best record.</p>
+          <pre><code>split_conc <- function(x) {
+  str_split(x, pattern = "; ") |>
+    unlist() |> unique() |> sort() |>
+    paste(collapse = "; ")
+}
+
+# Concatenate source files per DOI group, then keep highest quality
+sources <- articles.title.dedupe.mrg[
+  , .(source_file = split_conc(source_file)), by = .(doi)
+]
+articles.doi.dedupe <- articles.title.dedupe.mrg[
+  , .SD[which.max(quality), ], by = .(doi)
+]</code></pre>
+        </div>
+      </div>
+
+      <!-- Step D -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num">4</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-r">R · Data decision</span>
+          <h4>Year Filter: ≥ 2019</h4>
+          <p>Following deduplication, only records published <strong>in or after 2019</strong>
+             are retained. This reflects the pre-registered scope: focusing on recent
+             experimental literature where methodology is more standardised. The filter
+             reduces the pool from ~2,000 deduplicated records to <strong>495 articles</strong>.</p>
+          <pre><code>articles.final <- articles.final[year >= 2019, ]
+message("Earliest year in dataset: ", min(articles.final$year))</code></pre>
+          <div class="callout warn">
+            <strong>Data decision:</strong> The year ≥ 2019 cutoff was chosen to align with the
+            pre-registration scope and to focus on studies reporting effect sizes in a format
+            compatible with modern meta-analytic synthesis. Earlier literature is not excluded
+            from the original database — it is retained in
+            <code>combined_records_final.csv</code> and can be incorporated in sensitivity analyses.
+          </div>
+        </div>
+      </div>
+
+      <!-- Step E -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num">5</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-r">R · Random assignment</span>
+          <h4>Random Shuffle &amp; Screener Assignment</h4>
+          <p>The 495 articles are shuffled with <code>sample(.N)</code> to prevent ordering
+             bias, then distributed to screeners using a dynamic assignment function that
+             guarantees near-equal loads.</p>
+          <pre><code># Shuffle
+articles.final <- articles.final[sample(.N), ]
+
+# Dynamic assignment: ceiling(total / n_screeners) reps, trimmed to total
+create_assignments <- function(names, total_rows) {
+  reps_needed <- ceiling(total_rows / length(names))
+  full_vector <- rep(names, each = reps_needed)
+  return(full_vector[1:total_rows])
+}
+
+# Primary screeners (~33 articles each across 15 people)
+articles.final[, primary_screener := create_assignments(primary_list, .N)]
+
+# Secondary validators (Eduardo & Losia — all 495 articles split between them)
+articles.final[, secondary_screener := create_assignments(secondary_list, .N)]</code></pre>
+        </div>
+      </div>
+
+      <!-- Step F -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num">6</div>
+          <div class="step-line" style="display:none"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-output">Output CSVs</span>
+          <h4>Export Person-Specific Files</h4>
+          <p>One CSV is written per primary screener to
+             <code>builds/0_literature_screening/deduplicated_and_randomly_split/</code>.
+             Each file contains only that screener's assigned articles together with both
+             <code>primary_screener</code> and <code>secondary_screener</code> columns for
+             cross-referencing.</p>
+        </div>
+      </div>
+
+    </div><!-- /pipeline -->
+
+    <!-- Data decisions summary table -->
+    <div class="card">
+      <h3>📋 Key Data Decisions — Summary</h3>
+      <table>
+        <thead>
+          <tr><th>Decision</th><th>What was done</th><th>Rationale</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Title normalisation</td>
+            <td>Lowercase, strip punctuation, collapse whitespace</td>
+            <td>Catches minor formatting differences across database exports</td>
+          </tr>
+          <tr>
+            <td>Two-pass deduplication</td>
+            <td>Title first, then DOI</td>
+            <td>Title catches records without DOIs; DOI catches variant titles for same article</td>
+          </tr>
+          <tr>
+            <td>Quality scoring</td>
+            <td>abstract (0/1) + authors (0/1) + DOI (0/1) = 0–3</td>
+            <td>Prioritise the most information-rich record from duplicate groups</td>
+          </tr>
+          <tr>
+            <td>Source provenance</td>
+            <td>Concatenate <code>source_file</code> across duplicates; append to abstract</td>
+            <td>Full audit trail; Rayyan import preserves original screening notes</td>
+          </tr>
+          <tr>
+            <td>Year filter ≥ 2019</td>
+            <td>Remove records published before 2019</td>
+            <td>Pre-registered scope; standardised reporting practices post-2019</td>
+          </tr>
+          <tr>
+            <td>Random shuffle</td>
+            <td><code>sample(.N)</code> before assignment</td>
+            <td>Prevents alphabetical or date ordering from biasing screener load</td>
+          </tr>
+          <tr>
+            <td>Dual validation</td>
+            <td>Every article assigned to 1 primary + 1 secondary screener</td>
+            <td>Enables inter-rater reliability assessment and catches screening errors</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Screening ─────────────────────────────────────────────────── -->
+  <section id="screening">
+    <div class="section-label">04 · Literature Screening</div>
+    <h2>Screening Workflow</h2>
+    <p class="section-intro">
+      495 articles are distributed across a 17-person team. Each article receives one primary
+      screen and one independent secondary validation to support inter-rater reliability
+      estimation.
+    </p>
+
+    <div class="card-grid" style="margin-bottom:1.5rem">
+      <div class="card">
+        <h3>👥 Primary Screeners (×15)</h3>
+        <p>Each screener receives approximately <strong>33 articles</strong> to assess for
+           inclusion against the pre-registered eligibility criteria (study type, species,
+           experimental design, outcome measure).</p>
+      </div>
+      <div class="card">
+        <h3>✅ Secondary Validators (×2)</h3>
+        <p>Eduardo and Losia each receive <strong>~248 articles</strong> (the full 495 split
+           between them), providing independent second-pass validation for every record in the
+           dataset.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem">
+      <h3>👤 Team Assignments</h3>
+      <div class="screener-grid">
+        <div class="screener-pill"><div class="sname">Aleksandra</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Aneta</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Anna</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Ayumi</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Cassidy</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Christine</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Erick</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Hao</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Iwo</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Jimuel</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Kyle</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Marija</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Santiago</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Sergio</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill"><div class="sname">Shinichi</div><div class="scount">~33 articles</div></div>
+        <div class="screener-pill validator"><div class="sname">Eduardo</div><div class="scount">~248 (validator)</div></div>
+        <div class="screener-pill validator"><div class="sname">Losia</div><div class="scount">~248 (validator)</div></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Inter-rater reliability:</strong> Disagreements between primary and secondary
+      screeners will be resolved by discussion or a designated tie-breaker. Cohen's κ (or a
+      suitable Bayesian analogue) will be calculated and reported in the supplementary
+      methods.
+    </div>
+  </section>
+
+  <!-- ── Data Extraction ───────────────────────────────────────────── -->
+  <section id="extraction">
+    <div class="section-label">05 · Data Extraction</div>
+    <h2>NotebookLM AI Extraction Pipeline</h2>
+    <p class="section-intro">
+      Included articles are processed through a four-step AI-assisted extraction protocol
+      in <strong>NotebookLM</strong> (Google). Each step uses a structured prompt grounded
+      by a <code>MetaAnalysis_Reference_Sheet.pdf</code> data dictionary and few-shot examples.
+      A fresh chat session is opened for each step ("cache-bust" rule) to prevent AI recycling
+      of earlier outputs.
+    </p>
+
+    <div class="callout warn" style="margin-bottom:1.5rem">
+      <strong>Operating rule — Cache Bust:</strong> Each of the four steps below must be run
+      in a completely new NotebookLM chat window. This forces the model to re-read the PDFs
+      freshly and prevents it from re-using tables generated in previous steps.
+    </div>
+
+    <div class="pipeline">
+
+      <!-- E1 -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num" style="background:var(--teal)">1</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-ai">AI · Species ID</span>
+          <h4>Species &amp; Basic Metadata</h4>
+          <p>For every included PDF, extract the study organism as a full <em>binomial
+             nomenclature</em> (e.g., <em>Poecilia reticulata</em>). Study IDs are
+             constructed as <code>FirstAuthorLastName_Year_CamelCaseJournal</code>
+             (e.g., <code>Belkina_2021_AnimalBehaviour</code>). Common names alone are not
+             accepted.</p>
+        </div>
+      </div>
+
+      <!-- E2 -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num" style="background:var(--teal)">2</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-ai">AI · Network</span>
+          <h4>Co-Authorship &amp; Lab Identification</h4>
+          <p>Generates a <strong>long-format</strong> table — one row per author per paper —
+             enabling construction of a bipartite co-authorship network. Each author row
+             carries a standardised <strong>Lab Identifier</strong> in the format
+             <code>PILastName_Institution_City</code> (e.g.,
+             <code>Dukas_UniversityOfToronto_Toronto</code>). The last author is designated
+             as PI; this identifier is applied consistently to all co-authors on the same
+             paper, linking the entire author list to one "primary lab" node.</p>
+          <div class="callout">
+            This step feeds directly into network-based tests of lab-level non-independence.
+            "Hub labs" with disproportionate publication output can inflate effect-size
+            estimates if not modelled.
+          </div>
+        </div>
+      </div>
+
+      <!-- E3 -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num" style="background:var(--teal)">3</div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-ai">AI · Structure</span>
+          <h4>Trial-Level Data Mapping</h4>
+          <p>Maps the internal experimental structure of each paper: how many distinct
+             trials exist, sample sizes, independence status, and the exact page/figure/table
+             location of the relevant statistics. Key columns:</p>
+          <ul style="padding-left:1.2rem;font-size:.88rem;color:var(--muted);margin-top:.5rem">
+            <li><strong>Subject Independence</strong> — "Independent Cohort" vs. "Repeated Measures"</li>
+            <li><strong>Control Group Shared</strong> — Yes/No, with cross-reference to paired trial</li>
+            <li><strong>Data Location</strong> — "Table 1, Page 5" or "Figure 3A, Page 8"</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- E4 -->
+      <div class="pipeline-step">
+        <div class="step-connector">
+          <div class="step-num" style="background:var(--teal)">4</div>
+          <div class="step-line" style="display:none"></div>
+        </div>
+        <div class="step-body">
+          <span class="step-tag tag-ai">AI · Multi-Agent</span>
+          <h4>Quantitative Data Extraction (3-Agent Pipeline)</h4>
+          <p style="margin-bottom:.9rem">
+            The most critical step. Three simulated AI agents run sequentially per document
+            to extract and cross-validate the actual numbers (means, SDs/SEs, counts, test
+            statistics).
+          </p>
+          <div class="agent-grid">
+            <div class="agent-card extractor">
+              <div class="agent-title">🔍 Agent 1 — Extractor</div>
+              <p>Scans Methods and Results to pull continuous data (Mean ± SD/SE, N),
+                 binary counts, or inferential statistics (F, t, χ²) for every
+                 mate-choice copying trial in the paper.</p>
+            </div>
+            <div class="agent-card verifier">
+              <div class="agent-title">🧐 Agent 2 — Verifier</div>
+              <p>Acts as a skeptical methodologist. Checks Agent 1's extraction for three
+                 specific failure modes:</p>
+              <ul>
+                <li>SD/SE confusion</li>
+                <li>Non-independence of sample sizes</li>
+                <li>Missing trials / secondary experiments</li>
+              </ul>
+            </div>
+            <div class="agent-card arbiter">
+              <div class="agent-title">⚖️ Agent 3 — Arbiter</div>
+              <p>Resolves conflicts identified by Agent 2 and formats the validated
+                 data into the standardised output table, including verification
+                 notes and exact source locations.</p>
+            </div>
+          </div>
+
+          <div style="margin-top:1rem">
+            <p style="font-size:.88rem;color:var(--muted);margin-bottom:.5rem">
+              <strong>Final output columns:</strong>
+            </p>
+            <table>
+              <thead>
+                <tr><th>Column</th><th>Content</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Study ID</td><td>Author_Year_JournalName</td></tr>
+                <tr><td>Trial ID</td><td>Specific experiment or condition</td></tr>
+                <tr><td>Response Metric</td><td>What was measured (e.g., proportion of time near model)</td></tr>
+                <tr><td>Validated Exp Group Data</td><td>Mean ± SD/SE, Counts, or Test Stat</td></tr>
+                <tr><td>Validated Control Group Data</td><td>Mean ± SD/SE, Counts, or NA</td></tr>
+                <tr><td>SD or SE?</td><td>Explicit variance metric label</td></tr>
+                <tr><td>Agent 1 Initial Pull</td><td>Brief summary of original extraction</td></tr>
+                <tr><td>Agent 2 Verification Notes</td><td>Corrections made or "No missing trials found"</td></tr>
+                <tr><td>Verification Location</td><td>Exact page and table/figure number</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /pipeline -->
+  </section>
+
+  <!-- ── Analyses ──────────────────────────────────────────────────── -->
+  <section id="analyses">
+    <div class="section-label">06 · Planned Analyses</div>
+    <h2>Statistical Analyses</h2>
+    <p class="section-intro">
+      The following analyses are planned following completion of the data extraction phase.
+      All models will be implemented in R.
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h3>📐 Meta-Analytic Models</h3>
+        <p>Multi-level random-effects meta-analysis to estimate the overall effect size for
+           mate-choice copying, accounting for the nested structure of trials within papers
+           within labs. Heterogeneity will be quantified with I² and τ².</p>
+      </div>
+      <div class="card">
+        <h3>🌐 Co-Authorship Network Analysis</h3>
+        <p>Bipartite lab–paper network built from Step 2 extraction output. Hub labs are
+           identified by degree centrality. Non-independence is modelled by including a
+           lab-level random effect or using network-based weights.</p>
+      </div>
+      <div class="card">
+        <h3>🌳 Phylogenetic Comparative Methods</h3>
+        <p>Species non-independence is controlled via a phylogenetic covariance matrix
+           incorporated into the meta-analytic model (e.g., <code>metafor</code> +
+           <code>ape</code>). This accounts for the possibility that closely related species
+           share similar MCC propensity due to shared evolutionary history.</p>
+      </div>
+      <div class="card">
+        <h3>📉 Publication Bias</h3>
+        <p>Funnel plot asymmetry, Egger's test, and trim-and-fill analysis. Time-lag bias
+           will be examined by plotting effect size against publication year.</p>
+      </div>
+      <div class="card">
+        <h3>🔍 Moderator Analyses</h3>
+        <p>Meta-regression models will test whether effect sizes vary by sex of the copying
+           individual, taxonomic group, experimental design (laboratory vs. semi-natural),
+           and model presentation method.</p>
+      </div>
+      <div class="card">
+        <h3>🔁 Sensitivity Analyses</h3>
+        <p>Inclusion of pre-2019 records, leave-one-out analysis for influential studies,
+           and re-analysis excluding studies from identified hub labs to assess robustness
+           of the main estimate.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Team ──────────────────────────────────────────────────────── -->
+  <section id="team">
+    <div class="section-label">07 · Team &amp; Reproducibility</div>
+    <h2>Project Team</h2>
+    <p class="section-intro">
+      This is a collaborative project with contributions from researchers across multiple
+      institutions.
+    </p>
+
+    <div class="card-grid" style="margin-bottom:1.5rem">
+      <div class="card">
+        <h3>📁 Repository Structure</h3>
+        <ul>
+          <li><code>data/</code> — Raw and processed datasets</li>
+          <li><code>scripts/</code> — Numbered R scripts, one per pipeline stage</li>
+          <li><code>builds/</code> — Derived outputs (screener CSVs, pipeline docs)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>🔁 Reproducibility</h3>
+        <p>All data processing is fully scripted in R. The random seed is set via
+           <code>sample(.N)</code> at assignment time; the shuffled output files serve as
+           the reproducible record. The AI extraction prompts are version-controlled in
+           <code>builds/1_extraction_pipeline/notebookLM_pipeline.md</code>.</p>
+      </div>
+      <div class="card">
+        <h3>📬 Contact</h3>
+        <p>Questions about the data pipeline or extraction protocol can be directed to
+           the project coordinator via the GitHub repository issues page.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Version:</strong> This page documents the pipeline as of April 2026.
+      The extraction phase is ongoing. Results and the final synthesised dataset will be
+      linked here upon completion.
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Footer ─────────────────────────────────────────────────────── -->
+<footer>
+  <p>
+    Mate-Choice Copying Meta-Analysis &nbsp;·&nbsp;
+    <a href="https://github.com">GitHub Repository</a> &nbsp;·&nbsp;
+    Data pipeline documented April 2026
+  </p>
+  <p style="margin-top:.4rem;font-size:.78rem;opacity:.6">
+    Built with plain HTML/CSS for maximum portability and GitHub Pages compatibility.
+  </p>
+</footer>
+
+</body>
+</html>
