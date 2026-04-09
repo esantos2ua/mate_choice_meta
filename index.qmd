@@ -1,0 +1,622 @@
+---
+title: "Mate-Choice Copying: A Systematic Meta-Analysis"
+subtitle: "Data decisions, processing pipeline, and planned analyses"
+author: "Eduardo Santos & Collaborators"
+date: today
+date-format: "MMMM YYYY"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "Contents"
+    number-sections: true
+    code-fold: true
+    code-summary: "Show R code"
+    code-tools: true
+    self-contained: true
+    smooth-scroll: true
+    highlight-style: github
+    embed-resources: true
+execute:
+  echo: true
+  eval: false   # set to true when running locally with data
+  warning: false
+  message: false
+bibliography: references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(dplyr)
+library(data.table)
+library(stringr)
+library(readr)
+library(knitr)
+library(kableExtra)
+```
+
+---
+
+## Overview {#sec-overview}
+
+This page documents all data decisions, processing steps, and planned analyses for a
+systematic **meta-analysis of mate-choice copying (MCC)** across animal taxa.
+
+Mate-choice copying occurs when an individual's preference for a potential mate is
+influenced by observing the mate choices of others — a form of socially acquired
+preference that has been documented in fish, birds, mammals, and invertebrates.
+
+This meta-analysis aims to:
+
+1. Estimate the overall effect size for MCC across species.
+2. Quantify between-study heterogeneity.
+3. Test for moderating variables (sex, taxon, experimental design).
+4. Explicitly model **lab-level non-independence** arising from "hub labs" whose
+   repeated publications may inflate pooled estimates.
+
+::: {.callout-note}
+## Project status
+The literature screening phase is currently in progress. This page will be updated
+as each phase of the pipeline is completed.
+:::
+
+### Key numbers at a glance
+
+| Metric | Value |
+|---|---|
+| Raw records (combined databases) | 2,083 |
+| Records after deduplication & year filter (≥ 2019) | 495 |
+| Primary screeners | 15 |
+| Secondary validators | 2 |
+| AI-assisted extraction steps | 4 |
+| Top journals represented | Animal Behaviour, Behavioral Ecology, PRSB |
+
+---
+
+## Data Sources {#sec-data-sources}
+
+### Literature search
+
+Records were retrieved from two major bibliographic databases and combined in
+**Rayyan** format for import into R:
+
+- **Scopus** — full-text and abstract search using Boolean terms covering mate choice,
+  copying, non-independent mate selection, and social information use.
+- **Web of Science (WoS)** — parallel search with identical query structure.
+
+The two exports were merged into a single file:
+`data/0_literature_screening/combined_records_final.csv`
+
+### Master dataset fields
+
+```{r}
+#| label: tbl-fields
+#| tbl-cap: "Fields in combined_records_final.csv"
+fields <- tibble::tribble(
+  ~Field,        ~Description,                                          ~Completeness,
+  "title",       "Article title (primary deduplication key)",           "~100%",
+  "doi",         "Digital Object Identifier (secondary dedup key)",     "~80%",
+  "abstract",    "Full abstract text",                                  "~90%",
+  "authors",     "Author list",                                         "~95%",
+  "year",        "Publication year",                                    "~100%",
+  "journal",     "Journal name",                                        "~100%",
+  "source_file", "Which database CSV contributed this record",          "100%",
+  "pubmed_id",   "PubMed identifier",                                   "Partial",
+  "pmc_id",      "PubMed Central identifier",                           "Partial"
+)
+
+kable(fields, align = "lll") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+::: {.callout-important}
+## Provenance tracking
+The `source_file` field is preserved through every deduplication step and is
+concatenated (not lost) when duplicate records from different databases are merged.
+In the final output it is also appended to the `abstract` field, so that the complete
+database-of-origin audit trail survives import into Rayyan or any other screening tool.
+:::
+
+---
+
+## Processing Pipeline {#sec-pipeline}
+
+All deduplication and screener-assignment logic lives in a single reproducible script:
+
+> `scripts/0_literature_screening/1_deduplicate_records.R`
+
+The script was written in **February 2026** using `data.table` for efficient in-memory
+processing of the 2,083-record dataset.
+
+### Step 1 — Load data
+
+```{r}
+#| label: load-data
+rm(list = ls())
+
+library(dplyr)
+library(data.table)
+library(stringr)
+library(readr)
+
+# Rayyan estimated 17,812 records have duplicates across the raw exports
+articles <- fread("data/0_literature_screening/combined_records_final.csv")
+```
+
+### Step 2 — Title-based deduplication {#sec-title-dedup}
+
+Titles are normalised to a canonical lowercase form before matching.
+When duplicates are found, the **highest-quality** record is retained.
+
+**Quality score** (0–3): one point each for having a non-empty abstract, a non-empty
+author list, and a non-empty DOI.
+
+```{r}
+#| label: title-dedup
+
+# --- Normalise title ----------------------------------------------------------
+articles[, title_lwr := str_to_lower(title)]
+articles[, title_lwr := gsub("[[:punct:]]", " ", title_lwr)]  # strip punctuation
+articles[, title_lwr := gsub(" {2,}", " ", title_lwr)]        # collapse whitespace
+articles[, title_lwr := trimws(title_lwr)]
+
+# --- Quality score (0–3) ------------------------------------------------------
+articles[, has_abstract := ifelse(abstract == "" | is.na(abstract), 0L, 1L)]
+articles[, has_authors  := ifelse(authors  == "" | is.na(authors),  0L, 1L)]
+articles[, has_doi      := ifelse(doi      == "" | is.na(doi),      0L, 1L)]
+articles[, quality      := has_abstract + has_authors + has_doi]
+
+# --- Concatenate source files per title group ---------------------------------
+sources <- articles[,
+  .(source_file = paste(sort(unique(source_file)), collapse = "; ")),
+  by = .(title_lwr)
+]
+
+# --- Keep highest-quality record per title ------------------------------------
+articles.title.dedupe <- articles[
+  , .SD[which.max(quality), !c("source_file"), with = FALSE],
+  by = .(title_lwr)
+]
+
+# --- Merge concatenated sources back in ---------------------------------------
+articles.title.dedupe.mrg <- merge(
+  articles.title.dedupe, sources,
+  by = "title_lwr", all.x = TRUE
+)
+```
+
+#### Data decisions — title deduplication
+
+| Decision | What was done | Rationale |
+|---|---|---|
+| Lowercase conversion | `str_to_lower()` | Catches case differences across databases |
+| Punctuation removal | `gsub("[[:punct:]]", " ", ...)` | Handles hyphens, apostrophes, colons in titles |
+| Whitespace collapse | `gsub(" {2,}", " ", ...)` | Normalises after punctuation removal |
+| Quality scoring | abstract + authors + doi (0/1 each) | Retains the most information-rich duplicate |
+| Source concatenation | `paste(sort(unique(source_file)), collapse = "; ")` | Full provenance preserved across all duplicates |
+
+### Step 3 — DOI-based deduplication {#sec-doi-dedup}
+
+A second pass on the DOI field catches articles where titles differ slightly between
+database exports but resolve to the same paper. A custom helper function
+`split_conc()` uniquely concatenates source strings that were themselves already
+concatenated in the title-dedup step.
+
+```{r}
+#| label: doi-dedup
+
+# Helper: split already-concatenated source strings, deduplicate, re-join
+split_conc <- function(x) {
+  str_split(x, pattern = "; ") |>
+    unlist() |>
+    unique() |>
+    sort() |>
+    paste(collapse = "; ")
+}
+
+# Recalculate quality after title dedup (fields may have changed)
+articles.title.dedupe.mrg[, has_abstract := ifelse(abstract == "" | is.na(abstract), 0L, 1L)]
+articles.title.dedupe.mrg[, has_authors  := ifelse(authors  == "" | is.na(authors),  0L, 1L)]
+articles.title.dedupe.mrg[, has_doi      := ifelse(doi      == "" | is.na(doi),      0L, 1L)]
+articles.title.dedupe.mrg[, quality      := has_abstract + has_authors + has_doi]
+
+# Concatenate sources per DOI
+sources <- articles.title.dedupe.mrg[,
+  .(source_file = split_conc(source_file)),
+  by = .(doi)
+]
+
+# Keep highest-quality record per DOI
+articles.doi.dedupe <- articles.title.dedupe.mrg[
+  , .SD[which.max(quality), !c("source_file"), with = FALSE],
+  by = .(doi)
+]
+
+# Merge sources back in
+articles.final <- merge(
+  articles.doi.dedupe, sources,
+  by = "doi", all.x = TRUE
+)
+```
+
+### Step 4 — Clean and append provenance to abstract {#sec-clean}
+
+Intermediate processing columns are dropped, and the `source_file` string is appended
+to the `abstract` field so that provenance survives any downstream tool that does not
+retain a `source_file` column.
+
+```{r}
+#| label: clean
+
+articles.final[, abstract := paste0(abstract, " | ", source_file)]
+
+articles.final <- articles.final[,
+  !c("title_lwr", "n_title_matches",
+     "has_abstract", "has_authors", "has_doi",
+     "quality", "n_doi_matches", "source_file")
+]
+```
+
+### Step 5 — Year filter: 2019 and later {#sec-year-filter}
+
+```{r}
+#| label: year-filter
+
+articles.final <- articles.final[year >= 2019, ]
+message("Records after filter: ", nrow(articles.final))
+message("Earliest year in dataset: ", min(articles.final$year))
+```
+
+::: {.callout-important}
+## Data decision — year filter
+Only records published **in or after 2019** are retained for screening.
+
+**Rationale:**
+
+- Aligns with the pre-registered scope of the review.
+- Post-2019 literature uses more standardised reporting practices (e.g., ARRIVE 2.0),
+  making effect-size extraction more reliable.
+- Pre-2019 records remain available in `combined_records_final.csv` and can be
+  incorporated in sensitivity analyses.
+
+The filter reduces the deduplicated pool to **495 articles**.
+:::
+
+### Step 6 — Random shuffle and screener assignment {#sec-assignment}
+
+Articles are randomly shuffled before assignment to prevent ordering artefacts (e.g.,
+alphabetical or chronological clustering within screener batches). A dynamic function
+generates near-equal assignment vectors for any team size.
+
+```{r}
+#| label: assignment
+
+# Team structure
+screeners <- c(
+  "Aleksandra", "Aneta", "Anna", "Ayumi", "Cassidy", "Christine",
+  "Erick", "Iwo", "Hao", "Jimuel", "Kyle", "Marija",
+  "Santiago", "Sergio", "Shinichi",   # 15 primary screeners
+  "Losia", "Eduardo"                  # 2 secondary validators
+)
+
+primary_list   <- setdiff(screeners, c("Eduardo", "Losia"))
+secondary_list <- c("Eduardo", "Losia")
+
+# Random shuffle (prevents date/alpha ordering bias)
+set.seed(NULL)  # no fixed seed — shuffled output files are the reproducible record
+articles.final <- articles.final[sample(.N), ]
+
+# Dynamic assignment: ceiling(total / n) reps, trimmed to total rows
+create_assignments <- function(names, total_rows) {
+  reps_needed <- ceiling(total_rows / length(names))
+  full_vector <- rep(names, each = reps_needed)
+  return(full_vector[seq_len(total_rows)])
+}
+
+n_total <- nrow(articles.final)
+
+# Primary: ~33 articles per screener (495 / 15)
+articles.final[, primary_screener := create_assignments(primary_list, n_total)]
+
+# Secondary: ~248 articles per validator (495 / 2)
+articles.final[, secondary_screener := create_assignments(secondary_list, n_total)]
+
+# Verify balance
+articles.final[, .(n = .N), by = .(primary_screener)]
+articles.final[, .(n = .N), by = .(secondary_screener)]
+```
+
+### Step 7 — Export per-screener CSVs {#sec-export}
+
+One CSV is written per primary screener to
+`builds/0_literature_screening/deduplicated_and_randomly_split/`.
+Each file retains both assignment columns for cross-referencing.
+
+```{r}
+#| label: export
+
+invisible(lapply(
+  unique(articles.final$primary_screener),
+  function(x) {
+    write_csv(
+      articles.final[primary_screener == x, ],
+      paste0("builds/0_literature_screening/deduplicated_and_randomly_split/", x, ".csv")
+    )
+  }
+))
+```
+
+---
+
+## Literature Screening {#sec-screening}
+
+### Team structure
+
+The 495 articles are distributed across a 17-person team. Each article receives:
+
+- **One primary screen** — eligibility assessment against pre-registered inclusion criteria.
+- **One independent secondary validation** — every article is also assigned to one of
+  two validators (Eduardo or Losia), enabling inter-rater reliability estimation.
+
+```{r}
+#| label: tbl-team
+#| tbl-cap: "Screener assignments"
+team <- tibble::tribble(
+  ~Screener,    ~Role,      ~Articles,
+  "Aleksandra", "Primary",  "~33",
+  "Aneta",      "Primary",  "~33",
+  "Anna",       "Primary",  "~33",
+  "Ayumi",      "Primary",  "~33",
+  "Cassidy",    "Primary",  "~33",
+  "Christine",  "Primary",  "~33",
+  "Erick",      "Primary",  "~33",
+  "Hao",        "Primary",  "~33",
+  "Iwo",        "Primary",  "~33",
+  "Jimuel",     "Primary",  "~33",
+  "Kyle",       "Primary",  "~33",
+  "Marija",     "Primary",  "~33",
+  "Santiago",   "Primary",  "~33",
+  "Sergio",     "Primary",  "~33",
+  "Shinichi",   "Primary",  "~33",
+  "Eduardo",    "Validator","~248",
+  "Losia",      "Validator","~248"
+)
+
+kable(team, align = "lll") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) |>
+  row_spec(16:17, bold = TRUE, background = "#fdf4e3")
+```
+
+### Inclusion criteria
+
+Articles are included if they:
+
+1. Report an **experimental** test of mate-choice copying (observer watches a demonstrator
+   make a mate choice, then has the opportunity to choose between the same mates).
+2. Provide sufficient quantitative data for effect-size extraction (means + variance, or
+   counts, or test statistics with sample sizes).
+3. Were published **2019 or later** (pre-registration scope).
+4. Are written in English.
+
+### Inter-rater reliability
+
+Disagreements between primary and secondary screeners will be resolved by discussion
+or a designated tie-breaker. Cohen's κ (or a Bayesian analogue) will be calculated
+and reported in the supplementary methods.
+
+---
+
+## Data Extraction Pipeline {#sec-extraction}
+
+Included articles are sent to **Google NotebookLM** for AI-assisted data extraction
+via a four-step structured prompting protocol. All prompts are grounded by a
+`MetaAnalysis_Reference_Sheet.pdf` data dictionary containing few-shot examples of
+correct extractions.
+
+::: {.callout-warning}
+## Cache-bust rule
+Each step must be run in a **completely new** NotebookLM chat window. Re-using a
+previous window causes the model to recycle earlier tables rather than reading the
+PDFs afresh.
+:::
+
+### Step 1 — Species & study identification
+
+**Goal:** Establish taxonomic accuracy across all included papers.
+
+Each PDF yields one row in a Markdown table with two columns:
+
+| Column | Format | Example |
+|---|---|---|
+| `Study_ID` | `FirstAuthorLastName_Year_CamelCaseJournal` | `Belkina_2021_AnimalBehaviour` |
+| `Species` | Full binomial nomenclature | *Poecilia reticulata* |
+
+Common names alone are not accepted. The Study ID format is consistent across all
+four steps to serve as the primary join key.
+
+### Step 2 — Co-authorship & lab identification
+
+**Goal:** Build a bipartite co-authorship network to identify "hub labs."
+
+Output is in **long format** — one row per author per paper — so that network edges
+can be constructed directly.
+
+| Column | Description |
+|---|---|
+| `Study_ID` | Join key |
+| `Author_Name` | Full name |
+| `Author_Position` | First / Last / Corresponding / Middle |
+| `Institutional_Affiliation` | University or institute |
+| `Lab_Identifier` | `PILastName_Institution_City` (e.g., `Dukas_UniversityOfToronto_Toronto`) |
+
+::: {.callout-note}
+## Lab identifier design
+The **last author** is designated as the lab PI, and the same `Lab_Identifier` string
+is applied to every co-author row on the same paper. This links all authors to one
+"primary lab" node in the bipartite network, enabling correct degree-centrality
+calculation for hub-lab detection.
+:::
+
+### Step 3 — Trial-level data mapping
+
+**Goal:** Map the internal experimental structure of each paper — how many distinct
+trials exist, where their data live, and whether subjects are independent.
+
+| Column | Description |
+|---|---|
+| `Study_ID` | Join key |
+| `Trial_ID` | Experiment name/number (e.g., "Experiment 1", "Treatment A") |
+| `Trial_Description` | 1–2 sentence summary of manipulation |
+| `Sample_Size_N` | Focal subjects in this trial |
+| `Subject_Independence` | "Independent Cohort" or "Repeated Measures" |
+| `Control_Group_Shared` | Yes/No + which trial (if Yes) |
+| `Data_Location` | Exact page and figure/table reference (e.g., "Table 1, Page 5") |
+
+### Step 4 — Quantitative extraction (multi-agent pipeline)
+
+**Goal:** Extract and cross-validate the actual numbers using a simulated three-agent
+architecture.
+
+#### Agent architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  For each PDF:                                                       │
+│                                                                      │
+│  Agent 1 (Extractor)   →  Agent 2 (Verifier)  →  Agent 3 (Arbiter) │
+│  Pulls raw numbers        Checks for:             Resolves conflicts │
+│  from Methods/Results     • SD vs SE confusion    Formats final row  │
+│                           • Sample independence                      │
+│                           • Missing trials                           │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Agent 2 checks explicitly for three systematic extraction errors:**
+
+1. **SD/SE confusion** — a common error in manual extraction that biases heterogeneity
+   estimates if uncorrected.
+2. **Sample independence** — flags whether the N used is independent across trials or
+   from repeated measures on the same subjects.
+3. **Missing trials** — re-reads the Methods to confirm no secondary experiments
+   were missed by Agent 1.
+
+#### Final output columns
+
+| Column | Content |
+|---|---|
+| `Study_ID` | Author_Year_JournalName |
+| `Trial_ID` | Specific experiment or condition |
+| `Response_Metric` | What was measured |
+| `Validated_Exp_Group_Data` | Mean ± SD/SE, Counts, or Test Stat |
+| `Validated_Control_Group_Data` | Mean ± SD/SE, Counts, or NA |
+| `SD_or_SE` | Explicit variance metric label |
+| `Agent1_Initial_Pull` | Brief summary of original extraction |
+| `Agent2_Verification_Notes` | Corrections made, or "No missing trials found" |
+| `Verification_Location` | Exact page and table/figure number |
+
+---
+
+## Planned Analyses {#sec-analyses}
+
+All models will be implemented in R. Pre-registration details will be linked here.
+
+### Meta-analytic models
+
+Multi-level random-effects meta-analysis to estimate the overall effect size for MCC,
+accounting for trials nested within papers nested within labs.
+Packages: `metafor`, `clubSandwich`.
+
+**Heterogeneity** will be quantified with $I^2$ and $\tau^2$ at each level.
+
+### Co-authorship network analysis
+
+The long-format table from extraction Step 2 feeds directly into a bipartite
+lab–paper network constructed in R (`igraph` or `tidygraph`). Hub labs are identified
+by degree centrality. Non-independence is modelled by including a lab-level random
+effect or using network-based weights in the meta-analytic model.
+
+### Phylogenetic comparative methods
+
+Species non-independence is controlled via a phylogenetic covariance matrix
+incorporated into the meta-analytic model (`metafor` + `ape`). This accounts for the
+possibility that closely related species share similar MCC propensity due to shared
+evolutionary history.
+
+### Publication bias
+
+Funnel plot asymmetry, Egger's regression test, and trim-and-fill analysis.
+Time-lag bias will be examined by plotting effect size against publication year.
+
+### Moderator analyses
+
+Meta-regression models will test whether effect sizes vary by:
+
+- Sex of the copying individual (female vs. male)
+- Taxonomic group (fish, bird, mammal, invertebrate)
+- Experimental design (lab vs. semi-natural)
+- Model presentation method (live demonstrator vs. video vs. trained model)
+
+### Sensitivity analyses
+
+- Inclusion of pre-2019 records.
+- Leave-one-out analysis for influential studies.
+- Re-analysis excluding studies from identified hub labs.
+
+---
+
+## Repository Structure {#sec-repo}
+
+```
+mate_choice_meta/
+├── index.qmd                          ← this document (source)
+├── index.html                         ← rendered GitHub Pages output
+├── mate_choice_meta.Rproj
+├── data/
+│   └── 0_literature_screening/
+│       └── combined_records_final.csv   (2,083 records, all years)
+├── scripts/
+│   └── 0_literature_screening/
+│       └── 1_deduplicate_records.R
+└── builds/
+    ├── 0_literature_screening/
+    │   └── deduplicated_and_randomly_split/
+    │       ├── Aleksandra.csv  … Shinichi.csv  (15 primary screeners)
+    │       ├── Eduardo.csv                     (validator)
+    │       └── Losia.csv                       (validator)
+    └── 1_extraction_pipeline/
+        ├── notebookLM_pipeline.md
+        └── notebookLM_pipeline.html
+```
+
+### Rendering this document
+
+To regenerate `index.html` after editing `index.qmd`, run from the repo root:
+
+```bash
+quarto render index.qmd
+```
+
+Requires [Quarto CLI](https://quarto.org/docs/get-started/) ≥ 1.4 and R with the
+packages listed in the setup chunk.
+
+---
+
+## Reproducibility & Contact {#sec-reproducibility}
+
+All data processing is fully scripted in R. The random shuffle used for screener
+assignment is not seeded; instead, the exported per-screener CSV files in
+`builds/0_literature_screening/deduplicated_and_randomly_split/` serve as the
+reproducible record of the assignment actually used.
+
+The AI extraction prompts are version-controlled in
+`builds/1_extraction_pipeline/notebookLM_pipeline.md` (version 1.1).
+
+For questions about the data pipeline or extraction protocol, please open an issue
+on the GitHub repository.
+
+---
+
+*Document generated with [Quarto](https://quarto.org). Last updated: `r format(Sys.Date(), "%B %Y")`.*
