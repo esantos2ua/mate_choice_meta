@@ -108,12 +108,12 @@ hedges_new <- db_new %>%
 # B. Hedges' g from Davies et al. 2020 (Original)
 hedges_davies <- db_davies_raw %>%
   mutate(
-    Hedges_d = as.numeric(Hedges_d),
+    Hedges_d_directional = as.numeric(Hedges_d_directional),
     Variance = as.numeric(Variance)
   ) %>%
-  filter(!is.na(Hedges_d), !is.na(Variance), Variance > 0) %>%
+  filter(!is.na(Hedges_d_directional), !is.na(Variance), Variance > 0) %>%
   select(
-    yi = Hedges_d,
+    yi = Hedges_d_directional,
     vi = Variance,
     identifierStudyId = Author,
     identifierEffectSizeID = Effect_size_no,
