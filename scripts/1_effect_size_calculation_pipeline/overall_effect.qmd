@@ -264,62 +264,110 @@ res_or_comb  <- fit_overall_mv(db_or)
 
 ::: {.panel-tabset}
 
-#### New Extraction Only
+#### Unified Synthesis Plot
 
-This model isolates Eduardo's newly extracted dataset.
+This plot combines all three estimates (New Extraction, Original legacy studies, and the Combined pool) side-by-side in a single panel. Points are colored individually by their true data source.
 
 ```{r}
-#| label: hedges_new_summary
+#| label: hedges_unified_plot
 #| message: false
 #| warning: false
+#| fig.width: 10
+#| fig.height: 7
 
+if (!is.null(res_hedges_new) && !is.null(res_hedges_orig) && !is.null(res_hedges_comb)) {
+  # 1. Extract S3 result objects using mod_results
+  h_new <- orchaRd::mod_results(res_hedges_new$model, group = "identifierStudyId")
+  h_orig <- orchaRd::mod_results(res_hedges_orig$model, group = "identifierStudyId")
+  h_comb <- orchaRd::mod_results(res_hedges_comb$model, group = "identifierStudyId")
+
+  # 2. Clone S3 result objects to lists for manual editing
+  class(h_new) <- "list"
+  h_new$mod_table$name <- "New Extraction (Santos)"
+  h_new$data$moderator <- "New Extraction (Santos)"
+  class(h_new) <- c("orchard", "data.frame")
+
+  class(h_orig) <- "list"
+  h_orig$mod_table$name <- "Original (Davies 2020)"
+  h_orig$data$moderator <- "Original (Davies 2020)"
+  class(h_orig) <- c("orchard", "data.frame")
+
+  class(h_comb) <- "list"
+  h_comb$mod_table$name <- "Combined"
+  h_comb$data$moderator <- "Combined"
+  class(h_comb) <- c("orchard", "data.frame")
+
+  # 3. Merge model results
+  sub_hedges <- orchaRd::submerge(h_new, h_orig, h_comb)
+
+  # 4. Add point-level real source mapping
+  class(sub_hedges) <- "list"
+  sub_hedges$data$real_source <- c(
+    rep("New Extraction (Santos)", nrow(h_new$data)),
+    rep("Original (Davies 2020)", nrow(h_orig$data)),
+    rep("New Extraction (Santos)", nrow(h_new$data)),
+    rep("Original (Davies 2020)", nrow(h_orig$data))
+  )
+  class(sub_hedges) <- c("orchard", "data.frame")
+
+  # 4. Generate Plot
+  p_hedges <- orchaRd::orchard_plot(sub_hedges, xlab = "Hedges' g", flip = TRUE)
+
+  # 5. Customize color mapping for points
+  p_hedges$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+  p_hedges$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+  # 6. Apply themes & custom palette (colorblind friendly orange/blue)
+  p_hedges <- p_hedges +
+    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates") +
+    ggplot2::theme(legend.position = "right")
+
+  print(p_hedges)
+}
+```
+
+#### Detailed Model Statistics
+
+Here are the text outputs and fit statistics for the three individual models:
+
+::: {.panel-tabset}
+
+##### New Only
+
+```{r}
+#| label: hedges_new_stats
 if (!is.null(res_hedges_new)) {
   print(summary(res_hedges_new$model))
-  cat("\nHeterogeneity estimates (I^2):\n")
+  cat("\nHeterogeneity (I^2):\n")
   print(orchaRd::i2_ml(res_hedges_new$model))
-  
-  orchaRd::orchard_plot(res_hedges_new$model, group = "identifierStudyId", xlab = "Hedges' g", flip = TRUE) +
-    ggplot2::scale_x_discrete(labels = "New Extraction")
 }
 ```
 
-#### Original Only (Davies 2020)
-
-This model isolates legacy data from the original Davies et al. (2020) meta-analysis.
+##### Original Only
 
 ```{r}
-#| label: hedges_orig_summary
-#| message: false
-#| warning: false
-
+#| label: hedges_orig_stats
 if (!is.null(res_hedges_orig)) {
   print(summary(res_hedges_orig$model))
-  cat("\nHeterogeneity estimates (I^2):\n")
+  cat("\nHeterogeneity (I^2):\n")
   print(orchaRd::i2_ml(res_hedges_orig$model))
-  
-  orchaRd::orchard_plot(res_hedges_orig$model, group = "identifierStudyId", xlab = "Hedges' g", flip = TRUE) +
-    ggplot2::scale_x_discrete(labels = "Davies 2020")
 }
 ```
 
-#### Combined Analysis
-
-This model synthesizes legacy data with new extractions for Hedges' $g$.
+##### Combined
 
 ```{r}
-#| label: hedges_comb_summary
-#| message: false
-#| warning: false
-
+#| label: hedges_comb_stats
 if (!is.null(res_hedges_comb)) {
   print(summary(res_hedges_comb$model))
-  cat("\nHeterogeneity estimates (I^2):\n")
+  cat("\nHeterogeneity (I^2):\n")
   print(orchaRd::i2_ml(res_hedges_comb$model))
-  
-  orchaRd::orchard_plot(res_hedges_comb$model, group = "identifierStudyId", xlab = "Hedges' g", flip = TRUE) +
-    ggplot2::scale_x_discrete(labels = "Combined Hedges' g")
 }
 ```
+
+:::
 
 :::
 
@@ -327,62 +375,110 @@ if (!is.null(res_hedges_comb)) {
 
 ::: {.panel-tabset}
 
-#### New Extraction Only
+#### Unified Synthesis Plot
 
-This model isolates Eduardo's newly extracted dataset for Odds Ratios.
+This plot combines all three estimates (New Extraction, Original legacy studies, and the Combined pool) side-by-side in a single panel. Points are colored individually by their true data source.
 
 ```{r}
-#| label: or_new_summary
+#| label: or_unified_plot
 #| message: false
 #| warning: false
+#| fig.width: 10
+#| fig.height: 7
 
+if (!is.null(res_or_new) && !is.null(res_or_orig) && !is.null(res_or_comb)) {
+  # 1. Extract S3 result objects using mod_results
+  o_new <- orchaRd::mod_results(res_or_new$model, group = "identifierStudyId")
+  o_orig <- orchaRd::mod_results(res_or_orig$model, group = "identifierStudyId")
+  o_comb <- orchaRd::mod_results(res_or_comb$model, group = "identifierStudyId")
+
+  # 2. Clone S3 result objects to lists for manual editing
+  class(o_new) <- "list"
+  o_new$mod_table$name <- "New Extraction (Santos)"
+  o_new$data$moderator <- "New Extraction (Santos)"
+  class(o_new) <- c("orchard", "data.frame")
+
+  class(o_orig) <- "list"
+  o_orig$mod_table$name <- "Original (Jones & DuVal 2019)"
+  o_orig$data$moderator <- "Original (Jones & DuVal 2019)"
+  class(o_orig) <- c("orchard", "data.frame")
+
+  class(o_comb) <- "list"
+  o_comb$mod_table$name <- "Combined"
+  o_comb$data$moderator <- "Combined"
+  class(o_comb) <- c("orchard", "data.frame")
+
+  # 3. Merge model results
+  sub_or <- orchaRd::submerge(o_new, o_orig, o_comb)
+
+  # 4. Add point-level real source mapping
+  class(sub_or) <- "list"
+  sub_or$data$real_source <- c(
+    rep("New Extraction (Santos)", nrow(o_new$data)),
+    rep("Original (Jones & DuVal)", nrow(o_orig$data)),
+    rep("New Extraction (Santos)", nrow(o_new$data)),
+    rep("Original (Jones & DuVal)", nrow(o_orig$data))
+  )
+  class(sub_or) <- c("orchard", "data.frame")
+
+  # 4. Generate Plot
+  p_or <- orchaRd::orchard_plot(sub_or, xlab = "Log Odds Ratio (lnOR)", flip = TRUE)
+
+  # 5. Customize color mapping for points
+  p_or$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+  p_or$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+  # 6. Apply themes & custom palette (colorblind friendly orange/blue)
+  p_or <- p_or +
+    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
+    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
+    ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates") +
+    ggplot2::theme(legend.position = "right")
+
+  print(p_or)
+}
+```
+
+#### Detailed Model Statistics
+
+Here are the text outputs and fit statistics for the three individual models:
+
+::: {.panel-tabset}
+
+##### New Only
+
+```{r}
+#| label: or_new_stats
 if (!is.null(res_or_new)) {
   print(summary(res_or_new$model))
-  cat("\nHeterogeneity estimates (I^2):\n")
+  cat("\nHeterogeneity (I^2):\n")
   print(orchaRd::i2_ml(res_or_new$model))
-  
-  orchaRd::orchard_plot(res_or_new$model, group = "identifierStudyId", xlab = "Log Odds Ratio", flip = TRUE) +
-    ggplot2::scale_x_discrete(labels = "New Extraction")
 }
 ```
 
-#### Original Only (Jones & DuVal 2019)
-
-This model isolates legacy data from the original Jones & DuVal (2019) meta-analysis.
+##### Original Only
 
 ```{r}
-#| label: or_orig_summary
-#| message: false
-#| warning: false
-
+#| label: or_orig_stats
 if (!is.null(res_or_orig)) {
   print(summary(res_or_orig$model))
-  cat("\nHeterogeneity estimates (I^2):\n")
+  cat("\nHeterogeneity (I^2):\n")
   print(orchaRd::i2_ml(res_or_orig$model))
-  
-  orchaRd::orchard_plot(res_or_orig$model, group = "identifierStudyId", xlab = "Log Odds Ratio", flip = TRUE) +
-    ggplot2::scale_x_discrete(labels = "Jones & DuVal 2019")
 }
 ```
 
-#### Combined Analysis
-
-This model synthesizes legacy data with new extractions for Odds Ratios.
+##### Combined
 
 ```{r}
-#| label: or_comb_summary
-#| message: false
-#| warning: false
-
+#| label: or_comb_stats
 if (!is.null(res_or_comb)) {
   print(summary(res_or_comb$model))
-  cat("\nHeterogeneity estimates (I^2):\n")
+  cat("\nHeterogeneity (I^2):\n")
   print(orchaRd::i2_ml(res_or_comb$model))
-  
-  orchaRd::orchard_plot(res_or_comb$model, group = "identifierStudyId", xlab = "Log Odds Ratio", flip = TRUE) +
-    ggplot2::scale_x_discrete(labels = "Combined lnOR")
 }
 ```
+
+:::
 
 :::
 
