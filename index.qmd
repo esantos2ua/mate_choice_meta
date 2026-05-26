@@ -519,6 +519,32 @@ architecture.
 
 ---
 
+## Effect Size Calculation {#sec-effect-sizes}
+
+Following data extraction, effect sizes and their sampling variances are calculated using the reproducible Python pipeline located at [`scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py`](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py). 
+
+The raw data is stored in the Excel spreadsheet [`data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx`](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/data/1_effect_size_calculation_pipeline/Data%20Extraction%20Mate%20Choice%20Meta%20Analysis.xlsx) inside the `EduardoExtraction` sheet. To support tracking, each row contains an `identifierEffectSizeID` column containing a unique sequential identifier for each control–experimental comparison (e.g., `es0001`, `es0002`). The Python pipeline dynamically resolves column locations by scanning the header row, computes the following effect size metrics, and saves them back to the spreadsheet:
+
+### 1. Hedges' $g$ (Bias-Corrected Standardised Mean Difference)
+Calculated depending on the data type extracted:
+* **From Means & SDs:** Using control and treatment means, standard deviations (or standard errors converted using $SD = SE \times \sqrt{n}$), and sample sizes.
+* **From $t$-statistics:** Supported for both paired/one-sample designs (Case 2) and independent-sample designs (Case 3, assuming an equal sample split if individual group sizes are unknown).
+
+### 2. Odds Ratio (OR)
+Calculated for categorical outcomes from $2 \times 2$ contingency tables ($A$, $B$, $C$, $D$), where the sampling variance of the log odds ratio is approximated using the delta method.
+
+### 3. Odds Ratio $\leftrightarrow$ Hedges' $g$ Cross-Conversion
+For rows containing only one of the two metrics, the missing metric is derived using the logistic-normal approximation (Chinn 2000, Borenstein et al. 2009):
+* **$\text{OR} \rightarrow \text{Hedges' } g$**: $d = \ln(\text{OR}) \times \frac{\sqrt{3}}{\pi}$ and then bias-corrected to $g$ using the $J$ correction factor.
+* **$\text{Hedges' } g \rightarrow \text{OR}$**: $\ln(\text{OR}) = g \times \frac{\pi}{\sqrt{3}}$ and $\text{Var}(\ln\text{OR}) = \text{Var}(g) \times \frac{\pi^2}{3}$.
+
+To execute the calculations and update the workbook, run:
+```bash
+python scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py
+```
+
+---
+
 ## Planned Analyses {#sec-analyses}
 
 All models will be implemented in R. Pre-registration details will be linked here.
@@ -575,18 +601,22 @@ mate_choice_meta/
 ├── index.html                         ← rendered GitHub Pages output
 ├── mate_choice_meta.Rproj
 ├── data/
-│   └── 0_literature_screening/
-│       └── combined_records_final.csv   (2,083 records, all years)
+│   ├── 0_literature_screening/
+│   │   └── combined_records_final.csv   (2,083 records, all years)
+│   └── 1_effect_size_calculation_pipeline/
+│       └── Data Extraction Mate Choice Meta Analysis.xlsx (raw data & outputs)
 ├── scripts/
-│   └── 0_literature_screening/
-│       └── 1_deduplicate_records.R
+│   ├── 0_literature_screening/
+│   │   └── 1_deduplicate_records.R
+│   └── 1_effect_size_calculation_pipeline/
+│       └── calculate_effect_sizes.py    (Hedges' g & OR calculator)
 └── builds/
     ├── 0_literature_screening/
     │   └── deduplicated_and_randomly_split/
     │       ├── Aleksandra.csv  … Shinichi.csv  (15 primary screeners)
     │       ├── Eduardo.csv                     (validator)
     │       └── Losia.csv                       (validator)
-    └── 1_extraction_pipeline/
+    └── 1_effect_size_calculation_pipeline/
         ├── notebookLM_pipeline.md
         └── notebookLM_pipeline.html
 ```
@@ -612,7 +642,7 @@ assignment is not seeded; instead, the exported per-screener CSV files in
 reproducible record of the assignment actually used.
 
 The AI extraction prompts are version-controlled in
-`builds/1_extraction_pipeline/notebookLM_pipeline.md` (version 1.1).
+`builds/1_effect_size_calculation_pipeline/notebookLM_pipeline.md` (version 1.1).
 
 For questions about the data pipeline or extraction protocol, please open an issue
 on the GitHub repository.
