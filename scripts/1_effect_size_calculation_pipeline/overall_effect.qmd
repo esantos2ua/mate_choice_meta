@@ -64,7 +64,7 @@ path_jones <- here::here("data", "2_original_meta_analyses_datasets", "Jones_DuV
 db_new_raw <- readxl::read_excel(path_new, sheet = "EduardoExtraction")
 
 # B. Read Davies et al. 2020 (Original continuous dataset)
-db_davies_raw <- readxl::read_excel(path_davies)
+db_davies_raw <- readxl::read_excel(path_davies, sheet = "Data")
 
 # C. Read Jones & DuVal 2019 (Original binary dataset)
 db_jones_raw <- readr::read_csv(path_jones)
@@ -107,6 +107,10 @@ hedges_new <- db_new %>%
 
 # B. Hedges' g from Davies et al. 2020 (Original)
 hedges_davies <- db_davies_raw %>%
+  mutate(
+    Hedges_d = as.numeric(Hedges_d),
+    Variance = as.numeric(Variance)
+  ) %>%
   filter(!is.na(Hedges_d), !is.na(Variance), Variance > 0) %>%
   select(
     yi = Hedges_d,
