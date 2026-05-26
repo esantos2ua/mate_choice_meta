@@ -176,6 +176,94 @@ db_or <- bind_rows(or_new, or_jones) %>%
 
 ---
 
+## Effect Size Distribution (Density Plots) {#sec-density}
+
+Before fitting the multi-level models, we inspect the distribution of our aligned effect sizes across the different subsets (New Extraction, Original Only, and Combined). 
+
+The density plots below use the same split logic as the orchard plots, facet-wrapping by subset while coloring the distribution curves by their actual dataset source to check for shifts or outliers.
+
+::: {.panel-tabset}
+
+### Hedges' $g$ (Continuous SMD)
+
+```{r}
+#| label: hedges_density_plots
+#| message: false
+#| warning: false
+#| fig.width: 10
+#| fig.height: 5
+
+# Prepare density data for Hedges' g
+db_hedges_density <- bind_rows(
+  db_hedges %>% mutate(Group = as.character(Dataset_Source)),
+  db_hedges %>% mutate(Group = "Combined")
+) %>%
+  mutate(Group = factor(Group, levels = c("New Extraction (Santos)", "Original (Davies 2020)", "Combined")))
+
+# Plot densities
+p_hedges_dens <- ggplot(db_hedges_density, aes(x = yi, fill = Dataset_Source, color = Dataset_Source)) +
+  geom_density(alpha = 0.4, linewidth = 0.8) +
+  geom_rug(alpha = 0.6) +
+  facet_wrap(~ Group, ncol = 3) +
+  scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+  scale_color_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+  labs(
+    title = "Distribution of Hedges' g Effect Sizes",
+    x = "Hedges' g",
+    y = "Density"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold", size = 11),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )
+
+print(p_hedges_dens)
+```
+
+### Odds Ratio (Binary outcomes)
+
+```{r}
+#| label: or_density_plots
+#| message: false
+#| warning: false
+#| fig.width: 10
+#| fig.height: 5
+
+# Prepare density data for Odds Ratio (lnOR)
+db_or_density <- bind_rows(
+  db_or %>% mutate(Group = as.character(Dataset_Source)),
+  db_or %>% mutate(Group = "Combined")
+) %>%
+  mutate(Group = factor(Group, levels = c("New Extraction (Santos)", "Original (Jones & DuVal 2019)", "Combined")))
+
+# Plot densities
+p_or_dens <- ggplot(db_or_density, aes(x = yi, fill = Dataset_Source, color = Dataset_Source)) +
+  geom_density(alpha = 0.4, linewidth = 0.8) +
+  geom_rug(alpha = 0.6) +
+  facet_wrap(~ Group, ncol = 3) +
+  scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+  scale_color_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+  labs(
+    title = "Distribution of Log Odds Ratio (lnOR) Effect Sizes",
+    x = "Log Odds Ratio (lnOR)",
+    y = "Density"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold", size = 11),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )
+
+print(p_or_dens)
+```
+
+:::
+
+---
+
 ## Model Fitting Function
 
 This helper function handles the variance–covariance (VCV) matrix construction and fits a multilevel random-effects model using `rma.mv()` in `metafor`. 
