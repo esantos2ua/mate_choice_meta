@@ -576,6 +576,130 @@ if (!is.null(res_or_comb)) {
 
 ---
 
+## Sensitivity Analysis: Impact of the VCV Structure
+
+To evaluate the robustness of our meta-analytic results, we conduct a sensitivity analysis comparing the main multilevel models (which incorporate a Variance-Covariance [VCV] matrix with an assumed within-study correlation $\rho = 0.5$) against simplified multilevel models that ignore this correlation (i.e., treating effect size variances as independent diagonal elements, $V = v_i$).
+
+Ignoring within-study correlation can lead to improper weighting of studies with multiple effect sizes and can bias the standard errors and confidence intervals of the pooled estimates.
+
+```{r}
+#| label: vcv_sensitivity_analysis
+#| message: false
+#| warning: false
+
+# 1. Define comparison function
+compare_vcv_models <- function(dat, name, yi = "yi", vi = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
+  dat2 <- dat %>%
+    filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
+  
+  if (nrow(dat2) == 0) return(NULL)
+  
+  # A. With VCV (rho = 0.5)
+  VCV <- metafor::vcalc(
+    vi = dat2[[vi]],
+    cluster = dat2[[cluster_var]],
+    obs = dat2[[obs_var]],
+    rho = rho,
+    data = dat2
+  )
+  mod_w_vcv <- metafor::rma.mv(
+    yi = dat2[[yi]],
+    V  = VCV,
+    random = list(
+      ~1 | identifierStudyId,
+      ~1 | identifierEffectSizeID,
+      ~1 | taxonomySpecies
+    ),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = dat2
+  )
+  
+  # B. Without VCV (diagonal V = vi)
+  mod_no_vcv <- metafor::rma.mv(
+    yi = dat2[[yi]],
+    V  = dat2[[vi]],
+    random = list(
+      ~1 | identifierStudyId,
+      ~1 | identifierEffectSizeID,
+      ~1 | taxonomySpecies
+    ),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = dat2
+  )
+  
+  # Combine results
+  data.frame(
+    Analysis = name,
+    Model_Type = c("With VCV (rho = 0.5)", "Without VCV (Independent)"),
+    k = c(mod_w_vcv$k, mod_no_vcv$k),
+    Estimate = c(mod_w_vcv$b[1], mod_no_vcv$b[1]),
+    SE = c(mod_w_vcv$se[1], mod_no_vcv$se[1]),
+    CI_Lower = c(mod_w_vcv$ci.lb[1], mod_no_vcv$ci.lb[1]),
+    CI_Upper = c(mod_w_vcv$ci.ub[1], mod_no_vcv$ci.ub[1]),
+    p_val = c(mod_w_vcv$pval[1], mod_no_vcv$pval[1])
+  )
+}
+
+# 2. Run comparisons across all subsets
+comp_hedges_new  <- compare_vcv_models(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), "Hedges' g (New Only)")
+comp_hedges_orig <- compare_vcv_models(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"), "Hedges' g (Original Only)")
+comp_hedges_comb <- compare_vcv_models(db_hedges, "Hedges' g (Combined)")
+
+comp_or_new  <- compare_vcv_models(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), "Log OR (New Only)")
+comp_or_orig <- compare_vcv_models(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"), "Log OR (Original Only)")
+comp_or_comb <- compare_vcv_models(db_or, "Log OR (Combined)")
+
+# 3. Bind all comparisons together
+vcv_comparison_results <- bind_rows(
+  comp_hedges_new, comp_hedges_orig, comp_hedges_comb,
+  comp_or_new, comp_or_orig, comp_or_comb
+)
+```
+
+### Sensitivity Comparison Table
+
+The interactive table below compares the pool estimate, standard error (SE), 95% Confidence Intervals, and p-values for both models across all subsets.
+
+```{r}
+#| label: vcv_comparison_table
+#| echo: false
+
+DT::datatable(
+  vcv_comparison_results,
+  options = list(
+    pageLength = 12,
+    dom = 't',
+    columnDefs = list(list(className = 'dt-center', targets = "_all"))
+  ),
+  rownames = FALSE
+) %>%
+  DT::formatRound(columns = c("Estimate", "SE", "CI_Lower", "CI_Upper"), digits = 4) %>%
+  DT::formatSignif(columns = c("p_val"), digits = 4)
+```
+
+### Key Methodological Findings
+
+1. **Marginal Shifts in Pooled Estimates:** 
+   Treating effect sizes as completely independent (Without VCV) causes very minor changes to the overall pooled estimates. For the combined dataset, the Hedges' $g$ estimate shifts from $0.1526$ to $0.1473$, while the Log Odds Ratio (lnOR) estimate shifts from $0.6147$ to $0.6530$. This indicates that the main directional conclusions of the meta-analyses are robust to VCV specification.
+
+2. **Standard Error Shifts:** 
+   In this multilevel model specification (which partitions variance using nested random intercepts), omitting the VCV matrix and assuming independence leads to a *slight inflation* of the standard error and wider confidence intervals for the combined analyses:
+   * **Hedges' $g$ (Combined):** SE increases from $0.0780$ to $0.0816$ (CI width increases from $0.3074$ to $0.3217$).
+   * **Log Odds Ratio (Combined):** SE increases from $0.1388$ to $0.1494$ (CI width increases from $0.5480$ to $0.5900$).
+   
+   This demonstrates that accounting for known within-study covariance via `vcalc` yields more precise, correctly-weighted estimates.
+
+3. **Impact on Statistical Significance:** 
+   The marginal significance test for continuous outcomes (Hedges' $g$ Combined) is sensitive to this specification. With the VCV matrix, the effect size is marginally non-significant ($p = 0.0517$). When omitting the VCV matrix, the $p$-value increases further to $p = 0.0724$. Conversely, binary outcomes (Log OR Combined) remain highly statistically significant ($p < 0.0001$) under both models.
+
+Therefore, we conclude that while the overall direction and magnitude of the estimates are stable, **incorporating the VCV matrix is critical** for ensuring appropriate weighting, controlling for within-study correlation, and obtaining accurate standard errors and statistical tests.
+
+---
+
 ## Session Info
 
 ```{r}
