@@ -1,6 +1,6 @@
 ---
-title: "Overall Effect Size Calculation"
-subtitle: "Multilevel Meta-Analysis of Mate-Choice Copying"
+title: "Overall Effect Size Calculation & Synthesis"
+subtitle: "Meta-Analytic Update of Mate-Choice Copying (MCC)"
 author: "Eduardo Santos & Collaborators"
 date: today
 format:
@@ -26,54 +26,157 @@ pacman::p_load(
                )
 ```
 
-## Data Loading and Preprocessing
+## Introduction & Project Update
 
-We read the extracted dataset from our Excel workbook. The script filters out any rows marked for removal and processes our calculated effect size columns.
+This protocol implements the overall effect size synthesis for the updated Mate-Choice Copying (MCC) meta-analysis. 
+
+Specifically, we integrate:
+1. **The New Extractions:** Our newly extracted and verified dataset containing recent trials.
+2. **Original Continuous Dataset (Davies et al. 2020):** Standardised mean differences (Hedges' $d$) analyzing continuous metrics.
+3. **Original Binary Dataset (Jones & DuVal 2019):** Log Odds Ratio ($\ln\text{OR}$) analyzing binary choices.
+
+The R script aligns and synthesizes these three sources into unified datasets, allowing comparison of meta-analytic summaries across three key subsets:
+* **New Extractions Only:** Eduardo's new dataset.
+* **Original Only:** Legacy data from the original publications.
+* **Combined Dataset:** A complete synthesis of old and new trials to estimate the updated global effect sizes.
+
+---
+
+## Data Loading and Alignment
+
+We read the three datasets, perform data type conversions, extract species epithets for taxonomic control, and align columns into unified Hedges' $g$ and Odds Ratio datasets.
 
 ```{r}
-#| label: load_data
+#| label: load_and_align_datasets
 #| message: false
 #| warning: false
 
-# Define path to the Excel workbook relative to repository root
-excel_path <- here::here("data", "1_effect_size_calculation_pipeline", "Data Extraction Mate Choice Meta Analysis.xlsx")
+# ---------------------------------------------------------------------------
+# 1. Load Datasets
+# ---------------------------------------------------------------------------
 
-# Read EduardoExtraction sheet
-db_raw <- readxl::read_excel(excel_path, sheet = "EduardoExtraction")
+# Paths to legacy and new datasets
+path_new <- here::here("data", "1_effect_size_calculation_pipeline", "Data Extraction Mate Choice Meta Analysis.xlsx")
+path_davies <- here::here("data", "2_original_meta_analyses_datasets", "Davies_et_al_2020_Final_data.xlsx")
+path_jones <- here::here("data", "2_original_meta_analyses_datasets", "Jones_DuVal_2019_data.CSV")
 
-# Filter out rows flagged for removal and convert key columns
-db <- db_raw %>%
-  # Filter out rows marked for deletion (keep rows where RemoveFromDataset is NA or not "Yes")
+# A. Read new extraction dataset (EduardoExtraction sheet)
+db_new_raw <- readxl::read_excel(path_new, sheet = "EduardoExtraction")
+
+# B. Read Davies et al. 2020 (Original continuous dataset)
+db_davies_raw <- readxl::read_excel(path_davies)
+
+# C. Read Jones & DuVal 2019 (Original binary dataset)
+db_jones_raw <- readr::read_csv(path_jones)
+
+# ---------------------------------------------------------------------------
+# 2. Process and Filter New Extraction
+# ---------------------------------------------------------------------------
+db_new <- db_new_raw %>%
   filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
-  # Convert variables to factor/numeric structures
-  mutate(across(where(is.character), as.factor)) %>%
   mutate(
     effectSizeCalculatedHedgesD = as.numeric(effectSizeCalculatedHedgesD),
     effectSizeCalculatedHedgesDVariance = as.numeric(effectSizeCalculatedHedgesDVariance),
     effectSizeCalculatedOddsRatio = as.numeric(effectSizeCalculatedOddsRatio),
-    effectSizeCalculatedOddsRatioVariance = as.numeric(effectSizeCalculatedOddsRatioVariance)
-  )
-
-# Add log Odds Ratio and its variance for meta-analytic modeling
-db <- db %>%
-  mutate(
+    effectSizeCalculatedOddsRatioVariance = as.numeric(effectSizeCalculatedOddsRatioVariance),
     logOddsRatio = log(effectSizeCalculatedOddsRatio),
     logOddsRatioVariance = effectSizeCalculatedOddsRatioVariance
   )
+
+# ---------------------------------------------------------------------------
+# 3. Align Datasets for Hedges' g (Continuous SMD Analysis)
+# ---------------------------------------------------------------------------
+
+# A. Hedges' g from New Extraction
+hedges_new <- db_new %>%
+  filter(!is.na(effectSizeCalculatedHedgesD), !is.na(effectSizeCalculatedHedgesDVariance)) %>%
+  select(
+    yi = effectSizeCalculatedHedgesD,
+    vi = effectSizeCalculatedHedgesDVariance,
+    identifierStudyId,
+    identifierEffectSizeID,
+    taxonomySpecies
+  ) %>%
+  mutate(
+    identifierStudyId = as.character(identifierStudyId),
+    identifierEffectSizeID = as.character(identifierEffectSizeID),
+    # Extract species epithet (last word) and make lowercase for cross-dataset mapping
+    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+    Dataset_Source = "New Extraction (Santos)"
+  )
+
+# B. Hedges' g from Davies et al. 2020 (Original)
+hedges_davies <- db_davies_raw %>%
+  filter(!is.na(Hedges_d), !is.na(Variance), Variance > 0) %>%
+  select(
+    yi = Hedges_d,
+    vi = Variance,
+    identifierStudyId = Author,
+    identifierEffectSizeID = Effect_size_no,
+    taxonomySpecies = Species_latin
+  ) %>%
+  mutate(
+    identifierStudyId = as.character(identifierStudyId),
+    identifierEffectSizeID = as.character(identifierEffectSizeID),
+    # Extract species epithet (last word) and make lowercase
+    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+    Dataset_Source = "Original (Davies 2020)"
+  )
+
+# C. Unified Hedges' g Dataset
+db_hedges <- bind_rows(hedges_new, hedges_davies) %>%
+  mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+
+# ---------------------------------------------------------------------------
+# 4. Align Datasets for Odds Ratio (Binary Analysis)
+# ---------------------------------------------------------------------------
+
+# A. Log Odds Ratio from New Extraction
+or_new <- db_new %>%
+  filter(!is.na(logOddsRatio), !is.na(logOddsRatioVariance)) %>%
+  select(
+    yi = logOddsRatio,
+    vi = logOddsRatioVariance,
+    identifierStudyId,
+    identifierEffectSizeID,
+    taxonomySpecies
+  ) %>%
+  mutate(
+    identifierStudyId = as.character(identifierStudyId),
+    identifierEffectSizeID = as.character(identifierEffectSizeID),
+    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+    Dataset_Source = "New Extraction (Santos)"
+  )
+
+# B. Log Odds Ratio from Jones & DuVal 2019 (Original)
+or_jones <- db_jones_raw %>%
+  filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
+  select(
+    yi = lnOR,
+    vi = VlnOR,
+    identifierStudyId = study,
+    identifierEffectSizeID = study_Exp,
+    taxonomySpecies = Species
+  ) %>%
+  mutate(
+    identifierStudyId = as.character(identifierStudyId),
+    identifierEffectSizeID = as.character(identifierEffectSizeID),
+    taxonomySpecies = str_to_lower(as.character(taxonomySpecies)),
+    Dataset_Source = "Original (Jones & DuVal 2019)"
+  )
+
+# C. Unified Log Odds Ratio Dataset
+db_or <- bind_rows(or_new, or_jones) %>%
+  mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
 ```
-
-We fit multilevel random-effects meta-analytic models using the `metafor` package to estimate the overall effect sizes for:
-1. **Hedges' $g$** (standardised mean difference for continuous/converted measurements).
-2. **Log Odds Ratio ($\ln\text{OR}$)** (log-transformed odds ratio for binary/converted outcomes).
-
-Because studies contribute multiple, non-independent trials (outcomes), we construct a variance–covariance (VCV) matrix using `vcalc()` to control for within-study correlation (assuming $r = 0.5$ for nested measurements where correlation is unreported).
 
 ---
 
 ## Model Fitting Function
 
-This helper function handles VCV matrix construction and fits a multilevel random-effects model using `rma.mv()` in `metafor`. 
+This helper function handles the variance–covariance (VCV) matrix construction and fits a multilevel random-effects model using `rma.mv()` in `metafor`. 
 
+* **Variance–Covariance:** We construct a VCV matrix via `vcalc()` to handle dependencies among multiple effect sizes within the same study (assuming $r = 0.5$ for nested measurements).
 * **Random intercepts** are modeled for:
   * Study (`identifierStudyId`)
   * Individual trial/effect size (`identifierEffectSizeID`)
@@ -82,18 +185,18 @@ This helper function handles VCV matrix construction and fits a multilevel rando
 ```{r}
 #| label: model_fitting_function
 
-fit_overall_mv <- function(dat, yi, vi, cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
+fit_overall_mv <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
   
-  # Remove rows with missing effect size or variance estimates
+  # Remove rows with missing values
   dat2 <- dat %>%
     filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
   
   if (nrow(dat2) == 0) {
-    message(paste("No complete cases found for", yi))
+    message("No complete cases found.")
     return(NULL)
   }
   
-  # 1. Build Variance-Covariance matrix to account for shared cohort/study errors
+  # 1. Build VCV Matrix
   VCV <- metafor::vcalc(
     vi = dat2[[vi]],
     cluster = dat2[[cluster_var]],
@@ -102,7 +205,7 @@ fit_overall_mv <- function(dat, yi, vi, cluster_var = "identifierStudyId", obs_v
     data = dat2
   )
   
-  # 2. Fit the Multi-Level Meta-Analytic Model
+  # 2. Fit Multi-Level Random-Effects Model
   mod <- metafor::rma.mv(
     yi = dat2[[yi]],
     V  = VCV,
@@ -123,17 +226,28 @@ fit_overall_mv <- function(dat, yi, vi, cluster_var = "identifierStudyId", obs_v
 
 ---
 
-## Fit Overall Models
+## Multi-Level Synthesis Results
 
-We run the multilevel meta-analysis for both Hedges' $g$ and Log Odds Ratio.
+We fit the multilevel meta-analysis across all three database splits (New Only, Original Only, and Combined) for both effect size classes.
 
 ```{r}
-#| label: fit_models
+#| label: fit_multilevel_models
 #| message: false
 #| warning: false
 
-res_hedges <- fit_overall_mv(db, yi = "effectSizeCalculatedHedgesD", vi = "effectSizeCalculatedHedgesDVariance")
-res_log_or <- fit_overall_mv(db, yi = "logOddsRatio", vi = "logOddsRatioVariance")
+# ---------------------------------------------------------------------------
+# HEDGES' G MODELS
+# ---------------------------------------------------------------------------
+res_hedges_new   <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"))
+res_hedges_orig  <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"))
+res_hedges_comb  <- fit_overall_mv(db_hedges)
+
+# ---------------------------------------------------------------------------
+# ODDS RATIO MODELS
+# ---------------------------------------------------------------------------
+res_or_new   <- fit_overall_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"))
+res_or_orig  <- fit_overall_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"))
+res_or_comb  <- fit_overall_mv(db_or)
 ```
 
 ---
@@ -142,65 +256,131 @@ res_log_or <- fit_overall_mv(db, yi = "logOddsRatio", vi = "logOddsRatioVariance
 
 ::: {.panel-tabset}
 
-### Hedges' $g$ (Standardised Mean Difference)
+### Hedges' $g$ (Continuous outcomes)
+
+::: {.panel-tabset}
+
+#### New Extraction Only
+
+This model isolates Eduardo's newly extracted dataset.
 
 ```{r}
-#| label: hedges_results
+#| label: hedges_new_summary
 #| message: false
 #| warning: false
 
-if (!is.null(res_hedges)) {
-  # Model Summary
-  print(summary(res_hedges$model))
-  
-  # Multi-level Heterogeneity (I^2)
+if (!is.null(res_hedges_new)) {
+  print(summary(res_hedges_new$model))
   cat("\nHeterogeneity estimates (I^2):\n")
-  print(orchaRd::i2_ml(res_hedges$model))
+  print(orchaRd::i2_ml(res_hedges_new$model))
   
-  # Orchard Plot
-  p_hedges <- orchaRd::orchard_plot(
-    res_hedges$model,
-    group = "identifierStudyId",
-    xlab = "Hedges' g",
-    flip = TRUE
-  ) +
-    ggplot2::scale_x_discrete(labels = "Overall Hedges' g")
-  
-  p_hedges
-} else {
-  cat("Hedges' g model could not be fitted due to insufficient data.\n")
+  orchaRd::orchard_plot(res_hedges_new$model, group = "identifierStudyId", xlab = "Hedges' g", flip = TRUE) +
+    ggplot2::scale_x_discrete(labels = "New Extraction")
 }
 ```
 
-### Log Odds Ratio ($\ln\text{OR}$)
+#### Original Only (Davies 2020)
+
+This model isolates legacy data from the original Davies et al. (2020) meta-analysis.
 
 ```{r}
-#| label: or_results
+#| label: hedges_orig_summary
 #| message: false
 #| warning: false
 
-if (!is.null(res_log_or)) {
-  # Model Summary
-  print(summary(res_log_or$model))
-  
-  # Multi-level Heterogeneity (I^2)
+if (!is.null(res_hedges_orig)) {
+  print(summary(res_hedges_orig$model))
   cat("\nHeterogeneity estimates (I^2):\n")
-  print(orchaRd::i2_ml(res_log_or$model))
+  print(orchaRd::i2_ml(res_hedges_orig$model))
   
-  # Orchard Plot
-  p_or <- orchaRd::orchard_plot(
-    res_log_or$model,
-    group = "identifierStudyId",
-    xlab = "Log Odds Ratio (lnOR)",
-    flip = TRUE
-  ) +
-    ggplot2::scale_x_discrete(labels = "Overall lnOR")
-  
-  p_or
-} else {
-  cat("Log Odds Ratio model could not be fitted due to insufficient data.\n")
+  orchaRd::orchard_plot(res_hedges_orig$model, group = "identifierStudyId", xlab = "Hedges' g", flip = TRUE) +
+    ggplot2::scale_x_discrete(labels = "Davies 2020")
 }
 ```
+
+#### Combined Analysis
+
+This model synthesizes legacy data with new extractions for Hedges' $g$.
+
+```{r}
+#| label: hedges_comb_summary
+#| message: false
+#| warning: false
+
+if (!is.null(res_hedges_comb)) {
+  print(summary(res_hedges_comb$model))
+  cat("\nHeterogeneity estimates (I^2):\n")
+  print(orchaRd::i2_ml(res_hedges_comb$model))
+  
+  orchaRd::orchard_plot(res_hedges_comb$model, group = "identifierStudyId", xlab = "Hedges' g", flip = TRUE) +
+    ggplot2::scale_x_discrete(labels = "Combined Hedges' g")
+}
+```
+
+:::
+
+### Odds Ratio (Binary outcomes)
+
+::: {.panel-tabset}
+
+#### New Extraction Only
+
+This model isolates Eduardo's newly extracted dataset for Odds Ratios.
+
+```{r}
+#| label: or_new_summary
+#| message: false
+#| warning: false
+
+if (!is.null(res_or_new)) {
+  print(summary(res_or_new$model))
+  cat("\nHeterogeneity estimates (I^2):\n")
+  print(orchaRd::i2_ml(res_or_new$model))
+  
+  orchaRd::orchard_plot(res_or_new$model, group = "identifierStudyId", xlab = "Log Odds Ratio", flip = TRUE) +
+    ggplot2::scale_x_discrete(labels = "New Extraction")
+}
+```
+
+#### Original Only (Jones & DuVal 2019)
+
+This model isolates legacy data from the original Jones & DuVal (2019) meta-analysis.
+
+```{r}
+#| label: or_orig_summary
+#| message: false
+#| warning: false
+
+if (!is.null(res_or_orig)) {
+  print(summary(res_or_orig$model))
+  cat("\nHeterogeneity estimates (I^2):\n")
+  print(orchaRd::i2_ml(res_or_orig$model))
+  
+  orchaRd::orchard_plot(res_or_orig$model, group = "identifierStudyId", xlab = "Log Odds Ratio", flip = TRUE) +
+    ggplot2::scale_x_discrete(labels = "Jones & DuVal 2019")
+}
+```
+
+#### Combined Analysis
+
+This model synthesizes legacy data with new extractions for Odds Ratios.
+
+```{r}
+#| label: or_comb_summary
+#| message: false
+#| warning: false
+
+if (!is.null(res_or_comb)) {
+  print(summary(res_or_comb$model))
+  cat("\nHeterogeneity estimates (I^2):\n")
+  print(orchaRd::i2_ml(res_or_comb$model))
+  
+  orchaRd::orchard_plot(res_or_comb$model, group = "identifierStudyId", xlab = "Log Odds Ratio", flip = TRUE) +
+    ggplot2::scale_x_discrete(labels = "Combined lnOR")
+}
+```
+
+:::
 
 :::
 
