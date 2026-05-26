@@ -603,8 +603,11 @@ mate_choice_meta/
 ├── data/
 │   ├── 0_literature_screening/
 │   │   └── combined_records_final.csv   (2,083 records, all years)
-│   └── 1_effect_size_calculation_pipeline/
-│       └── Data Extraction Mate Choice Meta Analysis.xlsx (raw data & outputs)
+│   ├── 1_effect_size_calculation_pipeline/
+│   │   └── Data Extraction Mate Choice Meta Analysis.xlsx (raw data & outputs)
+│   └── original_meta_analyses_datasets/
+│       ├── Davies_et_al_2020_Final_data.xlsx
+│       └── Jones_DuVal_2019_data.CSV
 ├── scripts/
 │   ├── 0_literature_screening/
 │   │   └── 1_deduplicate_records.R
