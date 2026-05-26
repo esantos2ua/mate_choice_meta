@@ -191,7 +191,7 @@ The density plots below use the same split logic as the orchard plots, facet-wra
 #| message: false
 #| warning: false
 #| fig.width: 10
-#| fig.height: 5
+#| fig.height: 9
 
 # Prepare density data for Hedges' g
 db_hedges_density <- bind_rows(
@@ -203,8 +203,9 @@ db_hedges_density <- bind_rows(
 # Plot densities
 p_hedges_dens <- ggplot(db_hedges_density, aes(x = yi, fill = Dataset_Source, color = Dataset_Source)) +
   geom_density(alpha = 0.4, linewidth = 0.8) +
+  geom_vline(xintercept = 0, linewidth = 1.0, linetype = "solid", color = "black") +
   geom_rug(alpha = 0.6) +
-  facet_wrap(~ Group, ncol = 3) +
+  facet_wrap(~ Group, ncol = 1) +
   scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
   scale_color_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
   labs(
@@ -229,25 +230,26 @@ print(p_hedges_dens)
 #| message: false
 #| warning: false
 #| fig.width: 10
-#| fig.height: 5
+#| fig.height: 9
 
-# Prepare density data for Odds Ratio (lnOR)
+# Prepare density data for Odds Ratio (OR)
 db_or_density <- bind_rows(
   db_or %>% mutate(Group = as.character(Dataset_Source)),
   db_or %>% mutate(Group = "Combined")
 ) %>%
   mutate(Group = factor(Group, levels = c("New Extraction (Santos)", "Original (Jones & DuVal 2019)", "Combined")))
 
-# Plot densities
-p_or_dens <- ggplot(db_or_density, aes(x = yi, fill = Dataset_Source, color = Dataset_Source)) +
+# Plot densities (taking exponent of lnOR to plot untransformed OR)
+p_or_dens <- ggplot(db_or_density, aes(x = exp(yi), fill = Dataset_Source, color = Dataset_Source)) +
   geom_density(alpha = 0.4, linewidth = 0.8) +
+  geom_vline(xintercept = 1, linewidth = 1.0, linetype = "solid", color = "black") +
   geom_rug(alpha = 0.6) +
-  facet_wrap(~ Group, ncol = 3) +
+  facet_wrap(~ Group, ncol = 1) +
   scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
   scale_color_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
   labs(
-    title = "Distribution of Log Odds Ratio (lnOR) Effect Sizes",
-    x = "Log Odds Ratio (lnOR)",
+    title = "Distribution of Odds Ratio (OR) Effect Sizes",
+    x = "Odds Ratio (OR)",
     y = "Density"
   ) +
   theme_minimal(base_size = 12) +
