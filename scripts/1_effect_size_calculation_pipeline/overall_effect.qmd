@@ -1,0 +1,214 @@
+---
+title: "Overall Effect Size Calculation"
+subtitle: "Multilevel Meta-Analysis of Mate-Choice Copying"
+author: "Eduardo Santos & Collaborators"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    theme: cosmo
+    self-contained: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+# Ensure pacman is loaded to manage dependencies
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(
+               readxl,
+               tidyverse,
+               metafor,
+               orchaRd,
+               patchwork,
+               DT
+               )
+```
+
+## Data Loading and Preprocessing
+
+We read the extracted dataset from our Excel workbook. The script filters out any rows marked for removal and processes our calculated effect size columns.
+
+```{r}
+#| label: load_data
+#| message: false
+#| warning: false
+
+# Define path to the Excel workbook relative to repository root
+excel_path <- here::here("data", "1_effect_size_calculation_pipeline", "Data Extraction Mate Choice Meta Analysis.xlsx")
+
+# Read EduardoExtraction sheet
+db_raw <- readxl::read_excel(excel_path, sheet = "EduardoExtraction")
+
+# Filter out rows flagged for removal and convert key columns
+db <- db_raw %>%
+  # Filter out rows marked for deletion (keep rows where RemoveFromDataset is NA or not "Yes")
+  filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
+  # Convert variables to factor/numeric structures
+  mutate(across(where(is.character), as.factor)) %>%
+  mutate(
+    effectSizeCalculatedHedgesD = as.numeric(effectSizeCalculatedHedgesD),
+    effectSizeCalculatedHedgesDVariance = as.numeric(effectSizeCalculatedHedgesDVariance),
+    effectSizeCalculatedOddsRatio = as.numeric(effectSizeCalculatedOddsRatio),
+    effectSizeCalculatedOddsRatioVariance = as.numeric(effectSizeCalculatedOddsRatioVariance)
+  )
+
+# Add log Odds Ratio and its variance for meta-analytic modeling
+db <- db %>%
+  mutate(
+    logOddsRatio = log(effectSizeCalculatedOddsRatio),
+    logOddsRatioVariance = effectSizeCalculatedOddsRatioVariance
+  )
+```
+
+We fit multilevel random-effects meta-analytic models using the `metafor` package to estimate the overall effect sizes for:
+1. **Hedges' $g$** (standardised mean difference for continuous/converted measurements).
+2. **Log Odds Ratio ($\ln\text{OR}$)** (log-transformed odds ratio for binary/converted outcomes).
+
+Because studies contribute multiple, non-independent trials (outcomes), we construct a variance–covariance (VCV) matrix using `vcalc()` to control for within-study correlation (assuming $r = 0.5$ for nested measurements where correlation is unreported).
+
+---
+
+## Model Fitting Function
+
+This helper function handles VCV matrix construction and fits a multilevel random-effects model using `rma.mv()` in `metafor`. 
+
+* **Random intercepts** are modeled for:
+  * Study (`identifierStudyId`)
+  * Individual trial/effect size (`identifierEffectSizeID`)
+  * Species (`taxonomySpecies`) to control for taxonomic/species-level variation
+
+```{r}
+#| label: model_fitting_function
+
+fit_overall_mv <- function(dat, yi, vi, cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
+  
+  # Remove rows with missing effect size or variance estimates
+  dat2 <- dat %>%
+    filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
+  
+  if (nrow(dat2) == 0) {
+    message(paste("No complete cases found for", yi))
+    return(NULL)
+  }
+  
+  # 1. Build Variance-Covariance matrix to account for shared cohort/study errors
+  VCV <- metafor::vcalc(
+    vi = dat2[[vi]],
+    cluster = dat2[[cluster_var]],
+    obs = dat2[[obs_var]],
+    rho = rho,
+    data = dat2
+  )
+  
+  # 2. Fit the Multi-Level Meta-Analytic Model
+  mod <- metafor::rma.mv(
+    yi = dat2[[yi]],
+    V  = VCV,
+    random = list(
+      ~1 | identifierStudyId,
+      ~1 | identifierEffectSizeID,
+      ~1 | taxonomySpecies
+    ),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = dat2
+  )
+  
+  list(data = dat2, VCV = VCV, model = mod)
+}
+```
+
+---
+
+## Fit Overall Models
+
+We run the multilevel meta-analysis for both Hedges' $g$ and Log Odds Ratio.
+
+```{r}
+#| label: fit_models
+#| message: false
+#| warning: false
+
+res_hedges <- fit_overall_mv(db, yi = "effectSizeCalculatedHedgesD", vi = "effectSizeCalculatedHedgesDVariance")
+res_log_or <- fit_overall_mv(db, yi = "logOddsRatio", vi = "logOddsRatioVariance")
+```
+
+---
+
+## Results and Visualizations
+
+::: {.panel-tabset}
+
+### Hedges' $g$ (Standardised Mean Difference)
+
+```{r}
+#| label: hedges_results
+#| message: false
+#| warning: false
+
+if (!is.null(res_hedges)) {
+  # Model Summary
+  print(summary(res_hedges$model))
+  
+  # Multi-level Heterogeneity (I^2)
+  cat("\nHeterogeneity estimates (I^2):\n")
+  print(orchaRd::i2_ml(res_hedges$model))
+  
+  # Orchard Plot
+  p_hedges <- orchaRd::orchard_plot(
+    res_hedges$model,
+    group = "identifierStudyId",
+    xlab = "Hedges' g",
+    flip = TRUE
+  ) +
+    ggplot2::scale_x_discrete(labels = "Overall Hedges' g")
+  
+  p_hedges
+} else {
+  cat("Hedges' g model could not be fitted due to insufficient data.\n")
+}
+```
+
+### Log Odds Ratio ($\ln\text{OR}$)
+
+```{r}
+#| label: or_results
+#| message: false
+#| warning: false
+
+if (!is.null(res_log_or)) {
+  # Model Summary
+  print(summary(res_log_or$model))
+  
+  # Multi-level Heterogeneity (I^2)
+  cat("\nHeterogeneity estimates (I^2):\n")
+  print(orchaRd::i2_ml(res_log_or$model))
+  
+  # Orchard Plot
+  p_or <- orchaRd::orchard_plot(
+    res_log_or$model,
+    group = "identifierStudyId",
+    xlab = "Log Odds Ratio (lnOR)",
+    flip = TRUE
+  ) +
+    ggplot2::scale_x_discrete(labels = "Overall lnOR")
+  
+  p_or
+} else {
+  cat("Log Odds Ratio model could not be fitted due to insufficient data.\n")
+}
+```
+
+:::
+
+---
+
+## Session Info
+
+```{r}
+#| label: session_info
+sessionInfo()
+```

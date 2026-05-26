@@ -3180,7 +3180,8 @@ Table 2: Screener assignments
 │   ├── 0_literature_screening/
 │   │   └── 1_deduplicate_records.R
 │   └── 1_effect_size_calculation_pipeline/
-│       └── calculate_effect_sizes.py    (Hedges&#39; g &amp; OR calculator)
+│       ├── calculate_effect_sizes.py    (Hedges&#39; g &amp; OR calculator)
+│       └── overall_effect.qmd           (overall effect size multilevel model)
 └── builds/
     ├── 0_literature_screening/
     │   └── deduplicated_and_randomly_split/
@@ -4273,47 +4274,48 @@ Table 2: Screener assignments
 <span id="cb14-629"><a href="#cb14-629" aria-hidden="true" tabindex="-1"></a><span class="in">│   ├── 0_literature_screening/</span></span>
 <span id="cb14-630"><a href="#cb14-630" aria-hidden="true" tabindex="-1"></a><span class="in">│   │   └── 1_deduplicate_records.R</span></span>
 <span id="cb14-631"><a href="#cb14-631" aria-hidden="true" tabindex="-1"></a><span class="in">│   └── 1_effect_size_calculation_pipeline/</span></span>
-<span id="cb14-632"><a href="#cb14-632" aria-hidden="true" tabindex="-1"></a><span class="in">│       └── calculate_effect_sizes.py    (Hedges&#39; g &amp; OR calculator)</span></span>
-<span id="cb14-633"><a href="#cb14-633" aria-hidden="true" tabindex="-1"></a><span class="in">└── builds/</span></span>
-<span id="cb14-634"><a href="#cb14-634" aria-hidden="true" tabindex="-1"></a><span class="in">    ├── 0_literature_screening/</span></span>
-<span id="cb14-635"><a href="#cb14-635" aria-hidden="true" tabindex="-1"></a><span class="in">    │   └── deduplicated_and_randomly_split/</span></span>
-<span id="cb14-636"><a href="#cb14-636" aria-hidden="true" tabindex="-1"></a><span class="in">    │       ├── Aleksandra.csv  … Shinichi.csv  (15 primary screeners)</span></span>
-<span id="cb14-637"><a href="#cb14-637" aria-hidden="true" tabindex="-1"></a><span class="in">    │       ├── Eduardo.csv                     (validator)</span></span>
-<span id="cb14-638"><a href="#cb14-638" aria-hidden="true" tabindex="-1"></a><span class="in">    │       └── Losia.csv                       (validator)</span></span>
-<span id="cb14-639"><a href="#cb14-639" aria-hidden="true" tabindex="-1"></a><span class="in">    └── 1_effect_size_calculation_pipeline/</span></span>
-<span id="cb14-640"><a href="#cb14-640" aria-hidden="true" tabindex="-1"></a><span class="in">        ├── notebookLM_pipeline.md</span></span>
-<span id="cb14-641"><a href="#cb14-641" aria-hidden="true" tabindex="-1"></a><span class="in">        └── notebookLM_pipeline.html</span></span>
-<span id="cb14-642"><a href="#cb14-642" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb14-643"><a href="#cb14-643" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-644"><a href="#cb14-644" aria-hidden="true" tabindex="-1"></a><span class="fu">### Rendering this document</span></span>
-<span id="cb14-645"><a href="#cb14-645" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-646"><a href="#cb14-646" aria-hidden="true" tabindex="-1"></a>To regenerate <span class="in">`index.html`</span> after editing <span class="in">`index.qmd`</span>, run from the repo root:</span>
-<span id="cb14-647"><a href="#cb14-647" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-648"><a href="#cb14-648" aria-hidden="true" tabindex="-1"></a><span class="in">```bash</span></span>
-<span id="cb14-649"><a href="#cb14-649" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render index.qmd</span>
-<span id="cb14-650"><a href="#cb14-650" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb14-651"><a href="#cb14-651" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-652"><a href="#cb14-652" aria-hidden="true" tabindex="-1"></a>Requires <span class="co">[</span><span class="ot">Quarto CLI</span><span class="co">](https://quarto.org/docs/get-started/)</span> ≥ 1.4 and R with the</span>
-<span id="cb14-653"><a href="#cb14-653" aria-hidden="true" tabindex="-1"></a>packages listed in the setup chunk.</span>
-<span id="cb14-654"><a href="#cb14-654" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-655"><a href="#cb14-655" aria-hidden="true" tabindex="-1"></a>---</span>
-<span id="cb14-656"><a href="#cb14-656" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-657"><a href="#cb14-657" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reproducibility &amp; Contact {#sec-reproducibility}</span></span>
-<span id="cb14-658"><a href="#cb14-658" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-659"><a href="#cb14-659" aria-hidden="true" tabindex="-1"></a>All data processing is fully scripted in R. The random shuffle used for screener</span>
-<span id="cb14-660"><a href="#cb14-660" aria-hidden="true" tabindex="-1"></a>assignment is not seeded; instead, the exported per-screener CSV files in</span>
-<span id="cb14-661"><a href="#cb14-661" aria-hidden="true" tabindex="-1"></a><span class="in">`builds/0_literature_screening/deduplicated_and_randomly_split/`</span> serve as the</span>
-<span id="cb14-662"><a href="#cb14-662" aria-hidden="true" tabindex="-1"></a>reproducible record of the assignment actually used.</span>
-<span id="cb14-663"><a href="#cb14-663" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-664"><a href="#cb14-664" aria-hidden="true" tabindex="-1"></a>The AI extraction prompts are version-controlled in</span>
-<span id="cb14-665"><a href="#cb14-665" aria-hidden="true" tabindex="-1"></a><span class="in">`builds/1_effect_size_calculation_pipeline/notebookLM_pipeline.md`</span> (version 1.1).</span>
-<span id="cb14-666"><a href="#cb14-666" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-667"><a href="#cb14-667" aria-hidden="true" tabindex="-1"></a>For questions about the data pipeline or extraction protocol, please open an issue</span>
-<span id="cb14-668"><a href="#cb14-668" aria-hidden="true" tabindex="-1"></a>on the GitHub repository.</span>
-<span id="cb14-669"><a href="#cb14-669" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-670"><a href="#cb14-670" aria-hidden="true" tabindex="-1"></a>---</span>
-<span id="cb14-671"><a href="#cb14-671" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-672"><a href="#cb14-672" aria-hidden="true" tabindex="-1"></a>*Document generated with [Quarto](https://quarto.org). Last updated: `r format(Sys.Date(), &quot;%B %Y&quot;)`.*</span>
+<span id="cb14-632"><a href="#cb14-632" aria-hidden="true" tabindex="-1"></a><span class="in">│       ├── calculate_effect_sizes.py    (Hedges&#39; g &amp; OR calculator)</span></span>
+<span id="cb14-633"><a href="#cb14-633" aria-hidden="true" tabindex="-1"></a><span class="in">│       └── overall_effect.qmd           (overall effect size multilevel model)</span></span>
+<span id="cb14-634"><a href="#cb14-634" aria-hidden="true" tabindex="-1"></a><span class="in">└── builds/</span></span>
+<span id="cb14-635"><a href="#cb14-635" aria-hidden="true" tabindex="-1"></a><span class="in">    ├── 0_literature_screening/</span></span>
+<span id="cb14-636"><a href="#cb14-636" aria-hidden="true" tabindex="-1"></a><span class="in">    │   └── deduplicated_and_randomly_split/</span></span>
+<span id="cb14-637"><a href="#cb14-637" aria-hidden="true" tabindex="-1"></a><span class="in">    │       ├── Aleksandra.csv  … Shinichi.csv  (15 primary screeners)</span></span>
+<span id="cb14-638"><a href="#cb14-638" aria-hidden="true" tabindex="-1"></a><span class="in">    │       ├── Eduardo.csv                     (validator)</span></span>
+<span id="cb14-639"><a href="#cb14-639" aria-hidden="true" tabindex="-1"></a><span class="in">    │       └── Losia.csv                       (validator)</span></span>
+<span id="cb14-640"><a href="#cb14-640" aria-hidden="true" tabindex="-1"></a><span class="in">    └── 1_effect_size_calculation_pipeline/</span></span>
+<span id="cb14-641"><a href="#cb14-641" aria-hidden="true" tabindex="-1"></a><span class="in">        ├── notebookLM_pipeline.md</span></span>
+<span id="cb14-642"><a href="#cb14-642" aria-hidden="true" tabindex="-1"></a><span class="in">        └── notebookLM_pipeline.html</span></span>
+<span id="cb14-643"><a href="#cb14-643" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb14-644"><a href="#cb14-644" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-645"><a href="#cb14-645" aria-hidden="true" tabindex="-1"></a><span class="fu">### Rendering this document</span></span>
+<span id="cb14-646"><a href="#cb14-646" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-647"><a href="#cb14-647" aria-hidden="true" tabindex="-1"></a>To regenerate <span class="in">`index.html`</span> after editing <span class="in">`index.qmd`</span>, run from the repo root:</span>
+<span id="cb14-648"><a href="#cb14-648" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-649"><a href="#cb14-649" aria-hidden="true" tabindex="-1"></a><span class="in">```bash</span></span>
+<span id="cb14-650"><a href="#cb14-650" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render index.qmd</span>
+<span id="cb14-651"><a href="#cb14-651" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb14-652"><a href="#cb14-652" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-653"><a href="#cb14-653" aria-hidden="true" tabindex="-1"></a>Requires <span class="co">[</span><span class="ot">Quarto CLI</span><span class="co">](https://quarto.org/docs/get-started/)</span> ≥ 1.4 and R with the</span>
+<span id="cb14-654"><a href="#cb14-654" aria-hidden="true" tabindex="-1"></a>packages listed in the setup chunk.</span>
+<span id="cb14-655"><a href="#cb14-655" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-656"><a href="#cb14-656" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb14-657"><a href="#cb14-657" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-658"><a href="#cb14-658" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reproducibility &amp; Contact {#sec-reproducibility}</span></span>
+<span id="cb14-659"><a href="#cb14-659" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-660"><a href="#cb14-660" aria-hidden="true" tabindex="-1"></a>All data processing is fully scripted in R. The random shuffle used for screener</span>
+<span id="cb14-661"><a href="#cb14-661" aria-hidden="true" tabindex="-1"></a>assignment is not seeded; instead, the exported per-screener CSV files in</span>
+<span id="cb14-662"><a href="#cb14-662" aria-hidden="true" tabindex="-1"></a><span class="in">`builds/0_literature_screening/deduplicated_and_randomly_split/`</span> serve as the</span>
+<span id="cb14-663"><a href="#cb14-663" aria-hidden="true" tabindex="-1"></a>reproducible record of the assignment actually used.</span>
+<span id="cb14-664"><a href="#cb14-664" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-665"><a href="#cb14-665" aria-hidden="true" tabindex="-1"></a>The AI extraction prompts are version-controlled in</span>
+<span id="cb14-666"><a href="#cb14-666" aria-hidden="true" tabindex="-1"></a><span class="in">`builds/1_effect_size_calculation_pipeline/notebookLM_pipeline.md`</span> (version 1.1).</span>
+<span id="cb14-667"><a href="#cb14-667" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-668"><a href="#cb14-668" aria-hidden="true" tabindex="-1"></a>For questions about the data pipeline or extraction protocol, please open an issue</span>
+<span id="cb14-669"><a href="#cb14-669" aria-hidden="true" tabindex="-1"></a>on the GitHub repository.</span>
+<span id="cb14-670"><a href="#cb14-670" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-671"><a href="#cb14-671" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb14-672"><a href="#cb14-672" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-673"><a href="#cb14-673" aria-hidden="true" tabindex="-1"></a>*Document generated with [Quarto](https://quarto.org). Last updated: `r format(Sys.Date(), &quot;%B %Y&quot;)`.*</span>
 </code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
