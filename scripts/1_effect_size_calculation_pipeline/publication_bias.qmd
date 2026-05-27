@@ -274,7 +274,16 @@ p_egger_hedges <- orchaRd::bubble_plot(
   group = "identifierStudyId", 
   xlab = "Square root of inverse of effective sample size (Precision proxy)", 
   ylab = "Effect size (Hedges' g)"
-) + 
+)
+
+# Color points by real source
+p_egger_hedges$layers[[1]]$data$real_source <- db_hedges_egger$Dataset_Source
+p_egger_hedges$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+p_egger_hedges$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+p_egger_hedges <- p_egger_hedges + 
+  ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+  ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
   ggplot2::ggtitle("Egger's Meta-Regression (Hedges' g)") +
   ggplot2::theme_minimal()
 
@@ -331,6 +340,15 @@ p_decline_hedges <- orchaRd::bubble_plot(
   xlab = "Publication Year (centered)", 
   ylab = "Effect size (Hedges' g)"
 )
+
+# Color points by real source
+p_decline_hedges$layers[[1]]$data$real_source <- db_hedges_decline$Dataset_Source
+p_decline_hedges$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+p_decline_hedges$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+p_decline_hedges <- p_decline_hedges +
+  ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+  ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source")
 
 # Relabel centered x-axis to actual calendar years
 mean_year_hedges <- mean(db_hedges_egger$Year, na.rm = TRUE)
@@ -470,7 +488,16 @@ p_egger_or <- orchaRd::bubble_plot(
   group = "identifierStudyId", 
   xlab = "Standard Error of Log Odds Ratio (se)", 
   ylab = "Effect size (lnOR)"
-) + 
+)
+
+# Color points by real source
+p_egger_or$layers[[1]]$data$real_source <- db_or_egger$Dataset_Source
+p_egger_or$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+p_egger_or$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+p_egger_or <- p_egger_or + 
+  ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+  ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
   ggplot2::ggtitle("Egger's Meta-Regression (Log Odds Ratio)") +
   ggplot2::theme_minimal()
 
@@ -527,6 +554,15 @@ p_decline_or <- orchaRd::bubble_plot(
   xlab = "Publication Year (centered)", 
   ylab = "Effect size (lnOR)"
 )
+
+# Color points by real source
+p_decline_or$layers[[1]]$data$real_source <- db_or_decline$Dataset_Source
+p_decline_or$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+p_decline_or$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+p_decline_or <- p_decline_or +
+  ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+  ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source")
 
 # Relabel centered x-axis to actual calendar years
 mean_year_or <- mean(db_or_egger$Year, na.rm = TRUE)
