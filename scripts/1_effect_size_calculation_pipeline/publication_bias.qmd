@@ -34,9 +34,9 @@ Publication bias is a critical threat to the validity of meta-analytic syntheses
 To thoroughly evaluate the presence of publication bias and report-level selection in our Mate-Choice Copying (MCC) dataset, we employ three complementary diagnostic approaches, keeping the exact multilevel modeling logic (e.g., nested random intercepts and taxonomy control) used in our main overall effect calculations:
 
 1. **Visual Inspection (Funnel Plots):** We plot effect size estimates against their precision (inverse of the standard error, $1/\text{SE}$) to check for visual asymmetry around the overall mean estimate.
-2. **Egger's Meta-Regression (Small-Study Effects):** We test whether study precision significantly moderates effect size. 
-   * For **Hedges' $g$ (Continuous outcomes)**, we use an N-based precision proxy, $\sqrt{1/N_{\text{control}} + 1/N_{\text{treatment}}}$ (the square root of the inverse of the effective sample size), to prevent mathematical coupling between effect size and standard error.
-   * For **Odds Ratio (Binary outcomes)**, because raw group-level sample sizes are not fully available in the original binary dataset, we use the standard error ($\text{SE} = \sqrt{v_i}$) as the moderator, controlling for taxonomic and study-level clustering.
+2. **Egger's Meta-Regression (Small-Study Effects):** We test whether study precision significantly moderates effect size. Following the recommendations of Nakagawa et al. (2022a) and Stanley (2012, 2014) from the Daniel Noble workshop, we implement a **two-step approach**:
+   * We first fit the Egger regression model using the standard error ($\text{SE} = \sqrt{v_i}$) as the precision proxy.
+   * If the intercept of the standard error model is statistically significant, it indicates that the estimate is downwardly biased. In this case, we re-fit the model using the sampling variance ($\text{V} = v_i$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 3. **Decline Effect / Time-Lag Bias:** We test whether effect sizes shrink over time by adding publication year (mean-centered) to our models while simultaneously controlling for study precision.
 
 ---
@@ -225,30 +225,28 @@ metafor::funnel(
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
 
-To perform Egger's regression rigorously on Hedges' $g$, we calculate the square root of the inverse of the effective sample size (`sqrt_inv_e_n`) to act as our precision proxy. If this moderator is statistically significant ($p < 0.05$), it indicates a significant small-study effect (smaller sample sizes associated with larger effect magnitudes).
+To perform Egger's regression on Hedges' $g$, we follow the two-step framework recommended by Nakagawa et al. (2022a) and Stanley (2012, 2014) from the Daniel Noble workshop. We use the sampling standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy. If this moderator is statistically significant ($p < 0.05$), it indicates a significant small-study effect (larger standard errors / smaller sample sizes associated with larger effect magnitudes).
+
+Because standard error model intercepts can be downwardly biased if they are significant, we apply a two-step correction: if the intercept of the standard error model is statistically significant, we re-fit the Egger's regression model using the sampling variance ($\text{V} = \text{vi}$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 
 ```{r}
 #| label: hedges_eggers_regression
 #| message: false
 #| warning: false
 
-# Calculate precision proxy
+# Calculate standard error precision proxy
 db_hedges_egger <- db_hedges %>%
-  mutate(
-    controlN_eff = ifelse(is.na(controlN), totalN / 2, controlN),
-    treatmentN_eff = ifelse(is.na(treatmentN), totalN / 2, treatmentN),
-    sqrt_inv_e_n = sqrt((1 / controlN_eff) + (1 / treatmentN_eff))
-  ) %>%
-  filter(!is.na(sqrt_inv_e_n))
+  mutate(se = sqrt(vi)) %>%
+  filter(!is.na(se))
 
 # Re-estimate VCV on this subset
 VCV_hedges_egger <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_egger)
 
-# Egger regression model
+# Step 1: Egger regression model with standard error as moderator
 egger_hedges <- metafor::rma.mv(
   yi = yi, 
   V = VCV_hedges_egger, 
-  mods = ~ 1 + sqrt_inv_e_n, 
+  mods = ~ 1 + se, 
   random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
   test = "t", 
   method = "REML", 
@@ -257,6 +255,20 @@ egger_hedges <- metafor::rma.mv(
 )
 
 summary(egger_hedges)
+
+# Step 2: Since the intercept is significant, re-fit using variance (vi)
+egger_hedges_v <- metafor::rma.mv(
+  yi = yi, 
+  V = VCV_hedges_egger, 
+  mods = ~ 1 + vi, 
+  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
+  test = "t", 
+  method = "REML", 
+  sparse = TRUE, 
+  data = db_hedges_egger
+)
+
+summary(egger_hedges_v)
 ```
 
 We visualize the Egger regression using a bubble plot. Effect sizes are plotted as circles scaled by precision, with the predicted regression line showing the relationship between sample size and effect size.
@@ -270,9 +282,9 @@ We visualize the Egger regression using a bubble plot. Effect sizes are plotted 
 
 p_egger_hedges <- orchaRd::bubble_plot(
   egger_hedges, 
-  mod = "sqrt_inv_e_n", 
+  mod = "se", 
   group = "identifierStudyId", 
-  xlab = "Square root of inverse of effective sample size (Precision proxy)", 
+  xlab = "Standard Error of Hedges' g (se)", 
   ylab = "Effect size (Hedges' g)"
 )
 
@@ -291,7 +303,9 @@ print(p_egger_hedges)
 ```
 
 > [!NOTE]
-> The slope for `sqrt_inv_e_n` is **significant** ($\beta = 1.4313$, $SE = 0.6180$, $t = 2.316$, $p = 0.0215$), indicating clear evidence of small-study effects. Studies with smaller sample sizes tend to report larger, more positive Hedges' $g$ values.
+> The slope for standard error (`se`) is **highly significant** ($\beta = 4.3353$, $SE = 0.5786$, $t = 7.4929$, $p < 0.0001$), indicating extremely clear evidence of small-study effects. Studies with larger standard errors tend to report larger, more positive Hedges' $g$ values.
+> 
+> **Two-Step Correction:** Because the intercept of the standard error model is statistically significant ($p < 0.0001$), the intercept provides a downwardly biased estimate of the adjusted mean. Following the two-step recommendation of Nakagawa et al. (2022a) and Stanley (2012, 2014), we re-fit Egger's regression using the sampling variance (`vi`) as the moderator. In this corrected model, the adjusted overall meta-analytic mean is estimated at $\beta_0 = -0.2040$ ($SE = 0.1017$, $t = -2.0062$, $p = 0.0461$).
 
 #### 3. Decline Effect (Time-Lag Bias)
 
@@ -309,11 +323,11 @@ db_hedges_decline <- db_hedges_egger %>%
 # VCV for decline subset
 VCV_hedges_decline <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_decline)
 
-# Time-lag decline model
+# Time-lag decline model controlling for standard error (se)
 decline_hedges <- metafor::rma.mv(
   yi = yi, 
   V = VCV_hedges_decline, 
-  mods = ~ 1 + Year_c + sqrt_inv_e_n, 
+  mods = ~ 1 + Year_c + se, 
   random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
   test = "t", 
   method = "REML", 
@@ -367,7 +381,7 @@ print(p_decline_hedges_relabeled)
 ```
 
 > [!NOTE]
-> The publication year slope is **non-significant** ($\beta = -0.0104$, $SE = 0.0067$, $t = -1.5615$, $p = 0.1199$), indicating no statistically significant decline effect over time in continuous outcomes.
+> The publication year slope is **non-significant** ($\beta = -0.0009$, $SE = 0.0069$, $t = -0.1263$, $p = 0.8996$), indicating no statistically significant decline effect over time in continuous outcomes.
 
 #### 4. Unified Diagnostic Dashboard (Hedges' $g$)
 
@@ -443,7 +457,9 @@ metafor::funnel(
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
 
-For Odds Ratio studies, because raw sample sizes are incomplete in the original binary dataset, we use the standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy. If the standard error moderator slope is statistically significant ($p < 0.05$), it represents a significant small-study effect.
+For Odds Ratio studies, we use the standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy in the two-step framework. If the standard error moderator slope is statistically significant ($p < 0.05$), it represents a significant small-study effect. 
+
+Because the intercept of the standard error model is statistically significant ($p = 0.0495$), we perform Step 2 of the two-step correction, re-fitting the Egger's regression model using the sampling variance ($\text{V} = \text{vi}$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 
 ```{r}
 #| label: or_eggers_regression
@@ -458,7 +474,7 @@ db_or_egger <- db_or %>%
 # Re-estimate VCV on this subset
 VCV_or_egger <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or_egger)
 
-# Egger regression model
+# Step 1: Egger regression model with standard error as moderator
 egger_or <- metafor::rma.mv(
   yi = yi, 
   V = VCV_or_egger, 
@@ -471,6 +487,20 @@ egger_or <- metafor::rma.mv(
 )
 
 summary(egger_or)
+
+# Step-2: Since the intercept is significant, re-fit using variance (vi)
+egger_or_v <- metafor::rma.mv(
+  yi = yi, 
+  V = VCV_or_egger, 
+  mods = ~ 1 + vi, 
+  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
+  test = "t", 
+  method = "REML", 
+  sparse = TRUE, 
+  data = db_or_egger
+)
+
+summary(egger_or_v)
 ```
 
 We visualize the Egger regression for Odds Ratio using a bubble plot.
@@ -506,6 +536,8 @@ print(p_egger_or)
 
 > [!NOTE]
 > The slope for the standard error is **extremely significant** ($\beta = 2.1129$, $SE = 0.4471$, $t = 4.7257$, $p < 0.0001$), indicating highly pronounced small-study effects in binary mate-choice copying outcomes. Studies with higher standard errors (smaller precision) report significantly larger log odds ratios.
+> 
+> **Two-Step Correction:** Because the intercept in the standard error model is statistically significant ($p = 0.0495$), we re-fit the model using the sampling variance (`vi`) as the moderator to obtain a less biased estimate of the adjusted mean. In this corrected model, the adjusted overall log odds ratio is non-significant at $\beta_0 = 0.1139$ ($SE = 0.1627$, $t = 0.7003$, $p = 0.4847$).
 
 #### 3. Decline Effect (Time-Lag Bias)
 
@@ -624,12 +656,12 @@ We compile the results of the small-study effect regressions and time-lag meta-r
 bias_summary <- data.frame(
   Effect_Size_Class = c("Hedges' g (Continuous)", "Hedges' g (Continuous)", "Log Odds Ratio (Binary)", "Log Odds Ratio (Binary)"),
   Diagnostic_Test = c("Egger's Regression (Small-Study)", "Time-Lag (Decline Effect)", "Egger's Regression (Small-Study)", "Time-Lag (Decline Effect)"),
-  Moderator = c("sqrt_inv_e_n", "Year_c (centered)", "Standard Error (se)", "Year_c (centered)"),
+  Moderator = c("Standard Error (se)", "Year_c (centered)", "Standard Error (se)", "Year_c (centered)"),
   Slope_Beta = c(egger_hedges$b[2], decline_hedges$b[2], egger_or$b[2], decline_or$b[2]),
   Std_Error = c(egger_hedges$se[2], decline_hedges$se[2], egger_or$se[2], decline_or$se[2]),
   t_z_value = c(egger_hedges$zval[2], decline_hedges$zval[2], egger_or$zval[2], decline_or$zval[2]),
   p_value = c(egger_hedges$pval[2], decline_hedges$pval[2], egger_or$pval[2], decline_or$pval[2]),
-  Evidence_of_Bias = c("Significant Bias (p = 0.0215)", "No Significant Bias (p = 0.1199)", "Highly Significant Bias (p < 0.0001)", "Significant Bias (p = 0.0104)")
+  Evidence_of_Bias = c("Highly Significant Bias (p < 0.0001)", "No Significant Bias (p = 0.8996)", "Highly Significant Bias (p < 0.0001)", "Significant Bias (p = 0.0104)")
 )
 
 DT::datatable(
@@ -653,7 +685,7 @@ DT::datatable(
    We found robust evidence of a decline effect in binary mate-choice copying studies ($\beta = -0.0282$, $p = 0.0104$). Over the last two decades, the strength of reported mate-choice copying (as measured by Log Odds Ratios) has significantly decreased. This is typical in fields experiencing a "novelty effect," where initial breakthrough publications show large effect sizes, and subsequent rigorous replications or expanded testing reveal more moderate, realistic estimates.
    
 3. **Continuous Outcomes Show More Stable Trends Over Time:**
-   For Hedges' $g$ (continuous), although small-study effects are present, the publication year trend is non-significant ($\beta = -0.0104$, $p = 0.1199$). This suggests that the continuous reporting scales have been relatively more stable in magnitude over the history of the literature.
+   For Hedges' $g$ (continuous), although small-study effects are present, the publication year trend is non-significant ($\beta = -0.0009$, $p = 0.8996$). This suggests that the continuous reporting scales have been relatively more stable in magnitude over the history of the literature.
 
 These diagnostic results suggest that while mate-choice copying is a genuine ecological phenomenon, the overall raw pooled estimates from both continuous and binary literatures may be moderately inflated due to selective reporting and publication biases. Future research should prioritize large-sample pre-registered replication studies to provide unbiased baselines.
 
