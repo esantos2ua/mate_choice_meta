@@ -3,6 +3,7 @@ title: "Publication Bias Diagnostics"
 subtitle: "Small-Study Effects and Time-Lag Bias in Mate-Choice Copying (MCC) Meta-Analyses"
 author: "Eduardo Santos & Collaborators"
 date: today
+bibliography: ../../references.bib
 format:
   html:
     toc: true
@@ -17,14 +18,14 @@ format:
 # Ensure pacman is loaded to manage dependencies
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-               readxl,
-               tidyverse,
-               metafor,
-               orchaRd,
-               patchwork,
-               DT,
-               scales
-               )
+    readxl,
+    tidyverse,
+    metafor,
+    orchaRd,
+    patchwork,
+    DT,
+    scales
+)
 ```
 
 ## Introduction & Methodology
@@ -49,7 +50,6 @@ We read, clean, and align the new extractions and original datasets, extracting 
 #| label: load_and_align_datasets
 #| message: false
 #| warning: false
-
 # Paths to datasets
 path_new <- here::here("data", "1_effect_size_calculation_pipeline", "Data Extraction Mate Choice Meta Analysis.xlsx")
 path_davies <- here::here("data", "2_original_meta_analyses_datasets", "Davies_et_al_2020_Final_data.xlsx")
@@ -62,113 +62,113 @@ db_jones_raw <- readr::read_csv(path_jones)
 
 # B. Clean new extractions
 db_new <- db_new_raw %>%
-  filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
-  mutate(
-    effectSizeCalculatedHedgesD = as.numeric(effectSizeCalculatedHedgesD),
-    effectSizeCalculatedHedgesDVariance = as.numeric(effectSizeCalculatedHedgesDVariance),
-    effectSizeCalculatedOddsRatio = as.numeric(effectSizeCalculatedOddsRatio),
-    effectSizeCalculatedOddsRatioVariance = as.numeric(effectSizeCalculatedOddsRatioVariance),
-    logOddsRatio = log(effectSizeCalculatedOddsRatio),
-    logOddsRatioVariance = effectSizeCalculatedOddsRatioVariance,
-    identifierStudyYear = as.numeric(identifierStudyYear),
-    controlN = as.numeric(controlN),
-    treatmentN = as.numeric(treatmentN),
-    effectSizesampleSize = as.numeric(effectSizesampleSize)
-  )
+    filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
+    mutate(
+        effectSizeCalculatedHedgesD = as.numeric(effectSizeCalculatedHedgesD),
+        effectSizeCalculatedHedgesDVariance = as.numeric(effectSizeCalculatedHedgesDVariance),
+        effectSizeCalculatedOddsRatio = as.numeric(effectSizeCalculatedOddsRatio),
+        effectSizeCalculatedOddsRatioVariance = as.numeric(effectSizeCalculatedOddsRatioVariance),
+        logOddsRatio = log(effectSizeCalculatedOddsRatio),
+        logOddsRatioVariance = effectSizeCalculatedOddsRatioVariance,
+        identifierStudyYear = as.numeric(identifierStudyYear),
+        controlN = as.numeric(controlN),
+        treatmentN = as.numeric(treatmentN),
+        effectSizesampleSize = as.numeric(effectSizesampleSize)
+    )
 
 # ---------------------------------------------------------------------------
 # 1. Hedges' g Dataset Alignment (Continuous)
 # ---------------------------------------------------------------------------
 hedges_new <- db_new %>%
-  filter(!is.na(effectSizeCalculatedHedgesD), !is.na(effectSizeCalculatedHedgesDVariance)) %>%
-  select(
-    yi = effectSizeCalculatedHedgesD,
-    vi = effectSizeCalculatedHedgesDVariance,
-    identifierStudyId,
-    identifierEffectSizeID,
-    taxonomySpecies,
-    Year = identifierStudyYear,
-    controlN,
-    treatmentN,
-    totalN = effectSizesampleSize
-  ) %>%
-  mutate(
-    identifierStudyId = as.character(identifierStudyId),
-    identifierEffectSizeID = as.character(identifierEffectSizeID),
-    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
-    Dataset_Source = "New Extraction (Santos)"
-  )
+    filter(!is.na(effectSizeCalculatedHedgesD), !is.na(effectSizeCalculatedHedgesDVariance)) %>%
+    select(
+        yi = effectSizeCalculatedHedgesD,
+        vi = effectSizeCalculatedHedgesDVariance,
+        identifierStudyId,
+        identifierEffectSizeID,
+        taxonomySpecies,
+        Year = identifierStudyYear,
+        controlN,
+        treatmentN,
+        totalN = effectSizesampleSize
+    ) %>%
+    mutate(
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+        Dataset_Source = "New Extraction (Santos)"
+    )
 
 hedges_davies <- db_davies_raw %>%
-  mutate(
-    Hedges_d_directional = as.numeric(Hedges_d_directional),
-    Variance = as.numeric(Variance),
-    Year = as.numeric(Year),
-    N_control = as.numeric(N_control),
-    N_treatment = as.numeric(N_treatment),
-    Total_n_analysis = as.numeric(Total_n_analysis)
-  ) %>%
-  filter(!is.na(Hedges_d_directional), !is.na(Variance), Variance > 0) %>%
-  select(
-    yi = Hedges_d_directional,
-    vi = Variance,
-    identifierStudyId = Author,
-    identifierEffectSizeID = Effect_size_no,
-    taxonomySpecies = Species_latin,
-    Year,
-    controlN = N_control,
-    treatmentN = N_treatment,
-    totalN = Total_n_analysis
-  ) %>%
-  mutate(
-    identifierStudyId = as.character(identifierStudyId),
-    identifierEffectSizeID = as.character(identifierEffectSizeID),
-    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
-    Dataset_Source = "Original (Davies 2020)"
-  )
+    mutate(
+        Hedges_d_directional = as.numeric(Hedges_d_directional),
+        Variance = as.numeric(Variance),
+        Year = as.numeric(Year),
+        N_control = as.numeric(N_control),
+        N_treatment = as.numeric(N_treatment),
+        Total_n_analysis = as.numeric(Total_n_analysis)
+    ) %>%
+    filter(!is.na(Hedges_d_directional), !is.na(Variance), Variance > 0) %>%
+    select(
+        yi = Hedges_d_directional,
+        vi = Variance,
+        identifierStudyId = Author,
+        identifierEffectSizeID = Effect_size_no,
+        taxonomySpecies = Species_latin,
+        Year,
+        controlN = N_control,
+        treatmentN = N_treatment,
+        totalN = Total_n_analysis
+    ) %>%
+    mutate(
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+        Dataset_Source = "Original (Davies 2020)"
+    )
 
 db_hedges <- bind_rows(hedges_new, hedges_davies) %>%
-  mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
 
 # ---------------------------------------------------------------------------
 # 2. Log Odds Ratio Dataset Alignment (Binary)
 # ---------------------------------------------------------------------------
 or_new <- db_new %>%
-  filter(!is.na(logOddsRatio), !is.na(logOddsRatioVariance)) %>%
-  select(
-    yi = logOddsRatio,
-    vi = logOddsRatioVariance,
-    identifierStudyId,
-    identifierEffectSizeID,
-    taxonomySpecies,
-    Year = identifierStudyYear
-  ) %>%
-  mutate(
-    identifierStudyId = as.character(identifierStudyId),
-    identifierEffectSizeID = as.character(identifierEffectSizeID),
-    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
-    Dataset_Source = "New Extraction (Santos)"
-  )
+    filter(!is.na(logOddsRatio), !is.na(logOddsRatioVariance)) %>%
+    select(
+        yi = logOddsRatio,
+        vi = logOddsRatioVariance,
+        identifierStudyId,
+        identifierEffectSizeID,
+        taxonomySpecies,
+        Year = identifierStudyYear
+    ) %>%
+    mutate(
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+        Dataset_Source = "New Extraction (Santos)"
+    )
 
 or_jones <- db_jones_raw %>%
-  filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
-  select(
-    yi = lnOR,
-    vi = VlnOR,
-    identifierStudyId = study,
-    identifierEffectSizeID = study_Exp,
-    taxonomySpecies = Species,
-    Year = year
-  ) %>%
-  mutate(
-    identifierStudyId = as.character(identifierStudyId),
-    identifierEffectSizeID = as.character(identifierEffectSizeID),
-    taxonomySpecies = str_to_lower(as.character(taxonomySpecies)),
-    Dataset_Source = "Original (Jones & DuVal 2019)"
-  )
+    filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
+    select(
+        yi = lnOR,
+        vi = VlnOR,
+        identifierStudyId = study,
+        identifierEffectSizeID = study_Exp,
+        taxonomySpecies = Species,
+        Year = year
+    ) %>%
+    mutate(
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        taxonomySpecies = str_to_lower(as.character(taxonomySpecies)),
+        Dataset_Source = "Original (Jones & DuVal 2019)"
+    )
 
 db_or <- bind_rows(or_new, or_jones) %>%
-  mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
 ```
 
 ---
@@ -191,41 +191,40 @@ We run the intercept-only model to establish the global mean effect size and plo
 #| warning: false
 #| fig.width: 9
 #| fig.height: 7
-
 # Intercept-only model
 VCV_hedges <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges)
 
 ma_hedges <- metafor::rma.mv(
-  yi = yi, 
-  V = VCV_hedges, 
-  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
-  test = "t", 
-  method = "REML", 
-  sparse = TRUE, 
-  data = db_hedges
+    yi = yi,
+    V = VCV_hedges,
+    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = db_hedges
 )
 
 summary(ma_hedges)
 
 # Funnel plot
 metafor::funnel(
-  ma_hedges,
-  yaxis = "seinv",
-  las = 1,
-  digits = c(2, 1),
-  xlab = "Standardised Hedges' g Effect Size",
-  ylab = "Precision (Inverse of SE)",
-  pch = 21,
-  bg = alpha("black", 0.2),
-  col = "black",
-  cex = 1.2,
-  main = "Funnel Plot for Continuous Outcomes (Hedges' g)"
+    ma_hedges,
+    yaxis = "seinv",
+    las = 1,
+    digits = c(2, 1),
+    xlab = "Standardised Hedges' g Effect Size",
+    ylab = "Precision (Inverse of SE)",
+    pch = 21,
+    bg = alpha("black", 0.2),
+    col = "black",
+    cex = 1.2,
+    main = "Funnel Plot for Continuous Outcomes (Hedges' g)"
 )
 ```
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
 
-To perform Egger's regression on Hedges' $g$, we follow the two-step framework recommended by Nakagawa et al. (2022a) and Stanley (2012, 2014) from the Daniel Noble workshop. We use the sampling standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy. If this moderator is statistically significant ($p < 0.05$), it indicates a significant small-study effect (larger standard errors / smaller sample sizes associated with larger effect magnitudes).
+To perform Egger's regression on Hedges' $g$, we follow the two-step framework recommended by Nakagawa et al. (2022a) and Stanley (2012, 2014). We use the sampling standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy. If this moderator is statistically significant ($p < 0.05$), it indicates a significant small-study effect (larger standard errors / smaller sample sizes associated with larger effect magnitudes).
 
 Because standard error model intercepts can be downwardly biased if they are significant, we apply a two-step correction: if the intercept of the standard error model is statistically significant, we re-fit the Egger's regression model using the sampling variance ($\text{V} = \text{vi}$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 
@@ -233,39 +232,38 @@ Because standard error model intercepts can be downwardly biased if they are sig
 #| label: hedges_eggers_regression
 #| message: false
 #| warning: false
-
 # Calculate standard error precision proxy
 db_hedges_egger <- db_hedges %>%
-  mutate(se = sqrt(vi)) %>%
-  filter(!is.na(se))
+    mutate(se = sqrt(vi)) %>%
+    filter(!is.na(se))
 
 # Re-estimate VCV on this subset
 VCV_hedges_egger <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_egger)
 
 # Step 1: Egger regression model with standard error as moderator
 egger_hedges <- metafor::rma.mv(
-  yi = yi, 
-  V = VCV_hedges_egger, 
-  mods = ~ 1 + se, 
-  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
-  test = "t", 
-  method = "REML", 
-  sparse = TRUE, 
-  data = db_hedges_egger
+    yi = yi,
+    V = VCV_hedges_egger,
+    mods = ~ 1 + se,
+    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = db_hedges_egger
 )
 
 summary(egger_hedges)
 
 # Step 2: Since the intercept is significant, re-fit using variance (vi)
 egger_hedges_v <- metafor::rma.mv(
-  yi = yi, 
-  V = VCV_hedges_egger, 
-  mods = ~ 1 + vi, 
-  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
-  test = "t", 
-  method = "REML", 
-  sparse = TRUE, 
-  data = db_hedges_egger
+    yi = yi,
+    V = VCV_hedges_egger,
+    mods = ~ 1 + vi,
+    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = db_hedges_egger
 )
 
 summary(egger_hedges_v)
@@ -279,13 +277,12 @@ We visualize the Egger regression using a bubble plot. Effect sizes are plotted 
 #| warning: false
 #| fig.width: 9
 #| fig.height: 6
-
 p_egger_hedges <- orchaRd::bubble_plot(
-  egger_hedges, 
-  mod = "se", 
-  group = "identifierStudyId", 
-  xlab = "Standard Error of Hedges' g (se)", 
-  ylab = "Effect size (Hedges' g)"
+    egger_hedges,
+    mod = "se",
+    group = "identifierStudyId",
+    xlab = "Standard Error of Hedges' g (se)",
+    ylab = "Effect size (Hedges' g)"
 )
 
 # Color points by real source
@@ -293,11 +290,11 @@ p_egger_hedges$layers[[1]]$data$real_source <- db_hedges_egger$Dataset_Source
 p_egger_hedges$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
 p_egger_hedges$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
 
-p_egger_hedges <- p_egger_hedges + 
-  ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-  ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-  ggplot2::ggtitle("Egger's Meta-Regression (Hedges' g)") +
-  ggplot2::theme_minimal()
+p_egger_hedges <- p_egger_hedges +
+    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    ggplot2::ggtitle("Egger's Meta-Regression (Hedges' g)") +
+    ggplot2::theme_minimal()
 
 print(p_egger_hedges)
 ```
@@ -315,24 +312,23 @@ We analyze the decline effect by evaluating whether the publication year signifi
 #| label: hedges_time_lag
 #| message: false
 #| warning: false
-
 # Mean-center publication year
 db_hedges_decline <- db_hedges_egger %>%
-  mutate(Year_c = Year - mean(Year, na.rm = TRUE))
+    mutate(Year_c = Year - mean(Year, na.rm = TRUE))
 
 # VCV for decline subset
 VCV_hedges_decline <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_decline)
 
 # Time-lag decline model controlling for standard error (se)
 decline_hedges <- metafor::rma.mv(
-  yi = yi, 
-  V = VCV_hedges_decline, 
-  mods = ~ 1 + Year_c + se, 
-  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
-  test = "t", 
-  method = "REML", 
-  sparse = TRUE, 
-  data = db_hedges_decline
+    yi = yi,
+    V = VCV_hedges_decline,
+    mods = ~ 1 + Year_c + se,
+    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = db_hedges_decline
 )
 
 summary(decline_hedges)
@@ -346,13 +342,12 @@ We construct the bubble plot showing the decline effect over years:
 #| warning: false
 #| fig.width: 9
 #| fig.height: 6
-
 p_decline_hedges <- orchaRd::bubble_plot(
-  decline_hedges, 
-  mod = "Year_c", 
-  group = "identifierStudyId", 
-  xlab = "Publication Year (centered)", 
-  ylab = "Effect size (Hedges' g)"
+    decline_hedges,
+    mod = "Year_c",
+    group = "identifierStudyId",
+    xlab = "Publication Year (centered)",
+    ylab = "Effect size (Hedges' g)"
 )
 
 # Color points by real source
@@ -361,21 +356,21 @@ p_decline_hedges$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source
 p_decline_hedges$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
 
 p_decline_hedges <- p_decline_hedges +
-  ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-  ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source")
+    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source")
 
 # Relabel centered x-axis to actual calendar years
 mean_year_hedges <- mean(db_hedges_egger$Year, na.rm = TRUE)
 target_years_hedges <- seq(2000, 2026, by = 5)
 
-p_decline_hedges_relabeled <- p_decline_hedges + 
-  ggplot2::scale_x_continuous(
-    name = "Publication Year",
-    breaks = target_years_hedges - mean_year_hedges, 
-    labels = target_years_hedges
-  ) +
-  ggplot2::ggtitle("Decline Effect / Time-Lag Bias (Hedges' g)") +
-  ggplot2::theme_minimal()
+p_decline_hedges_relabeled <- p_decline_hedges +
+    ggplot2::scale_x_continuous(
+        name = "Publication Year",
+        breaks = target_years_hedges - mean_year_hedges,
+        labels = target_years_hedges
+    ) +
+    ggplot2::ggtitle("Decline Effect / Time-Lag Bias (Hedges' g)") +
+    ggplot2::theme_minimal()
 
 print(p_decline_hedges_relabeled)
 ```
@@ -393,16 +388,15 @@ We combine the Egger regression and publication year time-lag bubble plots into 
 #| warning: false
 #| fig.width: 10
 #| fig.height: 12
-
 dashboard_hedges <- (p_egger_hedges / p_decline_hedges_relabeled) +
-  patchwork::plot_annotation(
-    title = "Publication Bias Diagnostic Dashboard — Hedges' g",
-    tag_levels = "A"
-  ) & 
-  ggplot2::theme(
-    plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
-    plot.tag = ggplot2::element_text(size = 12, face = "bold")
-  )
+    patchwork::plot_annotation(
+        title = "Publication Bias Diagnostic Dashboard — Hedges' g",
+        tag_levels = "A"
+    ) &
+    ggplot2::theme(
+        plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
+        plot.tag = ggplot2::element_text(size = 12, face = "bold")
+    )
 
 print(dashboard_hedges)
 ```
@@ -423,35 +417,34 @@ We run the intercept-only model for Odds Ratio and inspect the funnel plot repre
 #| warning: false
 #| fig.width: 9
 #| fig.height: 7
-
 # Intercept-only model
 VCV_or <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or)
 
 ma_or <- metafor::rma.mv(
-  yi = yi, 
-  V = VCV_or, 
-  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
-  test = "t", 
-  method = "REML", 
-  sparse = TRUE, 
-  data = db_or
+    yi = yi,
+    V = VCV_or,
+    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = db_or
 )
 
 summary(ma_or)
 
 # Funnel plot
 metafor::funnel(
-  ma_or,
-  yaxis = "seinv",
-  las = 1,
-  digits = c(2, 1),
-  xlab = "Standardised Log Odds Ratio (lnOR)",
-  ylab = "Precision (Inverse of SE)",
-  pch = 21,
-  bg = alpha("black", 0.2),
-  col = "black",
-  cex = 1.2,
-  main = "Funnel Plot for Binary Outcomes (Log Odds Ratio)"
+    ma_or,
+    yaxis = "seinv",
+    las = 1,
+    digits = c(2, 1),
+    xlab = "Standardised Log Odds Ratio (lnOR)",
+    ylab = "Precision (Inverse of SE)",
+    pch = 21,
+    bg = alpha("black", 0.2),
+    col = "black",
+    cex = 1.2,
+    main = "Funnel Plot for Binary Outcomes (Log Odds Ratio)"
 )
 ```
 
@@ -465,39 +458,38 @@ Because the intercept of the standard error model is statistically significant (
 #| label: or_eggers_regression
 #| message: false
 #| warning: false
-
 # Calculate standard error proxy
 db_or_egger <- db_or %>%
-  mutate(se = sqrt(vi)) %>%
-  filter(!is.na(se))
+    mutate(se = sqrt(vi)) %>%
+    filter(!is.na(se))
 
 # Re-estimate VCV on this subset
 VCV_or_egger <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or_egger)
 
 # Step 1: Egger regression model with standard error as moderator
 egger_or <- metafor::rma.mv(
-  yi = yi, 
-  V = VCV_or_egger, 
-  mods = ~ 1 + se, 
-  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
-  test = "t", 
-  method = "REML", 
-  sparse = TRUE, 
-  data = db_or_egger
+    yi = yi,
+    V = VCV_or_egger,
+    mods = ~ 1 + se,
+    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = db_or_egger
 )
 
 summary(egger_or)
 
 # Step-2: Since the intercept is significant, re-fit using variance (vi)
 egger_or_v <- metafor::rma.mv(
-  yi = yi, 
-  V = VCV_or_egger, 
-  mods = ~ 1 + vi, 
-  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
-  test = "t", 
-  method = "REML", 
-  sparse = TRUE, 
-  data = db_or_egger
+    yi = yi,
+    V = VCV_or_egger,
+    mods = ~ 1 + vi,
+    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = db_or_egger
 )
 
 summary(egger_or_v)
@@ -511,13 +503,12 @@ We visualize the Egger regression for Odds Ratio using a bubble plot.
 #| warning: false
 #| fig.width: 9
 #| fig.height: 6
-
 p_egger_or <- orchaRd::bubble_plot(
-  egger_or, 
-  mod = "se", 
-  group = "identifierStudyId", 
-  xlab = "Standard Error of Log Odds Ratio (se)", 
-  ylab = "Effect size (lnOR)"
+    egger_or,
+    mod = "se",
+    group = "identifierStudyId",
+    xlab = "Standard Error of Log Odds Ratio (se)",
+    ylab = "Effect size (lnOR)"
 )
 
 # Color points by real source
@@ -525,11 +516,11 @@ p_egger_or$layers[[1]]$data$real_source <- db_or_egger$Dataset_Source
 p_egger_or$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
 p_egger_or$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
 
-p_egger_or <- p_egger_or + 
-  ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
-  ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
-  ggplot2::ggtitle("Egger's Meta-Regression (Log Odds Ratio)") +
-  ggplot2::theme_minimal()
+p_egger_or <- p_egger_or +
+    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+    ggplot2::ggtitle("Egger's Meta-Regression (Log Odds Ratio)") +
+    ggplot2::theme_minimal()
 
 print(p_egger_or)
 ```
@@ -547,24 +538,23 @@ We test for a decline effect in the binary outcomes by regressing $\ln\text{OR}$
 #| label: or_time_lag
 #| message: false
 #| warning: false
-
 # Mean-center publication year
 db_or_decline <- db_or_egger %>%
-  mutate(Year_c = Year - mean(Year, na.rm = TRUE))
+    mutate(Year_c = Year - mean(Year, na.rm = TRUE))
 
 # VCV for decline subset
 VCV_or_decline <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or_decline)
 
 # Time-lag decline model
 decline_or <- metafor::rma.mv(
-  yi = yi, 
-  V = VCV_or_decline, 
-  mods = ~ 1 + Year_c + se, 
-  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
-  test = "t", 
-  method = "REML", 
-  sparse = TRUE, 
-  data = db_or_decline
+    yi = yi,
+    V = VCV_or_decline,
+    mods = ~ 1 + Year_c + se,
+    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = db_or_decline
 )
 
 summary(decline_or)
@@ -578,13 +568,12 @@ We construct the bubble plot showing the decline effect for Odds Ratios:
 #| warning: false
 #| fig.width: 9
 #| fig.height: 6
-
 p_decline_or <- orchaRd::bubble_plot(
-  decline_or, 
-  mod = "Year_c", 
-  group = "identifierStudyId", 
-  xlab = "Publication Year (centered)", 
-  ylab = "Effect size (lnOR)"
+    decline_or,
+    mod = "Year_c",
+    group = "identifierStudyId",
+    xlab = "Publication Year (centered)",
+    ylab = "Effect size (lnOR)"
 )
 
 # Color points by real source
@@ -593,21 +582,21 @@ p_decline_or$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$co
 p_decline_or$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
 
 p_decline_or <- p_decline_or +
-  ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
-  ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source")
+    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source")
 
 # Relabel centered x-axis to actual calendar years
 mean_year_or <- mean(db_or_egger$Year, na.rm = TRUE)
 target_years_or <- seq(2000, 2026, by = 5)
 
-p_decline_or_relabeled <- p_decline_or + 
-  ggplot2::scale_x_continuous(
-    name = "Publication Year",
-    breaks = target_years_or - mean_year_or, 
-    labels = target_years_or
-  ) +
-  ggplot2::ggtitle("Decline Effect / Time-Lag Bias (Log Odds Ratio)") +
-  ggplot2::theme_minimal()
+p_decline_or_relabeled <- p_decline_or +
+    ggplot2::scale_x_continuous(
+        name = "Publication Year",
+        breaks = target_years_or - mean_year_or,
+        labels = target_years_or
+    ) +
+    ggplot2::ggtitle("Decline Effect / Time-Lag Bias (Log Odds Ratio)") +
+    ggplot2::theme_minimal()
 
 print(p_decline_or_relabeled)
 ```
@@ -625,16 +614,15 @@ We combine the Egger regression and publication year time-lag bubble plots into 
 #| warning: false
 #| fig.width: 10
 #| fig.height: 12
-
 dashboard_or <- (p_egger_or / p_decline_or_relabeled) +
-  patchwork::plot_annotation(
-    title = "Publication Bias Diagnostic Dashboard — Log Odds Ratio",
-    tag_levels = "A"
-  ) & 
-  ggplot2::theme(
-    plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
-    plot.tag = ggplot2::element_text(size = 12, face = "bold")
-  )
+    patchwork::plot_annotation(
+        title = "Publication Bias Diagnostic Dashboard — Log Odds Ratio",
+        tag_levels = "A"
+    ) &
+    ggplot2::theme(
+        plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
+        plot.tag = ggplot2::element_text(size = 12, face = "bold")
+    )
 
 print(dashboard_or)
 ```
@@ -652,28 +640,27 @@ We compile the results of the small-study effect regressions and time-lag meta-r
 ```{r}
 #| label: summary_table_creation
 #| echo: false
-
 bias_summary <- data.frame(
-  Effect_Size_Class = c("Hedges' g (Continuous)", "Hedges' g (Continuous)", "Log Odds Ratio (Binary)", "Log Odds Ratio (Binary)"),
-  Diagnostic_Test = c("Egger's Regression (Small-Study)", "Time-Lag (Decline Effect)", "Egger's Regression (Small-Study)", "Time-Lag (Decline Effect)"),
-  Moderator = c("Standard Error (se)", "Year_c (centered)", "Standard Error (se)", "Year_c (centered)"),
-  Slope_Beta = c(egger_hedges$b[2], decline_hedges$b[2], egger_or$b[2], decline_or$b[2]),
-  Std_Error = c(egger_hedges$se[2], decline_hedges$se[2], egger_or$se[2], decline_or$se[2]),
-  t_z_value = c(egger_hedges$zval[2], decline_hedges$zval[2], egger_or$zval[2], decline_or$zval[2]),
-  p_value = c(egger_hedges$pval[2], decline_hedges$pval[2], egger_or$pval[2], decline_or$pval[2]),
-  Evidence_of_Bias = c("Highly Significant Bias (p < 0.0001)", "No Significant Bias (p = 0.8996)", "Highly Significant Bias (p < 0.0001)", "Significant Bias (p = 0.0104)")
+    Effect_Size_Class = c("Hedges' g (Continuous)", "Hedges' g (Continuous)", "Log Odds Ratio (Binary)", "Log Odds Ratio (Binary)"),
+    Diagnostic_Test = c("Egger's Regression (Small-Study)", "Time-Lag (Decline Effect)", "Egger's Regression (Small-Study)", "Time-Lag (Decline Effect)"),
+    Moderator = c("Standard Error (se)", "Year_c (centered)", "Standard Error (se)", "Year_c (centered)"),
+    Slope_Beta = c(egger_hedges$b[2], decline_hedges$b[2], egger_or$b[2], decline_or$b[2]),
+    Std_Error = c(egger_hedges$se[2], decline_hedges$se[2], egger_or$se[2], decline_or$se[2]),
+    t_z_value = c(egger_hedges$zval[2], decline_hedges$zval[2], egger_or$zval[2], decline_or$zval[2]),
+    p_value = c(egger_hedges$pval[2], decline_hedges$pval[2], egger_or$pval[2], decline_or$pval[2]),
+    Evidence_of_Bias = c("Highly Significant Bias (p < 0.0001)", "No Significant Bias (p = 0.8996)", "Highly Significant Bias (p < 0.0001)", "Significant Bias (p = 0.0104)")
 )
 
 DT::datatable(
-  bias_summary,
-  options = list(
-    dom = 't',
-    columnDefs = list(list(className = 'dt-center', targets = "_all"))
-  ),
-  rownames = FALSE
+    bias_summary,
+    options = list(
+        dom = "t",
+        columnDefs = list(list(className = "dt-center", targets = "_all"))
+    ),
+    rownames = FALSE
 ) %>%
-  DT::formatRound(columns = c("Slope_Beta", "Std_Error", "t_z_value"), digits = 4) %>%
-  DT::formatSignif(columns = c("p_value"), digits = 4)
+    DT::formatRound(columns = c("Slope_Beta", "Std_Error", "t_z_value"), digits = 4) %>%
+    DT::formatSignif(columns = c("p_value"), digits = 4)
 ```
 
 ### Main Takeaways
