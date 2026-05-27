@@ -21,7 +21,7 @@ format:
     embed-resources: true
 execute:
   echo: true
-  eval: false   # set to true when running locally with data
+  eval: true   # set to true when running locally with data
   warning: false
   message: false
 bibliography: references.bib
@@ -142,6 +142,7 @@ processing of the 2,083-record dataset.
 
 ```{r}
 #| label: load-data
+#| eval: false
 rm(list = ls())
 
 library(dplyr)
@@ -163,6 +164,7 @@ author list, and a non-empty DOI.
 
 ```{r}
 #| label: title-dedup
+#| eval: false
 
 # --- Normalise title ----------------------------------------------------------
 articles[, title_lwr := str_to_lower(title)]
@@ -214,6 +216,7 @@ concatenated in the title-dedup step.
 
 ```{r}
 #| label: doi-dedup
+#| eval: false
 
 # Helper: split already-concatenated source strings, deduplicate, re-join
 split_conc <- function(x) {
@@ -257,6 +260,7 @@ retain a `source_file` column.
 
 ```{r}
 #| label: clean
+#| eval: false
 
 articles.final[, abstract := paste0(abstract, " | ", source_file)]
 
@@ -271,6 +275,7 @@ articles.final <- articles.final[,
 
 ```{r}
 #| label: year-filter
+#| eval: false
 
 articles.final <- articles.final[year >= 2019, ]
 message("Records after filter: ", nrow(articles.final))
@@ -300,6 +305,7 @@ generates near-equal assignment vectors for any team size.
 
 ```{r}
 #| label: assignment
+#| eval: false
 
 # Team structure
 screeners <- c(
@@ -344,6 +350,7 @@ Each file retains both assignment columns for cross-referencing.
 
 ```{r}
 #| label: export
+#| eval: false
 
 invisible(lapply(
   unique(articles.final$primary_screener),
