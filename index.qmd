@@ -591,6 +591,109 @@ Meta-regression models will test whether effect sizes vary by:
 - Leave-one-out analysis for influential studies.
 - Re-analysis excluding studies from identified hub labs.
 
+### Publication Bias Analysis & Diagnostics {#sec-pub-bias-results}
+
+To evaluate the presence of publication bias and report-level selection in our combined datasets, we employ three complementary diagnostic approaches (Visual Funnel Plots, Egger's Meta-Regression for small-study effects, and Time-Lag Meta-Regression for Decline Effects).
+
+The complete, dedicated diagnostic pipeline can be found in [`scripts/1_effect_size_calculation_pipeline/publication_bias.qmd`](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/scripts/1_effect_size_calculation_pipeline/publication_bias.qmd). Below, we outline the model specifications and summarize the empirical findings.
+
+#### Model Specifications & R Code
+
+##### A. Hedges' $g$ (Continuous Outcomes)
+To prevent mathematical coupling between effect size and standard error, we calculate an N-based precision proxy, $\sqrt{1/N_{\text{control}} + 1/N_{\text{treatment}}}$ (the square root of the inverse of the effective sample size):
+
+```{r}
+#| label: index_hedges_pubbias
+#| eval: false
+
+# 1. Calculate precision proxy
+db_hedges_egger <- db_hedges %>%
+  mutate(
+    controlN_eff = ifelse(is.na(controlN), totalN / 2, controlN),
+    treatmentN_eff = ifelse(is.na(treatmentN), totalN / 2, treatmentN),
+    sqrt_inv_e_n = sqrt((1 / controlN_eff) + (1 / treatmentN_eff))
+  ) %>%
+  filter(!is.na(sqrt_inv_e_n))
+
+# 2. Fit Egger's Regression
+egger_hedges <- rma.mv(
+  yi = yi, 
+  V = vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_egger), 
+  mods = ~ 1 + sqrt_inv_e_n, 
+  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
+  test = "t", 
+  method = "REML", 
+  data = db_hedges_egger
+)
+
+# 3. Fit Decline Effect Model (Time-Lag Bias)
+db_hedges_decline <- db_hedges_egger %>%
+  mutate(Year_c = Year - mean(Year, na.rm = TRUE))
+
+decline_hedges <- rma.mv(
+  yi = yi, 
+  V = vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_decline), 
+  mods = ~ 1 + Year_c + sqrt_inv_e_n, 
+  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
+  test = "t", 
+  method = "REML", 
+  data = db_hedges_decline
+)
+```
+
+##### B. Odds Ratio (Binary Outcomes)
+For Odds Ratio studies, because raw sample sizes are incomplete in the original binary dataset, we use the standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy:
+
+```{r}
+#| label: index_or_pubbias
+#| eval: false
+
+# 1. Egger's Regression
+db_or_egger <- db_or %>%
+  mutate(se = sqrt(vi)) %>%
+  filter(!is.na(se))
+
+egger_or <- rma.mv(
+  yi = yi, 
+  V = vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or_egger), 
+  mods = ~ 1 + se, 
+  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
+  test = "t", 
+  method = "REML", 
+  data = db_or_egger
+)
+
+# 2. Decline Effect Model
+db_or_decline <- db_or_egger %>%
+  mutate(Year_c = Year - mean(Year, na.rm = TRUE))
+
+decline_or <- rma.mv(
+  yi = yi, 
+  V = vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or_decline), 
+  mods = ~ 1 + Year_c + se, 
+  random = list(~1 | identifierStudyId, ~1 | identifierEffectSizeID, ~1 | taxonomySpecies), 
+  test = "t", 
+  method = "REML", 
+  data = db_or_decline
+)
+```
+
+#### Empirical Findings Summary
+
+Our diagnostic analyses on the combined datasets reveal two main patterns of reporting bias in the literature:
+
+| Effect Size Class | Diagnostic Test | Moderator | Slope ($\beta$) | SE | $z$-value | $p$-value | Evidence of Bias |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Hedges' $g$ (Continuous)** | Egger's Regression | `sqrt_inv_e_n` | $1.4313$ | $0.6180$ | $2.3160$ | **$0.0215$** | **Significant Small-Study Effects** |
+| | Time-Lag (Decline Effect) | `Year` (centered) | $-0.0104$ | $0.0067$ | $-1.5615$ | $0.1199$ | No Decline over Time |
+| **Log Odds Ratio (Binary)** | Egger's Regression | `se` | $2.1129$ | $0.4471$ | $4.7257$ | **$< 0.0001$** | **Highly Significant Small-Study Effects** |
+| | Time-Lag (Decline Effect) | `Year` (centered) | $-0.0282$ | $0.0109$ | $-2.5924$ | **$0.0104$** | **Significant Decline Effect (Time-Lag Bias)** |
+
+> [!NOTE]
+> **Summary of Findings:**
+> 1. **Pervasive Small-Study Effects:** Both Hedges' $g$ and Log Odds Ratio datasets show statistically significant evidence of small-study effects. Smaller, less precise trials systematically report larger mate-choice copying effect sizes. This asymmetrical pattern is a classic signature of publication selection.
+> 2. **Decline Effect in Binary Outcomes:** We found robust evidence of a decline effect in binary mate-choice copying studies ($\beta = -0.0282$, $p = 0.0104$). Over the last two decades, the strength of reported mate-choice copying (as measured by Log Odds Ratios) has significantly decreased. This is typical in fields experiencing a "novelty effect," where initial breakthrough publications show large effect sizes, and subsequent rigorous replications or expanded testing reveal more moderate, realistic estimates.
+
 ---
 
 ## Repository Structure {#sec-repo}
@@ -613,7 +716,8 @@ mate_choice_meta/
 │   │   └── 1_deduplicate_records.R
 │   └── 1_effect_size_calculation_pipeline/
 │       ├── calculate_effect_sizes.py    (Hedges' g & OR calculator)
-│       └── overall_effect.qmd           (overall effect size multilevel model)
+│       ├── overall_effect.qmd           (overall effect size multilevel model)
+│       └── publication_bias.qmd         (publication bias diagnostics)
 └── builds/
     ├── 0_literature_screening/
     │   └── deduplicated_and_randomly_split/
