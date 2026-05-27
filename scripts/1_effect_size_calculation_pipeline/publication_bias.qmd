@@ -35,7 +35,7 @@ Publication bias is a critical threat to the validity of meta-analytic syntheses
 To thoroughly evaluate the presence of publication bias and report-level selection in our Mate-Choice Copying (MCC) dataset, we employ three complementary diagnostic approaches, keeping the exact multilevel modeling logic (e.g., nested random intercepts and taxonomy control) used in our main overall effect calculations:
 
 1. **Visual Inspection (Funnel Plots):** We plot effect size estimates against their precision (inverse of the standard error, $1/\text{SE}$) to check for visual asymmetry around the overall mean estimate.
-2. **Egger's Meta-Regression (Small-Study Effects):** We test whether study precision significantly moderates effect size. Following the recommendations of Nakagawa et al. (2022a) and Stanley (2012, 2014) from the Daniel Noble workshop, we implement a **two-step approach**:
+2. **Egger's Meta-Regression (Small-Study Effects):** We test whether study precision significantly moderates effect size. Following the recommendations of @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014] from the Daniel Noble workshop, we implement a **two-step approach**:
    * We first fit the Egger regression model using the standard error ($\text{SE} = \sqrt{v_i}$) as the precision proxy.
    * If the intercept of the standard error model is statistically significant, it indicates that the estimate is downwardly biased. In this case, we re-fit the model using the sampling variance ($\text{V} = v_i$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 3. **Decline Effect / Time-Lag Bias:** We test whether effect sizes shrink over time by adding publication year (mean-centered) to our models while simultaneously controlling for study precision.
@@ -224,7 +224,7 @@ metafor::funnel(
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
 
-To perform Egger's regression on Hedges' $g$, we follow the two-step framework recommended by Nakagawa et al. (2022a) and Stanley (2012, 2014). We use the sampling standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy. If this moderator is statistically significant ($p < 0.05$), it indicates a significant small-study effect (larger standard errors / smaller sample sizes associated with larger effect magnitudes).
+To perform Egger's regression on Hedges' $g$, we follow the two-step framework recommended by @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014]. We use the sampling standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy. If this moderator is statistically significant ($p < 0.05$), it indicates a significant small-study effect (larger standard errors / smaller sample sizes associated with larger effect magnitudes).
 
 Because standard error model intercepts can be downwardly biased if they are significant, we apply a two-step correction: if the intercept of the standard error model is statistically significant, we re-fit the Egger's regression model using the sampling variance ($\text{V} = \text{vi}$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 
@@ -302,7 +302,7 @@ print(p_egger_hedges)
 > [!NOTE]
 > The slope for standard error (`se`) is **highly significant** ($\beta = 4.3353$, $SE = 0.5786$, $t = 7.4929$, $p < 0.0001$), indicating extremely clear evidence of small-study effects. Studies with larger standard errors tend to report larger, more positive Hedges' $g$ values.
 > 
-> **Two-Step Correction:** Because the intercept of the standard error model is statistically significant ($p < 0.0001$), the intercept provides a downwardly biased estimate of the adjusted mean. Following the two-step recommendation of Nakagawa et al. (2022a) and Stanley (2012, 2014), we re-fit Egger's regression using the sampling variance (`vi`) as the moderator. In this corrected model, the adjusted overall meta-analytic mean is estimated at $\beta_0 = -0.2040$ ($SE = 0.1017$, $t = -2.0062$, $p = 0.0461$).
+> **Two-Step Correction:** Because the intercept of the standard error model is statistically significant ($p < 0.0001$), the intercept provides a downwardly biased estimate of the adjusted mean. Following the two-step recommendation of @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014], we re-fit Egger's regression using the sampling variance (`vi`) as the moderator. In this corrected model, the adjusted overall meta-analytic mean is estimated at $\beta_0 = -0.2040$ ($SE = 0.1017$, $t = -2.0062$, $p = 0.0461$).
 
 #### 3. Decline Effect (Time-Lag Bias)
 

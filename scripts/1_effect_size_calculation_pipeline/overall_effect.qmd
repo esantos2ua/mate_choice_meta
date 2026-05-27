@@ -33,8 +33,8 @@ This protocol implements the overall effect size synthesis for the updated Mate-
 
 Specifically, we integrate:
 1. **The New Extractions:** Our newly extracted and verified dataset containing recent trials.
-2. **Original Continuous Dataset (Davies et al. 2020):** Standardised mean differences (Hedges' $d$) analyzing continuous metrics.
-3. **Original Binary Dataset (Jones & DuVal 2019):** Log Odds Ratio ($\ln\text{OR}$) analyzing binary choices.
+2. **Original Continuous Dataset (@daviesMetaanalysisFactorsInfluencing2020):** Standardised mean differences (Hedges' $d$) analyzing continuous metrics.
+3. **Original Binary Dataset (@jonesMechanismsSocialInfluence2019):** Log Odds Ratio ($\ln\text{OR}$) analyzing binary choices.
 
 The R script aligns and synthesizes these three sources into unified datasets, allowing comparison of meta-analytic summaries across three key subsets:
 * **New Extractions Only:** Eduardo's new dataset.

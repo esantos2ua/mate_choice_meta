@@ -26,6 +26,7 @@ book:
     - literature_screening.qmd
     - scripts/1_effect_size_calculation_pipeline/overall_effect.qmd
     - scripts/1_effect_size_calculation_pipeline/publication_bias.qmd
+    - references.qmd
 
 number-sections: false
 bibliography: references.bib
