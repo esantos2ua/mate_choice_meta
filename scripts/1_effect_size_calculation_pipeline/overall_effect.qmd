@@ -316,6 +316,51 @@ fit_overall_mv <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierS
   
   list(data = dat2, VCV = VCV, model = mod)
 }
+
+# Helper function to fit bias-corrected multilevel models with a continuous moderator (Egger-type)
+fit_corrected_mv <- function(dat, yi = "yi", vi = "vi", moderator = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
+  
+  # Remove rows with missing values
+  dat2 <- dat %>%
+    filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
+  
+  if (nrow(dat2) == 0) {
+    message("No complete cases found.")
+    return(NULL)
+  }
+  
+  if (moderator == "se" && !"se" %in% colnames(dat2)) {
+    dat2 <- dat2 %>% mutate(se = sqrt(vi))
+  }
+  
+  # 1. Build VCV Matrix
+  VCV <- metafor::vcalc(
+    vi = dat2[[vi]],
+    cluster = dat2[[cluster_var]],
+    obs = dat2[[obs_var]],
+    rho = rho,
+    data = dat2
+  )
+  
+  # 2. Fit Multi-Level Egger Model using dynamic formula
+  formula_str <- paste("~ 1 +", moderator)
+  mod <- metafor::rma.mv(
+    yi = dat2[[yi]],
+    V  = VCV,
+    mods = as.formula(formula_str),
+    random = list(
+      ~1 | identifierStudyId,
+      ~1 | identifierEffectSizeID,
+      ~1 | taxonomySpecies
+    ),
+    test = "t",
+    method = "REML",
+    sparse = TRUE,
+    data = dat2
+  )
+  
+  list(data = dat2, VCV = VCV, model = mod)
+}
 ```
 
 ---
@@ -330,18 +375,28 @@ We fit the multilevel meta-analysis across all three database splits (New Only, 
 #| warning: false
 
 # ---------------------------------------------------------------------------
-# HEDGES' G MODELS
+# HEDGES' G MODELS (UNCORRECTED)
 # ---------------------------------------------------------------------------
 res_hedges_new   <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"))
 res_hedges_orig  <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"))
 res_hedges_comb  <- fit_overall_mv(db_hedges)
 
+# HEDGES' G MODELS (BIAS-CORRECTED)
+res_hedges_new_corr   <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
+res_hedges_orig_corr  <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"), moderator = "vi")
+res_hedges_comb_corr  <- fit_corrected_mv(db_hedges, moderator = "vi")
+
 # ---------------------------------------------------------------------------
-# ODDS RATIO MODELS
+# ODDS RATIO MODELS (UNCORRECTED)
 # ---------------------------------------------------------------------------
 res_or_new   <- fit_overall_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"))
 res_or_orig  <- fit_overall_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"))
 res_or_comb  <- fit_overall_mv(db_or)
+
+# ODDS RATIO MODELS (BIAS-CORRECTED)
+res_or_new_corr   <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
+res_or_orig_corr  <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"), moderator = "vi")
+res_or_comb_corr  <- fit_corrected_mv(db_or, moderator = "vi")
 ```
 
 ---
@@ -354,9 +409,9 @@ res_or_comb  <- fit_overall_mv(db_or)
 
 ::: {.panel-tabset}
 
-#### Unified Synthesis Plot
+#### Uncorrected Overall Effect
 
-This plot combines all three estimates (New Extraction, Original legacy studies, and the Combined pool) side-by-side in a single panel. Points are colored individually by their true data source.
+This plot displays the standard multi-level meta-analytic summaries across the three splits (New Only, Original Only, and Combined) *without* adjusting for publication bias. Points represent individual effect sizes colored by their data source.
 
 ```{r}
 #| label: hedges_unified_plot
@@ -411,21 +466,113 @@ if (!is.null(res_hedges_new) && !is.null(res_hedges_orig) && !is.null(res_hedges
   p_hedges <- p_hedges +
     ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
     ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-    ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates") +
+    ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates (Uncorrected)") +
     ggplot2::theme(legend.position = "right")
 
   print(p_hedges)
 }
 ```
 
+#### Bias-Corrected Overall Effect
+
+This plot displays the small-study publication bias corrected meta-analytic summaries (evaluated at $\text{V} = 0$, representing the theoretical estimate for a study of infinite sample size/precision) using the two-step Egger-type meta-regression framework. Points represent the same raw effect sizes.
+
+```{r}
+#| label: hedges_corrected_plot
+#| message: false
+#| warning: false
+#| fig.width: 10
+#| fig.height: 7
+
+if (!is.null(res_hedges_new_corr) && !is.null(res_hedges_orig_corr) && !is.null(res_hedges_comb_corr)) {
+  # 1. Extract S3 result objects using mod_results at vi = 0
+  h_new_corr <- orchaRd::mod_results(res_hedges_new_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+  h_orig_corr <- orchaRd::mod_results(res_hedges_orig_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+  h_comb_corr <- orchaRd::mod_results(res_hedges_comb_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+
+  # 2. Clone S3 result objects to lists for manual editing
+  class(h_new_corr) <- "list"
+  h_new_corr$mod_table$name <- "New Extraction (Santos)"
+  h_new_corr$data$moderator <- "New Extraction (Santos)"
+  class(h_new_corr) <- c("orchard", "data.frame")
+
+  class(h_orig_corr) <- "list"
+  h_orig_corr$mod_table$name <- "Original (Davies 2020)"
+  h_orig_corr$data$moderator <- "Original (Davies 2020)"
+  class(h_orig_corr) <- c("orchard", "data.frame")
+
+  class(h_comb_corr) <- "list"
+  h_comb_corr$mod_table$name <- "Combined"
+  h_comb_corr$data$moderator <- "Combined"
+  class(h_comb_corr) <- c("orchard", "data.frame")
+
+  # 3. Merge model results
+  sub_hedges_corr <- orchaRd::submerge(h_new_corr, h_orig_corr, h_comb_corr)
+
+  # 4. Add point-level real source mapping
+  class(sub_hedges_corr) <- "list"
+  sub_hedges_corr$data$real_source <- c(
+    rep("New Extraction (Santos)", nrow(h_new_corr$data)),
+    rep("Original (Davies 2020)", nrow(h_orig_corr$data)),
+    rep("New Extraction (Santos)", nrow(h_new_corr$data)),
+    rep("Original (Davies 2020)", nrow(h_orig_corr$data))
+  )
+  class(sub_hedges_corr) <- c("orchard", "data.frame")
+
+  # 4. Generate Plot
+  p_hedges_corr <- orchaRd::orchard_plot(sub_hedges_corr, xlab = "Hedges' g (Bias Corrected)", flip = TRUE)
+
+  # 5. Customize color mapping for points
+  p_hedges_corr$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+  p_hedges_corr$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+  # 6. Apply themes & custom palette
+  p_hedges_corr <- p_hedges_corr +
+    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates (Bias-Corrected)") +
+    ggplot2::theme(legend.position = "right")
+
+  print(p_hedges_corr)
+}
+```
+
+#### Side-by-Side Comparison
+
+We combine the uncorrected and small-study bias corrected orchard plots side-by-side using `patchwork` to directly evaluate the shifts in pooled estimates and prediction intervals when publication selection is accounted for.
+
+```{r}
+#| label: hedges_comparison_plot
+#| message: false
+#| warning: false
+#| fig.width: 14
+#| fig.height: 8
+
+if (exists("p_hedges") && exists("p_hedges_corr")) {
+  comparison_hedges <- (p_hedges + p_hedges_corr) + 
+    patchwork::plot_annotation(
+      title = "Comparison of Uncorrected vs. Bias-Corrected Synthesis (Hedges' g)",
+      subtitle = "Bias-corrected estimates are conditioned on study variance = 0 (infinite precision)",
+      theme = ggplot2::theme(
+        plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = ggplot2::element_text(size = 12, italic = TRUE, hjust = 0.5)
+      )
+    )
+  print(comparison_hedges)
+}
+```
+
 #### Detailed Model Statistics
 
-Here are the text outputs and fit statistics for the three individual models:
+Here are the text outputs and fit statistics for the three database splits. Each split displays the uncorrected and small-study bias-corrected (Egger's variance-adjusted) model summaries:
 
 ::: {.panel-tabset}
 
 ##### New Only
 
+::: {.panel-tabset}
+
+###### Uncorrected
 ```{r}
 #| label: hedges_new_stats
 if (!is.null(res_hedges_new)) {
@@ -435,8 +582,23 @@ if (!is.null(res_hedges_new)) {
 }
 ```
 
+###### Bias-Corrected
+```{r}
+#| label: hedges_new_corr_stats
+if (!is.null(res_hedges_new_corr)) {
+  print(summary(res_hedges_new_corr$model))
+  cat("\nHeterogeneity (I^2):\n")
+  print(orchaRd::i2_ml(res_hedges_new_corr$model))
+}
+```
+
+:::
+
 ##### Original Only
 
+::: {.panel-tabset}
+
+###### Uncorrected
 ```{r}
 #| label: hedges_orig_stats
 if (!is.null(res_hedges_orig)) {
@@ -446,8 +608,23 @@ if (!is.null(res_hedges_orig)) {
 }
 ```
 
+###### Bias-Corrected
+```{r}
+#| label: hedges_orig_corr_stats
+if (!is.null(res_hedges_orig_corr)) {
+  print(summary(res_hedges_orig_corr$model))
+  cat("\nHeterogeneity (I^2):\n")
+  print(orchaRd::i2_ml(res_hedges_orig_corr$model))
+}
+```
+
+:::
+
 ##### Combined
 
+::: {.panel-tabset}
+
+###### Uncorrected
 ```{r}
 #| label: hedges_comb_stats
 if (!is.null(res_hedges_comb)) {
@@ -457,6 +634,18 @@ if (!is.null(res_hedges_comb)) {
 }
 ```
 
+###### Bias-Corrected
+```{r}
+#| label: hedges_comb_corr_stats
+if (!is.null(res_hedges_comb_corr)) {
+  print(summary(res_hedges_comb_corr$model))
+  cat("\nHeterogeneity (I^2):\n")
+  print(orchaRd::i2_ml(res_hedges_comb_corr$model))
+}
+```
+
+:::
+
 :::
 
 :::
@@ -465,9 +654,9 @@ if (!is.null(res_hedges_comb)) {
 
 ::: {.panel-tabset}
 
-#### Unified Synthesis Plot
+#### Uncorrected Overall Effect
 
-This plot combines all three estimates (New Extraction, Original legacy studies, and the Combined pool) side-by-side in a single panel. Points are colored individually by their true data source.
+This plot displays the standard multi-level meta-analytic summaries across the three splits (New Only, Original Only, and Combined) *without* adjusting for publication bias. Points represent individual log odds ratios colored by their data source.
 
 ```{r}
 #| label: or_unified_plot
@@ -522,21 +711,113 @@ if (!is.null(res_or_new) && !is.null(res_or_orig) && !is.null(res_or_comb)) {
   p_or <- p_or +
     ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
     ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
-    ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates") +
+    ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates (Uncorrected)") +
     ggplot2::theme(legend.position = "right")
 
   print(p_or)
 }
 ```
 
+#### Bias-Corrected Overall Effect
+
+This plot displays the small-study publication bias corrected meta-analytic summaries (evaluated at $\text{V} = 0$, representing the theoretical estimate for a study of infinite sample size/precision) using the two-step Egger-type meta-regression framework. Points represent the same raw effect sizes.
+
+```{r}
+#| label: or_corrected_plot
+#| message: false
+#| warning: false
+#| fig.width: 10
+#| fig.height: 7
+
+if (!is.null(res_or_new_corr) && !is.null(res_or_orig_corr) && !is.null(res_or_comb_corr)) {
+  # 1. Extract S3 result objects using mod_results at vi = 0
+  o_new_corr <- orchaRd::mod_results(res_or_new_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+  o_orig_corr <- orchaRd::mod_results(res_or_orig_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+  o_comb_corr <- orchaRd::mod_results(res_or_comb_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+
+  # 2. Clone S3 result objects to lists for manual editing
+  class(o_new_corr) <- "list"
+  o_new_corr$mod_table$name <- "New Extraction (Santos)"
+  o_new_corr$data$moderator <- "New Extraction (Santos)"
+  class(o_new_corr) <- c("orchard", "data.frame")
+
+  class(o_orig_corr) <- "list"
+  o_orig_corr$mod_table$name <- "Original (Jones & DuVal 2019)"
+  o_orig_corr$data$moderator <- "Original (Jones & DuVal 2019)"
+  class(o_orig_corr) <- c("orchard", "data.frame")
+
+  class(o_comb_corr) <- "list"
+  o_comb_corr$mod_table$name <- "Combined"
+  o_comb_corr$data$moderator <- "Combined"
+  class(o_comb_corr) <- c("orchard", "data.frame")
+
+  # 3. Merge model results
+  sub_or_corr <- orchaRd::submerge(o_new_corr, o_orig_corr, o_comb_corr)
+
+  # 4. Add point-level real source mapping
+  class(sub_or_corr) <- "list"
+  sub_or_corr$data$real_source <- c(
+    rep("New Extraction (Santos)", nrow(o_new_corr$data)),
+    rep("Original (Jones & DuVal)", nrow(o_orig_corr$data)),
+    rep("New Extraction (Santos)", nrow(o_new_corr$data)),
+    rep("Original (Jones & DuVal)", nrow(o_orig_corr$data))
+  )
+  class(sub_or_corr) <- c("orchard", "data.frame")
+
+  # 4. Generate Plot
+  p_or_corr <- orchaRd::orchard_plot(sub_or_corr, xlab = "Log Odds Ratio (lnOR) (Bias Corrected)", flip = TRUE)
+
+  # 5. Customize color mapping for points
+  p_or_corr$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+  p_or_corr$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+  # 6. Apply themes & custom palette
+  p_or_corr <- p_or_corr +
+    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
+    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
+    ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates (Bias-Corrected)") +
+    ggplot2::theme(legend.position = "right")
+
+  print(p_or_corr)
+}
+```
+
+#### Side-by-Side Comparison
+
+We combine the uncorrected and small-study bias corrected orchard plots side-by-side using `patchwork` to directly evaluate the shifts in pooled estimates and prediction intervals when publication selection is accounted for.
+
+```{r}
+#| label: or_comparison_plot
+#| message: false
+#| warning: false
+#| fig.width: 14
+#| fig.height: 8
+
+if (exists("p_or") && exists("p_or_corr")) {
+  comparison_or <- (p_or + p_or_corr) + 
+    patchwork::plot_annotation(
+      title = "Comparison of Uncorrected vs. Bias-Corrected Synthesis (Odds Ratio)",
+      subtitle = "Bias-corrected estimates are conditioned on study variance = 0 (infinite precision)",
+      theme = ggplot2::theme(
+        plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = ggplot2::element_text(size = 12, italic = TRUE, hjust = 0.5)
+      )
+    )
+  print(comparison_or)
+}
+```
+
 #### Detailed Model Statistics
 
-Here are the text outputs and fit statistics for the three individual models:
+Here are the text outputs and fit statistics for the three database splits. Each split displays the uncorrected and small-study bias-corrected (Egger's variance-adjusted) model summaries:
 
 ::: {.panel-tabset}
 
 ##### New Only
 
+::: {.panel-tabset}
+
+###### Uncorrected
 ```{r}
 #| label: or_new_stats
 if (!is.null(res_or_new)) {
@@ -546,8 +827,23 @@ if (!is.null(res_or_new)) {
 }
 ```
 
+###### Bias-Corrected
+```{r}
+#| label: or_new_corr_stats
+if (!is.null(res_or_new_corr)) {
+  print(summary(res_or_new_corr$model))
+  cat("\nHeterogeneity (I^2):\n")
+  print(orchaRd::i2_ml(res_or_new_corr$model))
+}
+```
+
+:::
+
 ##### Original Only
 
+::: {.panel-tabset}
+
+###### Uncorrected
 ```{r}
 #| label: or_orig_stats
 if (!is.null(res_or_orig)) {
@@ -557,8 +853,23 @@ if (!is.null(res_or_orig)) {
 }
 ```
 
+###### Bias-Corrected
+```{r}
+#| label: or_orig_corr_stats
+if (!is.null(res_or_orig_corr)) {
+  print(summary(res_or_orig_corr$model))
+  cat("\nHeterogeneity (I^2):\n")
+  print(orchaRd::i2_ml(res_or_orig_corr$model))
+}
+```
+
+:::
+
 ##### Combined
 
+::: {.panel-tabset}
+
+###### Uncorrected
 ```{r}
 #| label: or_comb_stats
 if (!is.null(res_or_comb)) {
@@ -567,6 +878,18 @@ if (!is.null(res_or_comb)) {
   print(orchaRd::i2_ml(res_or_comb$model))
 }
 ```
+
+###### Bias-Corrected
+```{r}
+#| label: or_comb_corr_stats
+if (!is.null(res_or_comb_corr)) {
+  print(summary(res_or_comb_corr$model))
+  cat("\nHeterogeneity (I^2):\n")
+  print(orchaRd::i2_ml(res_or_comb_corr$model))
+}
+```
+
+:::
 
 :::
 
