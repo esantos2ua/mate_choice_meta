@@ -1,0 +1,60 @@
+project:
+  type: book
+  output-dir: docs
+  resources:
+    - styles.css
+
+book:
+  title: "Mate-Choice Copying: A Systematic Meta-Analysis"
+  subtitle: "Online Supplementary Materials (Reproducible Workflow & Full Outputs)"
+  author: "Eduardo Santos & Collaborators"
+  
+  navbar:
+    pinned: true
+    right:
+      - icon: github
+        href: https://github.com/ejlundgren/mate_choice_meta
+        aria-label: GitHub
+        
+  sidebar:
+    style: "floating"
+    search: true
+    collapse-level: 2
+    
+  chapters:
+    - index.qmd
+    - literature_screening.qmd
+    - scripts/1_effect_size_calculation_pipeline/overall_effect.qmd
+    - scripts/1_effect_size_calculation_pipeline/publication_bias.qmd
+
+number-sections: false
+bibliography: references.bib
+biblio-style: apalike
+
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    css: styles.css
+    fontsize: 1.05em
+    linestretch: 1.35
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-tools: true
+    code-copy: true
+    link-external-newwindow: true
+    smooth-scroll: true
+    citeproc: true
+    page-layout: full
+    grid:
+      sidebar-width: 300px
+      body-width: 1400px  
+      margin-width: 200px
+      gutter-width: 1.5rem
+      
+execute:
+  freeze: auto
+  warning: false
+  message: false
