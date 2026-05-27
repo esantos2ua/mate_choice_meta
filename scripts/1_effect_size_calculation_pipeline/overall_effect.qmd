@@ -22,7 +22,8 @@ pacman::p_load(
                metafor,
                orchaRd,
                patchwork,
-               DT
+               DT,
+               scales
                )
 ```
 
@@ -361,6 +362,38 @@ fit_corrected_mv <- function(dat, yi = "yi", vi = "vi", moderator = "vi", cluste
   
   list(data = dat2, VCV = VCV, model = mod)
 }
+
+# Helper function to add Mean (95% CI) labels dynamically one line above k-values in orchard plots
+add_ci_labels <- function(plot_obj, orchard_results) {
+  est <- sprintf("%.2f", orchard_results$mod_table$estimate)
+  ci_l <- sprintf("%.2f", orchard_results$mod_table$lowerCL)
+  ci_u <- sprintf("%.2f", orchard_results$mod_table$upperCL)
+  
+  orig_labels <- plot_obj$layers[[6]]$aes_params$label
+  
+  new_labels <- c()
+  for (i in 1:length(orig_labels)) {
+    # Extract the original sample size numbers using regex
+    nums <- regmatches(orig_labels[i], gregexpr("[0-9]+", orig_labels[i]))[[1]]
+    if (length(nums) >= 2) {
+      k_val <- nums[1]
+      n_val <- nums[2]
+      k_text <- paste0("k = ", k_val, " (", n_val, ")")
+    } else {
+      k_text <- orig_labels[i]
+    }
+    # Place Mean (95% CI) on the first line and k = xx (xx) on the second line
+    new_labels[i] <- paste0(est[i], " [", ci_l[i], ", ", ci_u[i], "]\n", k_text)
+  }
+  
+  plot_obj$layers[[6]]$aes_params$label <- new_labels
+  plot_obj$layers[[6]]$geom_params$parse <- FALSE
+  plot_obj$layers[[6]]$aes_params$hjust <- "right"
+  plot_obj$layers[[6]]$aes_params$vjust <- 0.5
+  plot_obj$layers[[6]]$aes_params$size <- 3.0 # Slightly smaller font size to fit beautifully
+  
+  plot_obj
+}
 ```
 
 ---
@@ -467,7 +500,18 @@ if (!is.null(res_hedges_new) && !is.null(res_hedges_orig) && !is.null(res_hedges
     ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
     ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
     ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates (Uncorrected)") +
-    ggplot2::theme(legend.position = "right")
+    ggplot2::theme(
+      legend.position = c(0.98, 0.02),
+      legend.justification = c("right", "bottom"),
+      legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+      legend.box = "vertical",
+      legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+      legend.title = ggplot2::element_text(size = 9, face = "bold"),
+      legend.text = ggplot2::element_text(size = 8)
+    )
+
+  # Add Mean (95% CI) and k labels
+  p_hedges <- add_ci_labels(p_hedges, sub_hedges)
 
   print(p_hedges)
 }
@@ -531,7 +575,18 @@ if (!is.null(res_hedges_new_corr) && !is.null(res_hedges_orig_corr) && !is.null(
     ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
     ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
     ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates (Bias-Corrected)") +
-    ggplot2::theme(legend.position = "right")
+    ggplot2::theme(
+      legend.position = c(0.98, 0.02),
+      legend.justification = c("right", "bottom"),
+      legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+      legend.box = "vertical",
+      legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+      legend.title = ggplot2::element_text(size = 9, face = "bold"),
+      legend.text = ggplot2::element_text(size = 8)
+    )
+
+  # Add Mean (95% CI) and k labels
+  p_hedges_corr <- add_ci_labels(p_hedges_corr, sub_hedges_corr)
 
   print(p_hedges_corr)
 }
@@ -712,7 +767,18 @@ if (!is.null(res_or_new) && !is.null(res_or_orig) && !is.null(res_or_comb)) {
     ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
     ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
     ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates (Uncorrected)") +
-    ggplot2::theme(legend.position = "right")
+    ggplot2::theme(
+      legend.position = c(0.98, 0.02),
+      legend.justification = c("right", "bottom"),
+      legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+      legend.box = "vertical",
+      legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+      legend.title = ggplot2::element_text(size = 9, face = "bold"),
+      legend.text = ggplot2::element_text(size = 8)
+    )
+
+  # Add Mean (95% CI) and k labels
+  p_or <- add_ci_labels(p_or, sub_or)
 
   print(p_or)
 }
@@ -776,7 +842,18 @@ if (!is.null(res_or_new_corr) && !is.null(res_or_orig_corr) && !is.null(res_or_c
     ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
     ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
     ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates (Bias-Corrected)") +
-    ggplot2::theme(legend.position = "right")
+    ggplot2::theme(
+      legend.position = c(0.98, 0.02),
+      legend.justification = c("right", "bottom"),
+      legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+      legend.box = "vertical",
+      legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+      legend.title = ggplot2::element_text(size = 9, face = "bold"),
+      legend.text = ggplot2::element_text(size = 8)
+    )
+
+  # Add Mean (95% CI) and k labels
+  p_or_corr <- add_ci_labels(p_or_corr, sub_or_corr)
 
   print(p_or_corr)
 }
