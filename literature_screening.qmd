@@ -511,9 +511,9 @@ We utilize a three-agent quantitative extraction pipeline:
 
 ## Effect Size Calculation {#sec-effect-sizes}
 
-Following data extraction, effect sizes and their sampling variances are calculated using the reproducible Python pipeline located at [`scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py`](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py). 
+Following data extraction, effect sizes and their sampling variances are calculated using the reproducible Python pipeline located at [scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py). 
 
-The raw data is stored in the Excel spreadsheet [`data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx`](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/data/1_effect_size_calculation_pipeline/Data%20Extraction%20Mate%20Choice%20Meta%20Analysis.xlsx) inside the `EduardoExtraction` sheet. To support tracking, each row contains an `identifierEffectSizeID` column containing a unique sequential identifier for each control–experimental comparison (e.g., `es0001`, `es0002`). The Python pipeline dynamically resolves column locations by scanning the header row, computes the following effect size metrics, and saves them back to the spreadsheet:
+The raw data is stored in the Excel spreadsheet [data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/data/1_effect_size_calculation_pipeline/Data%20Extraction%20Mate%20Choice%20Meta%20Analysis.xlsx) inside the `EduardoExtraction` sheet. To support tracking, each row contains an `identifierEffectSizeID` column containing a unique sequential identifier for each control–experimental comparison (e.g., `es0001`, `es0002`). The Python pipeline dynamically resolves column locations by scanning the header row, computes the following effect size metrics, and saves them back to the spreadsheet:
 
 ### 1. Hedges' $g$ (Bias-Corrected Standardised Mean Difference)
 Calculated depending on the data type extracted:
