@@ -478,8 +478,6 @@ architecture.
 
 #### Agent architecture
 
-#### Agent architecture
-
 We utilize a three-agent quantitative extraction pipeline:
 
 *   **Agent 1 (Extractor):** Pulls raw statistical data (means, variances, counts, and test statistics) directly from the Methods and Results text and tables.
