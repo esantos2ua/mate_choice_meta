@@ -1,7 +1,7 @@
 ---
 title: "Literature Screening & Processing Pipeline"
 subtitle: "Methodological framework and protocol for mate-choice copying"
-author: "Eduardo Santos & Collaborators"
+author: "Eduardo S.A. Santos & Collaborators"
 format:
   html:
     toc: true
@@ -37,8 +37,8 @@ library(ggplot2)
 
 ## Overview {#sec-overview}
 
-This page documents all data decisions, processing steps, and planned analyses for a
-systematic **meta-analysis of mate-choice copying (MCC)** across animal taxa.
+This page documents all data decisions, processing steps, and planned analyses for the
+systematic review and **meta-analysis of mate-choice copying (MCC) update** across animal taxa.
 
 Mate-choice copying occurs when an individual's preference for a potential mate is
 influenced by observing the mate choices of others — a form of socially acquired
@@ -49,13 +49,11 @@ This meta-analysis aims to:
 1. Estimate the overall effect size for MCC across species.
 2. Quantify between-study heterogeneity.
 3. Test for moderating variables (sex, taxon, experimental design).
-4. Explicitly model **lab-level non-independence** arising from "hub labs" whose
-   repeated publications may inflate pooled estimates.
 
 ::: {.callout-note}
 ## Project status
-The literature screening phase is currently in progress. This page will be updated
-as each phase of the pipeline is completed.
+As of this version, the literature screening phase is concluded. This page has been updated
+with each phase of the pipeline.
 :::
 
 ### Key numbers at a glance
@@ -92,20 +90,20 @@ The two exports were merged into a single file:
 #| tbl-cap: "Fields in combined_records_final.csv"
 #| eval: true
 fields <- tibble::tribble(
-  ~Field,        ~Description,                                          ~Completeness,
-  "title",       "Article title (primary deduplication key)",           "~100%",
-  "doi",         "Digital Object Identifier (secondary dedup key)",     "~80%",
-  "abstract",    "Full abstract text",                                  "~90%",
-  "authors",     "Author list",                                         "~95%",
-  "year",        "Publication year",                                    "~100%",
-  "journal",     "Journal name",                                        "~100%",
-  "source_file", "Which database CSV contributed this record",          "100%",
-  "pubmed_id",   "PubMed identifier",                                   "Partial",
-  "pmc_id",      "PubMed Central identifier",                           "Partial"
+    ~Field,        ~Description,                                          ~Completeness,
+    "title",       "Article title (primary deduplication key)",           "~100%",
+    "doi",         "Digital Object Identifier (secondary dedup key)",     "~80%",
+    "abstract",    "Full abstract text",                                  "~90%",
+    "authors",     "Author list",                                         "~95%",
+    "year",        "Publication year",                                    "~100%",
+    "journal",     "Journal name",                                        "~100%",
+    "source_file", "Which database CSV contributed this record",          "100%",
+    "pubmed_id",   "PubMed identifier",                                   "Partial",
+    "pmc_id",      "PubMed Central identifier",                           "Partial"
 )
 
 kable(fields, align = "lll") |>
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
 ::: {.callout-important}
@@ -154,35 +152,34 @@ author list, and a non-empty DOI.
 ```{r}
 #| label: title-dedup
 #| eval: false
-
 # --- Normalise title ----------------------------------------------------------
 articles[, title_lwr := str_to_lower(title)]
-articles[, title_lwr := gsub("[[:punct:]]", " ", title_lwr)]  # strip punctuation
-articles[, title_lwr := gsub(" {2,}", " ", title_lwr)]        # collapse whitespace
+articles[, title_lwr := gsub("[[:punct:]]", " ", title_lwr)] # strip punctuation
+articles[, title_lwr := gsub(" {2,}", " ", title_lwr)] # collapse whitespace
 articles[, title_lwr := trimws(title_lwr)]
 
 # --- Quality score (0–3) ------------------------------------------------------
 articles[, has_abstract := ifelse(abstract == "" | is.na(abstract), 0L, 1L)]
-articles[, has_authors  := ifelse(authors  == "" | is.na(authors),  0L, 1L)]
-articles[, has_doi      := ifelse(doi      == "" | is.na(doi),      0L, 1L)]
-articles[, quality      := has_abstract + has_authors + has_doi]
+articles[, has_authors := ifelse(authors == "" | is.na(authors), 0L, 1L)]
+articles[, has_doi := ifelse(doi == "" | is.na(doi), 0L, 1L)]
+articles[, quality := has_abstract + has_authors + has_doi]
 
 # --- Concatenate source files per title group ---------------------------------
 sources <- articles[,
-  .(source_file = paste(sort(unique(source_file)), collapse = "; ")),
-  by = .(title_lwr)
+    .(source_file = paste(sort(unique(source_file)), collapse = "; ")),
+    by = .(title_lwr)
 ]
 
 # --- Keep highest-quality record per title ------------------------------------
 articles.title.dedupe <- articles[
-  , .SD[which.max(quality), !c("source_file"), with = FALSE],
-  by = .(title_lwr)
+    , .SD[which.max(quality), !c("source_file"), with = FALSE],
+    by = .(title_lwr)
 ]
 
 # --- Merge concatenated sources back in ---------------------------------------
 articles.title.dedupe.mrg <- merge(
-  articles.title.dedupe, sources,
-  by = "title_lwr", all.x = TRUE
+    articles.title.dedupe, sources,
+    by = "title_lwr", all.x = TRUE
 )
 ```
 
@@ -198,7 +195,7 @@ articles.title.dedupe.mrg <- merge(
 
 ### Step 3 — DOI-based deduplication {#sec-doi-dedup}
 
-A second pass on the DOI field catches articles where titles differ slightly between
+A second pass on the DOI field catches articles in which titles differ slightly between
 database exports but resolve to the same paper. A custom helper function
 `split_conc()` uniquely concatenates source strings that were themselves already
 concatenated in the title-dedup step.
@@ -206,38 +203,37 @@ concatenated in the title-dedup step.
 ```{r}
 #| label: doi-dedup
 #| eval: false
-
 # Helper: split already-concatenated source strings, deduplicate, re-join
 split_conc <- function(x) {
-  str_split(x, pattern = "; ") |>
-    unlist() |>
-    unique() |>
-    sort() |>
-    paste(collapse = "; ")
+    str_split(x, pattern = "; ") |>
+        unlist() |>
+        unique() |>
+        sort() |>
+        paste(collapse = "; ")
 }
 
 # Recalculate quality after title dedup (fields may have changed)
 articles.title.dedupe.mrg[, has_abstract := ifelse(abstract == "" | is.na(abstract), 0L, 1L)]
-articles.title.dedupe.mrg[, has_authors  := ifelse(authors  == "" | is.na(authors),  0L, 1L)]
-articles.title.dedupe.mrg[, has_doi      := ifelse(doi      == "" | is.na(doi),      0L, 1L)]
-articles.title.dedupe.mrg[, quality      := has_abstract + has_authors + has_doi]
+articles.title.dedupe.mrg[, has_authors := ifelse(authors == "" | is.na(authors), 0L, 1L)]
+articles.title.dedupe.mrg[, has_doi := ifelse(doi == "" | is.na(doi), 0L, 1L)]
+articles.title.dedupe.mrg[, quality := has_abstract + has_authors + has_doi]
 
 # Concatenate sources per DOI
 sources <- articles.title.dedupe.mrg[,
-  .(source_file = split_conc(source_file)),
-  by = .(doi)
+    .(source_file = split_conc(source_file)),
+    by = .(doi)
 ]
 
 # Keep highest-quality record per DOI
 articles.doi.dedupe <- articles.title.dedupe.mrg[
-  , .SD[which.max(quality), !c("source_file"), with = FALSE],
-  by = .(doi)
+    , .SD[which.max(quality), !c("source_file"), with = FALSE],
+    by = .(doi)
 ]
 
 # Merge sources back in
 articles.final <- merge(
-  articles.doi.dedupe, sources,
-  by = "doi", all.x = TRUE
+    articles.doi.dedupe, sources,
+    by = "doi", all.x = TRUE
 )
 ```
 
@@ -250,13 +246,15 @@ retain a `source_file` column.
 ```{r}
 #| label: clean
 #| eval: false
-
 articles.final[, abstract := paste0(abstract, " | ", source_file)]
 
-articles.final <- articles.final[,
-  !c("title_lwr", "n_title_matches",
-     "has_abstract", "has_authors", "has_doi",
-     "quality", "n_doi_matches", "source_file")
+articles.final <- articles.final[
+    ,
+    !c(
+        "title_lwr", "n_title_matches",
+        "has_abstract", "has_authors", "has_doi",
+        "quality", "n_doi_matches", "source_file"
+    )
 ]
 ```
 
@@ -265,7 +263,6 @@ articles.final <- articles.final[,
 ```{r}
 #| label: year-filter
 #| eval: false
-
 articles.final <- articles.final[year >= 2019, ]
 message("Records after filter: ", nrow(articles.final))
 message("Earliest year in dataset: ", min(articles.final$year))
@@ -278,8 +275,6 @@ Only records published **in or after 2019** are retained for screening.
 **Rationale:**
 
 - Aligns with the pre-registered scope of the review.
-- Post-2019 literature uses more standardised reporting practices (e.g., ARRIVE 2.0),
-  making effect-size extraction more reliable.
 - Pre-2019 records remain available in `combined_records_final.csv` and can be
   incorporated in sensitivity analyses.
 
@@ -295,27 +290,26 @@ generates near-equal assignment vectors for any team size.
 ```{r}
 #| label: assignment
 #| eval: false
-
 # Team structure
 screeners <- c(
-  "Aleksandra", "Aneta", "Anna", "Ayumi", "Cassidy", "Christine",
-  "Erick", "Iwo", "Hao", "Jimuel", "Kyle", "Marija",
-  "Santiago", "Sergio", "Shinichi",   # 15 primary screeners
-  "Losia", "Eduardo"                  # 2 secondary validators
+    "Aleksandra", "Aneta", "Anna", "Ayumi", "Cassidy", "Christine",
+    "Erick", "Iwo", "Hao", "Jimuel", "Kyle", "Marija",
+    "Santiago", "Sergio", "Shinichi", # 15 primary screeners
+    "Losia", "Eduardo" # 2 secondary validators
 )
 
-primary_list   <- setdiff(screeners, c("Eduardo", "Losia"))
+primary_list <- setdiff(screeners, c("Eduardo", "Losia"))
 secondary_list <- c("Eduardo", "Losia")
 
 # Random shuffle (prevents date/alpha ordering bias)
-set.seed(NULL)  # no fixed seed — shuffled output files are the reproducible record
+set.seed(NULL) # no fixed seed — shuffled output files are the reproducible record
 articles.final <- articles.final[sample(.N), ]
 
 # Dynamic assignment: ceiling(total / n) reps, trimmed to total rows
 create_assignments <- function(names, total_rows) {
-  reps_needed <- ceiling(total_rows / length(names))
-  full_vector <- rep(names, each = reps_needed)
-  return(full_vector[seq_len(total_rows)])
+    reps_needed <- ceiling(total_rows / length(names))
+    full_vector <- rep(names, each = reps_needed)
+    return(full_vector[seq_len(total_rows)])
 }
 
 n_total <- nrow(articles.final)
@@ -340,15 +334,14 @@ Each file retains both assignment columns for cross-referencing.
 ```{r}
 #| label: export
 #| eval: false
-
 invisible(lapply(
-  unique(articles.final$primary_screener),
-  function(x) {
-    write_csv(
-      articles.final[primary_screener == x, ],
-      paste0("builds/0_literature_screening/deduplicated_and_randomly_split/", x, ".csv")
-    )
-  }
+    unique(articles.final$primary_screener),
+    function(x) {
+        write_csv(
+            articles.final[primary_screener == x, ],
+            paste0("builds/0_literature_screening/deduplicated_and_randomly_split/", x, ".csv")
+        )
+    }
 ))
 ```
 
@@ -369,29 +362,29 @@ The 495 articles are distributed across a 17-person team. Each article receives:
 #| tbl-cap: "Screener assignments"
 #| eval: true
 team <- tibble::tribble(
-  ~Screener,    ~Role,      ~Articles,
-  "Aleksandra", "Primary",  "~33",
-  "Aneta",      "Primary",  "~33",
-  "Anna",       "Primary",  "~33",
-  "Ayumi",      "Primary",  "~33",
-  "Cassidy",    "Primary",  "~33",
-  "Christine",  "Primary",  "~33",
-  "Erick",      "Primary",  "~33",
-  "Hao",        "Primary",  "~33",
-  "Iwo",        "Primary",  "~33",
-  "Jimuel",     "Primary",  "~33",
-  "Kyle",       "Primary",  "~33",
-  "Marija",     "Primary",  "~33",
-  "Santiago",   "Primary",  "~33",
-  "Sergio",     "Primary",  "~33",
-  "Shinichi",   "Primary",  "~33",
-  "Eduardo",    "Validator","~248",
-  "Losia",      "Validator","~248"
+    ~Screener, ~Role, ~Articles,
+    "Aleksandra", "Primary", "~33",
+    "Aneta", "Primary", "~33",
+    "Anna", "Primary", "~33",
+    "Ayumi", "Primary", "~33",
+    "Cassidy", "Primary", "~33",
+    "Christine", "Primary", "~33",
+    "Erick", "Primary", "~33",
+    "Hao", "Primary", "~33",
+    "Iwo", "Primary", "~33",
+    "Jimuel", "Primary", "~33",
+    "Kyle", "Primary", "~33",
+    "Marija", "Primary", "~33",
+    "Santiago", "Primary", "~33",
+    "Sergio", "Primary", "~33",
+    "Shinichi", "Primary", "~33",
+    "Eduardo", "Validator", "~248",
+    "Losia", "Validator", "~248"
 )
 
 kable(team, align = "lll") |>
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) |>
-  row_spec(16:17, bold = TRUE, background = "#fdf4e3")
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed")) |>
+    row_spec(16:17, bold = TRUE, background = "#fdf4e3")
 ```
 
 ### Inclusion criteria
@@ -408,8 +401,7 @@ Articles are included if they:
 ### Inter-rater reliability
 
 Disagreements between primary and secondary screeners will be resolved by discussion
-or a designated tie-breaker. Cohen's κ (or a Bayesian analogue) will be calculated
-and reported in the supplementary methods.
+or a designated tie-breaker.
 
 ---
 
@@ -486,16 +478,17 @@ architecture.
 
 #### Agent architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  For each PDF:                                                       │
-│                                                                      │
-│  Agent 1 (Extractor)   →  Agent 2 (Verifier)  →  Agent 3 (Arbiter) │
-│  Pulls raw numbers        Checks for:             Resolves conflicts │
-│  from Methods/Results     • SD vs SE confusion    Formats final row  │
-│                           • Sample independence                      │
-│                           • Missing trials                           │
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph PDF ["For each PDF Study Extraction"]
+        A["Agent 1 (Extractor)<br/>• Pulls raw numbers from Methods/Results"] --> B["Agent 2 (Verifier)<br/>• Checks for SD vs SE confusion<br/>• Verifies sample independence<br/>• Scans for any missing trials"]
+        B --> C["Agent 3 (Arbiter)<br/>• Resolves data conflicts<br/>• Formats and outputs final clean row"]
+    end
+
+    style A fill:#f3f4f6,stroke:#cbd5e1,stroke-width:1.5px,color:#0f172a
+    style B fill:#f3f4f6,stroke:#cbd5e1,stroke-width:1.5px,color:#0f172a
+    style C fill:#f8fafc,stroke:#0f172a,stroke-width:2px,color:#0f172a
+    style PDF fill:#fafafa,stroke:#e2e8f0,stroke-width:1px,color:#334155
 ```
 
 **Agent 2 checks explicitly for three systematic extraction errors:**
