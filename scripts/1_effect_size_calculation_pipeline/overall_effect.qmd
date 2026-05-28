@@ -1,7 +1,7 @@
 ---
 title: "Overall Effect Size Calculation & Synthesis"
 subtitle: "Meta-Analytic Update of Mate-Choice Copying (MCC)"
-author: "Eduardo Santos & Collaborators"
+author: "Eduardo S. A. Santos & Collaborators"
 date: today
 format:
   html:
@@ -17,14 +17,14 @@ format:
 # Ensure pacman is loaded to manage dependencies
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
-               readxl,
-               tidyverse,
-               metafor,
-               orchaRd,
-               patchwork,
-               DT,
-               scales
-               )
+    readxl,
+    tidyverse,
+    metafor,
+    orchaRd,
+    patchwork,
+    DT,
+    scales
+)
 ```
 
 ## Introduction & Project Update
@@ -32,11 +32,13 @@ pacman::p_load(
 This protocol implements the overall effect size synthesis for the updated Mate-Choice Copying (MCC) meta-analysis. 
 
 Specifically, we integrate:
+
 1. **The New Extractions:** Our newly extracted and verified dataset containing recent trials.
 2. **Original Continuous Dataset (@daviesMetaanalysisFactorsInfluencing2020):** Standardised mean differences (Hedges' $d$) analyzing continuous metrics.
 3. **Original Binary Dataset (@jonesMechanismsSocialInfluence2019):** Log Odds Ratio ($\ln\text{OR}$) analyzing binary choices.
 
 The R script aligns and synthesizes these three sources into unified datasets, allowing comparison of meta-analytic summaries across three key subsets:
+
 * **New Extractions Only:** Eduardo's new dataset.
 * **Original Only:** Legacy data from the original publications.
 * **Combined Dataset:** A complete synthesis of old and new trials to estimate the updated global effect sizes.
@@ -51,7 +53,6 @@ We read the three datasets, perform data type conversions, extract species epith
 #| label: load_and_align_datasets
 #| message: false
 #| warning: false
-
 # ---------------------------------------------------------------------------
 # 1. Load Datasets
 # ---------------------------------------------------------------------------
@@ -74,15 +75,15 @@ db_jones_raw <- readr::read_csv(path_jones)
 # 2. Process and Filter New Extraction
 # ---------------------------------------------------------------------------
 db_new <- db_new_raw %>%
-  filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
-  mutate(
-    effectSizeCalculatedHedgesD = as.numeric(effectSizeCalculatedHedgesD),
-    effectSizeCalculatedHedgesDVariance = as.numeric(effectSizeCalculatedHedgesDVariance),
-    effectSizeCalculatedOddsRatio = as.numeric(effectSizeCalculatedOddsRatio),
-    effectSizeCalculatedOddsRatioVariance = as.numeric(effectSizeCalculatedOddsRatioVariance),
-    logOddsRatio = log(effectSizeCalculatedOddsRatio),
-    logOddsRatioVariance = effectSizeCalculatedOddsRatioVariance
-  )
+    filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
+    mutate(
+        effectSizeCalculatedHedgesD = as.numeric(effectSizeCalculatedHedgesD),
+        effectSizeCalculatedHedgesDVariance = as.numeric(effectSizeCalculatedHedgesDVariance),
+        effectSizeCalculatedOddsRatio = as.numeric(effectSizeCalculatedOddsRatio),
+        effectSizeCalculatedOddsRatioVariance = as.numeric(effectSizeCalculatedOddsRatioVariance),
+        logOddsRatio = log(effectSizeCalculatedOddsRatio),
+        logOddsRatioVariance = effectSizeCalculatedOddsRatioVariance
+    )
 
 # ---------------------------------------------------------------------------
 # 3. Align Datasets for Hedges' g (Continuous SMD Analysis)
@@ -90,47 +91,47 @@ db_new <- db_new_raw %>%
 
 # A. Hedges' g from New Extraction
 hedges_new <- db_new %>%
-  filter(!is.na(effectSizeCalculatedHedgesD), !is.na(effectSizeCalculatedHedgesDVariance)) %>%
-  select(
-    yi = effectSizeCalculatedHedgesD,
-    vi = effectSizeCalculatedHedgesDVariance,
-    identifierStudyId,
-    identifierEffectSizeID,
-    taxonomySpecies
-  ) %>%
-  mutate(
-    identifierStudyId = as.character(identifierStudyId),
-    identifierEffectSizeID = as.character(identifierEffectSizeID),
-    # Extract species epithet (last word) and make lowercase for cross-dataset mapping
-    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
-    Dataset_Source = "New Extraction (Santos)"
-  )
+    filter(!is.na(effectSizeCalculatedHedgesD), !is.na(effectSizeCalculatedHedgesDVariance)) %>%
+    select(
+        yi = effectSizeCalculatedHedgesD,
+        vi = effectSizeCalculatedHedgesDVariance,
+        identifierStudyId,
+        identifierEffectSizeID,
+        taxonomySpecies
+    ) %>%
+    mutate(
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        # Extract species epithet (last word) and make lowercase for cross-dataset mapping
+        taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+        Dataset_Source = "New Extraction (Santos)"
+    )
 
 # B. Hedges' g from Davies et al. 2020 (Original)
 hedges_davies <- db_davies_raw %>%
-  mutate(
-    Hedges_d_directional = as.numeric(Hedges_d_directional),
-    Variance = as.numeric(Variance)
-  ) %>%
-  filter(!is.na(Hedges_d_directional), !is.na(Variance), Variance > 0) %>%
-  select(
-    yi = Hedges_d_directional,
-    vi = Variance,
-    identifierStudyId = Author,
-    identifierEffectSizeID = Effect_size_no,
-    taxonomySpecies = Species_latin
-  ) %>%
-  mutate(
-    identifierStudyId = as.character(identifierStudyId),
-    identifierEffectSizeID = as.character(identifierEffectSizeID),
-    # Extract species epithet (last word) and make lowercase
-    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
-    Dataset_Source = "Original (Davies 2020)"
-  )
+    mutate(
+        Hedges_d_directional = as.numeric(Hedges_d_directional),
+        Variance = as.numeric(Variance)
+    ) %>%
+    filter(!is.na(Hedges_d_directional), !is.na(Variance), Variance > 0) %>%
+    select(
+        yi = Hedges_d_directional,
+        vi = Variance,
+        identifierStudyId = Author,
+        identifierEffectSizeID = Effect_size_no,
+        taxonomySpecies = Species_latin
+    ) %>%
+    mutate(
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        # Extract species epithet (last word) and make lowercase
+        taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+        Dataset_Source = "Original (Davies 2020)"
+    )
 
 # C. Unified Hedges' g Dataset
 db_hedges <- bind_rows(hedges_new, hedges_davies) %>%
-  mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
 
 # ---------------------------------------------------------------------------
 # 4. Align Datasets for Odds Ratio (Binary Analysis)
@@ -138,41 +139,41 @@ db_hedges <- bind_rows(hedges_new, hedges_davies) %>%
 
 # A. Log Odds Ratio from New Extraction
 or_new <- db_new %>%
-  filter(!is.na(logOddsRatio), !is.na(logOddsRatioVariance)) %>%
-  select(
-    yi = logOddsRatio,
-    vi = logOddsRatioVariance,
-    identifierStudyId,
-    identifierEffectSizeID,
-    taxonomySpecies
-  ) %>%
-  mutate(
-    identifierStudyId = as.character(identifierStudyId),
-    identifierEffectSizeID = as.character(identifierEffectSizeID),
-    taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
-    Dataset_Source = "New Extraction (Santos)"
-  )
+    filter(!is.na(logOddsRatio), !is.na(logOddsRatioVariance)) %>%
+    select(
+        yi = logOddsRatio,
+        vi = logOddsRatioVariance,
+        identifierStudyId,
+        identifierEffectSizeID,
+        taxonomySpecies
+    ) %>%
+    mutate(
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+        Dataset_Source = "New Extraction (Santos)"
+    )
 
 # B. Log Odds Ratio from Jones & DuVal 2019 (Original)
 or_jones <- db_jones_raw %>%
-  filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
-  select(
-    yi = lnOR,
-    vi = VlnOR,
-    identifierStudyId = study,
-    identifierEffectSizeID = study_Exp,
-    taxonomySpecies = Species
-  ) %>%
-  mutate(
-    identifierStudyId = as.character(identifierStudyId),
-    identifierEffectSizeID = as.character(identifierEffectSizeID),
-    taxonomySpecies = str_to_lower(as.character(taxonomySpecies)),
-    Dataset_Source = "Original (Jones & DuVal 2019)"
-  )
+    filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
+    select(
+        yi = lnOR,
+        vi = VlnOR,
+        identifierStudyId = study,
+        identifierEffectSizeID = study_Exp,
+        taxonomySpecies = Species
+    ) %>%
+    mutate(
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        taxonomySpecies = str_to_lower(as.character(taxonomySpecies)),
+        Dataset_Source = "Original (Jones & DuVal 2019)"
+    )
 
 # C. Unified Log Odds Ratio Dataset
 db_or <- bind_rows(or_new, or_jones) %>%
-  mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
 ```
 
 ---
@@ -181,7 +182,7 @@ db_or <- bind_rows(or_new, or_jones) %>%
 
 Before fitting the multi-level models, we inspect the distribution of our aligned effect sizes across the different subsets (New Extraction, Original Only, and Combined). 
 
-The density plots below use the same split logic as the orchard plots, facet-wrapping by subset while coloring the distribution curves by their actual dataset source to check for shifts or outliers.
+The density plots below use the same split logic as the orchard plots in the result section, facet-wrapping by subset while coloring the distribution curves by their actual dataset source to check for shifts or outliers.
 
 ::: {.panel-tabset}
 
@@ -193,33 +194,32 @@ The density plots below use the same split logic as the orchard plots, facet-wra
 #| warning: false
 #| fig.width: 10
 #| fig.height: 9
-
 # Prepare density data for Hedges' g
 db_hedges_density <- bind_rows(
-  db_hedges %>% mutate(Group = as.character(Dataset_Source)),
-  db_hedges %>% mutate(Group = "Combined")
+    db_hedges %>% mutate(Group = as.character(Dataset_Source)),
+    db_hedges %>% mutate(Group = "Combined")
 ) %>%
-  mutate(Group = factor(Group, levels = c("New Extraction (Santos)", "Original (Davies 2020)", "Combined")))
+    mutate(Group = factor(Group, levels = c("New Extraction (Santos)", "Original (Davies 2020)", "Combined")))
 
 # Plot densities
 p_hedges_dens <- ggplot(db_hedges_density, aes(x = yi, fill = Dataset_Source, color = Dataset_Source)) +
-  geom_density(alpha = 0.4, linewidth = 0.8) +
-  geom_vline(xintercept = 0, linewidth = 1.0, linetype = "solid", color = "black") +
-  geom_rug(alpha = 0.6) +
-  facet_wrap(~ Group, ncol = 1) +
-  scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-  scale_color_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-  labs(
-    title = "Distribution of Hedges' g Effect Sizes",
-    x = "Hedges' g",
-    y = "Density"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "bottom",
-    strip.text = element_text(face = "bold", size = 11),
-    plot.title = element_text(face = "bold", hjust = 0.5)
-  )
+    geom_density(alpha = 0.4, linewidth = 0.8) +
+    geom_vline(xintercept = 0, linewidth = 1.0, linetype = "solid", color = "black") +
+    geom_rug(alpha = 0.6) +
+    facet_wrap(~Group, ncol = 1) +
+    scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    scale_color_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+    labs(
+        title = "Distribution of Hedges' g Effect Sizes",
+        x = "Hedges' g",
+        y = "Density"
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+        legend.position = "bottom",
+        strip.text = element_text(face = "bold", size = 11),
+        plot.title = element_text(face = "bold", hjust = 0.5)
+    )
 
 print(p_hedges_dens)
 ```
@@ -232,33 +232,32 @@ print(p_hedges_dens)
 #| warning: false
 #| fig.width: 10
 #| fig.height: 9
-
 # Prepare density data for Odds Ratio (lnOR)
 db_or_density <- bind_rows(
-  db_or %>% mutate(Group = as.character(Dataset_Source)),
-  db_or %>% mutate(Group = "Combined")
+    db_or %>% mutate(Group = as.character(Dataset_Source)),
+    db_or %>% mutate(Group = "Combined")
 ) %>%
-  mutate(Group = factor(Group, levels = c("New Extraction (Santos)", "Original (Jones & DuVal 2019)", "Combined")))
+    mutate(Group = factor(Group, levels = c("New Extraction (Santos)", "Original (Jones & DuVal 2019)", "Combined")))
 
 # Plot densities
 p_or_dens <- ggplot(db_or_density, aes(x = yi, fill = Dataset_Source, color = Dataset_Source)) +
-  geom_density(alpha = 0.4, linewidth = 0.8) +
-  geom_vline(xintercept = 0, linewidth = 1.0, linetype = "solid", color = "black") +
-  geom_rug(alpha = 0.6) +
-  facet_wrap(~ Group, ncol = 1) +
-  scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
-  scale_color_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
-  labs(
-    title = "Distribution of Log Odds Ratio (lnOR) Effect Sizes",
-    x = "Log Odds Ratio (lnOR)",
-    y = "Density"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    legend.position = "bottom",
-    strip.text = element_text(face = "bold", size = 11),
-    plot.title = element_text(face = "bold", hjust = 0.5)
-  )
+    geom_density(alpha = 0.4, linewidth = 0.8) +
+    geom_vline(xintercept = 0, linewidth = 1.0, linetype = "solid", color = "black") +
+    geom_rug(alpha = 0.6) +
+    facet_wrap(~Group, ncol = 1) +
+    scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+    scale_color_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal 2019)" = "#0072B2"), name = "Data Source") +
+    labs(
+        title = "Distribution of Log Odds Ratio (lnOR) Effect Sizes",
+        x = "Log Odds Ratio (lnOR)",
+        y = "Density"
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+        legend.position = "bottom",
+        strip.text = element_text(face = "bold", size = 11),
+        plot.title = element_text(face = "bold", hjust = 0.5)
+    )
 
 print(p_or_dens)
 ```
@@ -273,126 +272,124 @@ This helper function handles the variance–covariance (VCV) matrix construction
 
 * **Variance–Covariance:** We construct a VCV matrix via `vcalc()` to handle dependencies among multiple effect sizes within the same study (assuming $r = 0.5$ for nested measurements).
 * **Random intercepts** are modeled for:
+
   * Study (`identifierStudyId`)
   * Individual trial/effect size (`identifierEffectSizeID`)
   * Species (`taxonomySpecies`) to control for taxonomic/species-level variation
 
 ```{r}
 #| label: model_fitting_function
-
 fit_overall_mv <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
-  
-  # Remove rows with missing values
-  dat2 <- dat %>%
-    filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
-  
-  if (nrow(dat2) == 0) {
-    message("No complete cases found.")
-    return(NULL)
-  }
-  
-  # 1. Build VCV Matrix
-  VCV <- metafor::vcalc(
-    vi = dat2[[vi]],
-    cluster = dat2[[cluster_var]],
-    obs = dat2[[obs_var]],
-    rho = rho,
-    data = dat2
-  )
-  
-  # 2. Fit Multi-Level Random-Effects Model
-  mod <- metafor::rma.mv(
-    yi = dat2[[yi]],
-    V  = VCV,
-    random = list(
-      ~1 | identifierStudyId,
-      ~1 | identifierEffectSizeID,
-      ~1 | taxonomySpecies
-    ),
-    test = "t",
-    method = "REML",
-    sparse = TRUE,
-    data = dat2
-  )
-  
-  list(data = dat2, VCV = VCV, model = mod)
+    # Remove rows with missing values
+    dat2 <- dat %>%
+        filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
+
+    if (nrow(dat2) == 0) {
+        message("No complete cases found.")
+        return(NULL)
+    }
+
+    # 1. Build VCV Matrix
+    VCV <- metafor::vcalc(
+        vi = dat2[[vi]],
+        cluster = dat2[[cluster_var]],
+        obs = dat2[[obs_var]],
+        rho = rho,
+        data = dat2
+    )
+
+    # 2. Fit Multi-Level Random-Effects Model
+    mod <- metafor::rma.mv(
+        yi = dat2[[yi]],
+        V = VCV,
+        random = list(
+            ~ 1 | identifierStudyId,
+            ~ 1 | identifierEffectSizeID,
+            ~ 1 | taxonomySpecies
+        ),
+        test = "t",
+        method = "REML",
+        sparse = TRUE,
+        data = dat2
+    )
+
+    list(data = dat2, VCV = VCV, model = mod)
 }
 
 # Helper function to fit bias-corrected multilevel models with a continuous moderator (Egger-type)
 fit_corrected_mv <- function(dat, yi = "yi", vi = "vi", moderator = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
-  
-  # Remove rows with missing values
-  dat2 <- dat %>%
-    filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
-  
-  if (nrow(dat2) == 0) {
-    message("No complete cases found.")
-    return(NULL)
-  }
-  
-  if (moderator == "se" && !"se" %in% colnames(dat2)) {
-    dat2 <- dat2 %>% mutate(se = sqrt(vi))
-  }
-  
-  # 1. Build VCV Matrix
-  VCV <- metafor::vcalc(
-    vi = dat2[[vi]],
-    cluster = dat2[[cluster_var]],
-    obs = dat2[[obs_var]],
-    rho = rho,
-    data = dat2
-  )
-  
-  # 2. Fit Multi-Level Egger Model using dynamic formula
-  formula_str <- paste("~ 1 +", moderator)
-  mod <- metafor::rma.mv(
-    yi = dat2[[yi]],
-    V  = VCV,
-    mods = as.formula(formula_str),
-    random = list(
-      ~1 | identifierStudyId,
-      ~1 | identifierEffectSizeID,
-      ~1 | taxonomySpecies
-    ),
-    test = "t",
-    method = "REML",
-    sparse = TRUE,
-    data = dat2
-  )
-  
-  list(data = dat2, VCV = VCV, model = mod)
+    # Remove rows with missing values
+    dat2 <- dat %>%
+        filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
+
+    if (nrow(dat2) == 0) {
+        message("No complete cases found.")
+        return(NULL)
+    }
+
+    if (moderator == "se" && !"se" %in% colnames(dat2)) {
+        dat2 <- dat2 %>% mutate(se = sqrt(vi))
+    }
+
+    # 1. Build VCV Matrix
+    VCV <- metafor::vcalc(
+        vi = dat2[[vi]],
+        cluster = dat2[[cluster_var]],
+        obs = dat2[[obs_var]],
+        rho = rho,
+        data = dat2
+    )
+
+    # 2. Fit Multi-Level Egger Model using dynamic formula
+    formula_str <- paste("~ 1 +", moderator)
+    mod <- metafor::rma.mv(
+        yi = dat2[[yi]],
+        V = VCV,
+        mods = as.formula(formula_str),
+        random = list(
+            ~ 1 | identifierStudyId,
+            ~ 1 | identifierEffectSizeID,
+            ~ 1 | taxonomySpecies
+        ),
+        test = "t",
+        method = "REML",
+        sparse = TRUE,
+        data = dat2
+    )
+
+    list(data = dat2, VCV = VCV, model = mod)
 }
 
 # Helper function to add Mean (95% CI) labels dynamically one line above k-values in orchard plots
 add_ci_labels <- function(plot_obj, orchard_results) {
-  est <- sprintf("%.2f", orchard_results$mod_table$estimate)
-  ci_l <- sprintf("%.2f", orchard_results$mod_table$lowerCL)
-  ci_u <- sprintf("%.2f", orchard_results$mod_table$upperCL)
-  
-  orig_labels <- plot_obj$layers[[6]]$aes_params$label
-  
-  new_labels <- c()
-  for (i in 1:length(orig_labels)) {
-    # Extract the original sample size numbers using regex
-    nums <- regmatches(orig_labels[i], gregexpr("[0-9]+", orig_labels[i]))[[1]]
-    if (length(nums) >= 2) {
-      k_val <- nums[1]
-      n_val <- nums[2]
-      k_text <- paste0("k = ", k_val, " (", n_val, ")")
-    } else {
-      k_text <- orig_labels[i]
+    est <- sprintf("%.2f", orchard_results$mod_table$estimate)
+    ci_l <- sprintf("%.2f", orchard_results$mod_table$lowerCL)
+    ci_u <- sprintf("%.2f", orchard_results$mod_table$upperCL)
+
+    orig_labels <- plot_obj$layers[[6]]$aes_params$label
+
+    new_labels <- c()
+    for (i in 1:length(orig_labels)) {
+        # Extract the original sample size numbers using regex
+        nums <- regmatches(orig_labels[i], gregexpr("[0-9]+", orig_labels[i]))[[1]]
+        if (length(nums) >= 2) {
+            k_val <- nums[1]
+            n_val <- nums[2]
+            k_text <- paste0("k = ", k_val, " (", n_val, ")")
+        } else {
+            k_text <- orig_labels[i]
+        }
+        # Place Mean (95% CI) on the first line and k = xx (xx) on the second line
+        new_labels[i] <- paste0(est[i], " [", ci_l[i], ", ", ci_u[i], "]\n", k_text)
     }
-    # Place Mean (95% CI) on the first line and k = xx (xx) on the second line
-    new_labels[i] <- paste0(est[i], " [", ci_l[i], ", ", ci_u[i], "]\n", k_text)
-  }
-  
-  plot_obj$layers[[6]]$aes_params$label <- new_labels
-  plot_obj$layers[[6]]$geom_params$parse <- FALSE
-  plot_obj$layers[[6]]$aes_params$hjust <- "right"
-  plot_obj$layers[[6]]$aes_params$vjust <- 0.5
-  plot_obj$layers[[6]]$aes_params$size <- 3.0 # Slightly smaller font size to fit beautifully
-  
-  plot_obj
+
+    plot_obj$layers[[6]]$aes_params$label <- new_labels
+    plot_obj$layers[[6]]$geom_params$parse <- FALSE
+    plot_obj$layers[[6]]$aes_params$hjust <- "right"
+    plot_obj$layers[[6]]$aes_params$vjust <- 0.5
+    plot_obj$layers[[6]]$aes_params$size <- 3.0 # Slightly smaller font size to fit better
+
+    plot_obj
 }
 ```
 
@@ -406,30 +403,29 @@ We fit the multilevel meta-analysis across all three database splits (New Only, 
 #| label: fit_multilevel_models
 #| message: false
 #| warning: false
-
 # ---------------------------------------------------------------------------
 # HEDGES' G MODELS (UNCORRECTED)
 # ---------------------------------------------------------------------------
-res_hedges_new   <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"))
-res_hedges_orig  <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"))
-res_hedges_comb  <- fit_overall_mv(db_hedges)
+res_hedges_new <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"))
+res_hedges_orig <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"))
+res_hedges_comb <- fit_overall_mv(db_hedges)
 
 # HEDGES' G MODELS (BIAS-CORRECTED)
-res_hedges_new_corr   <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
-res_hedges_orig_corr  <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"), moderator = "vi")
-res_hedges_comb_corr  <- fit_corrected_mv(db_hedges, moderator = "vi")
+res_hedges_new_corr <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
+res_hedges_orig_corr <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"), moderator = "vi")
+res_hedges_comb_corr <- fit_corrected_mv(db_hedges, moderator = "vi")
 
 # ---------------------------------------------------------------------------
 # ODDS RATIO MODELS (UNCORRECTED)
 # ---------------------------------------------------------------------------
-res_or_new   <- fit_overall_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"))
-res_or_orig  <- fit_overall_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"))
-res_or_comb  <- fit_overall_mv(db_or)
+res_or_new <- fit_overall_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"))
+res_or_orig <- fit_overall_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"))
+res_or_comb <- fit_overall_mv(db_or)
 
 # ODDS RATIO MODELS (BIAS-CORRECTED)
-res_or_new_corr   <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
-res_or_orig_corr  <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"), moderator = "vi")
-res_or_comb_corr  <- fit_corrected_mv(db_or, moderator = "vi")
+res_or_new_corr <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
+res_or_orig_corr <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"), moderator = "vi")
+res_or_comb_corr <- fit_corrected_mv(db_or, moderator = "vi")
 ```
 
 ---
@@ -452,68 +448,67 @@ This plot displays the standard multi-level meta-analytic summaries across the t
 #| warning: false
 #| fig.width: 10
 #| fig.height: 7
-
 if (!is.null(res_hedges_new) && !is.null(res_hedges_orig) && !is.null(res_hedges_comb)) {
-  # 1. Extract S3 result objects using mod_results
-  h_new <- orchaRd::mod_results(res_hedges_new$model, group = "identifierStudyId")
-  h_orig <- orchaRd::mod_results(res_hedges_orig$model, group = "identifierStudyId")
-  h_comb <- orchaRd::mod_results(res_hedges_comb$model, group = "identifierStudyId")
+    # 1. Extract S3 result objects using mod_results
+    h_new <- orchaRd::mod_results(res_hedges_new$model, group = "identifierStudyId")
+    h_orig <- orchaRd::mod_results(res_hedges_orig$model, group = "identifierStudyId")
+    h_comb <- orchaRd::mod_results(res_hedges_comb$model, group = "identifierStudyId")
 
-  # 2. Clone S3 result objects to lists for manual editing
-  class(h_new) <- "list"
-  h_new$mod_table$name <- "New Extraction (Santos)"
-  h_new$data$moderator <- "New Extraction (Santos)"
-  class(h_new) <- c("orchard", "data.frame")
+    # 2. Clone S3 result objects to lists for manual editing
+    class(h_new) <- "list"
+    h_new$mod_table$name <- "New Extraction (Santos)"
+    h_new$data$moderator <- "New Extraction (Santos)"
+    class(h_new) <- c("orchard", "data.frame")
 
-  class(h_orig) <- "list"
-  h_orig$mod_table$name <- "Original (Davies 2020)"
-  h_orig$data$moderator <- "Original (Davies 2020)"
-  class(h_orig) <- c("orchard", "data.frame")
+    class(h_orig) <- "list"
+    h_orig$mod_table$name <- "Original (Davies 2020)"
+    h_orig$data$moderator <- "Original (Davies 2020)"
+    class(h_orig) <- c("orchard", "data.frame")
 
-  class(h_comb) <- "list"
-  h_comb$mod_table$name <- "Combined"
-  h_comb$data$moderator <- "Combined"
-  class(h_comb) <- c("orchard", "data.frame")
+    class(h_comb) <- "list"
+    h_comb$mod_table$name <- "Combined"
+    h_comb$data$moderator <- "Combined"
+    class(h_comb) <- c("orchard", "data.frame")
 
-  # 3. Merge model results
-  sub_hedges <- orchaRd::submerge(h_new, h_orig, h_comb)
+    # 3. Merge model results
+    sub_hedges <- orchaRd::submerge(h_new, h_orig, h_comb)
 
-  # 4. Add point-level real source mapping
-  class(sub_hedges) <- "list"
-  sub_hedges$data$real_source <- c(
-    rep("New Extraction (Santos)", nrow(h_new$data)),
-    rep("Original (Davies 2020)", nrow(h_orig$data)),
-    rep("New Extraction (Santos)", nrow(h_new$data)),
-    rep("Original (Davies 2020)", nrow(h_orig$data))
-  )
-  class(sub_hedges) <- c("orchard", "data.frame")
-
-  # 4. Generate Plot
-  p_hedges <- orchaRd::orchard_plot(sub_hedges, xlab = "Hedges' g", flip = TRUE)
-
-  # 5. Customize color mapping for points
-  p_hedges$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
-  p_hedges$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
-
-  # 6. Apply themes & custom palette (colorblind friendly orange/blue)
-  p_hedges <- p_hedges +
-    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-    ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates (Uncorrected)") +
-    ggplot2::theme(
-      legend.position = c(0.98, 0.02),
-      legend.justification = c("right", "bottom"),
-      legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
-      legend.box = "vertical",
-      legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
-      legend.title = ggplot2::element_text(size = 9, face = "bold"),
-      legend.text = ggplot2::element_text(size = 8)
+    # 4. Add point-level real source mapping
+    class(sub_hedges) <- "list"
+    sub_hedges$data$real_source <- c(
+        rep("New Extraction (Santos)", nrow(h_new$data)),
+        rep("Original (Davies 2020)", nrow(h_orig$data)),
+        rep("New Extraction (Santos)", nrow(h_new$data)),
+        rep("Original (Davies 2020)", nrow(h_orig$data))
     )
+    class(sub_hedges) <- c("orchard", "data.frame")
 
-  # Add Mean (95% CI) and k labels
-  p_hedges <- add_ci_labels(p_hedges, sub_hedges)
+    # 4. Generate Plot
+    p_hedges <- orchaRd::orchard_plot(sub_hedges, xlab = "Hedges' g", flip = TRUE)
 
-  print(p_hedges)
+    # 5. Customize color mapping for points
+    p_hedges$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+    p_hedges$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+    # 6. Apply themes & custom palette (colorblind friendly orange/blue)
+    p_hedges <- p_hedges +
+        ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+        ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+        ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates (Uncorrected)") +
+        ggplot2::theme(
+            legend.position = c(0.98, 0.02),
+            legend.justification = c("right", "bottom"),
+            legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+            legend.box = "vertical",
+            legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+            legend.title = ggplot2::element_text(size = 9, face = "bold"),
+            legend.text = ggplot2::element_text(size = 8)
+        )
+
+    # Add Mean (95% CI) and k labels
+    p_hedges <- add_ci_labels(p_hedges, sub_hedges)
+
+    print(p_hedges)
 }
 ```
 
@@ -527,68 +522,67 @@ This plot displays the small-study publication bias corrected meta-analytic summ
 #| warning: false
 #| fig.width: 10
 #| fig.height: 7
-
 if (!is.null(res_hedges_new_corr) && !is.null(res_hedges_orig_corr) && !is.null(res_hedges_comb_corr)) {
-  # 1. Extract S3 result objects using mod_results at vi = 0
-  h_new_corr <- orchaRd::mod_results(res_hedges_new_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
-  h_orig_corr <- orchaRd::mod_results(res_hedges_orig_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
-  h_comb_corr <- orchaRd::mod_results(res_hedges_comb_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+    # 1. Extract S3 result objects using mod_results at vi = 0
+    h_new_corr <- orchaRd::mod_results(res_hedges_new_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+    h_orig_corr <- orchaRd::mod_results(res_hedges_orig_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+    h_comb_corr <- orchaRd::mod_results(res_hedges_comb_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
 
-  # 2. Clone S3 result objects to lists for manual editing
-  class(h_new_corr) <- "list"
-  h_new_corr$mod_table$name <- "New Extraction (Santos)"
-  h_new_corr$data$moderator <- "New Extraction (Santos)"
-  class(h_new_corr) <- c("orchard", "data.frame")
+    # 2. Clone S3 result objects to lists for manual editing
+    class(h_new_corr) <- "list"
+    h_new_corr$mod_table$name <- "New Extraction (Santos)"
+    h_new_corr$data$moderator <- "New Extraction (Santos)"
+    class(h_new_corr) <- c("orchard", "data.frame")
 
-  class(h_orig_corr) <- "list"
-  h_orig_corr$mod_table$name <- "Original (Davies 2020)"
-  h_orig_corr$data$moderator <- "Original (Davies 2020)"
-  class(h_orig_corr) <- c("orchard", "data.frame")
+    class(h_orig_corr) <- "list"
+    h_orig_corr$mod_table$name <- "Original (Davies 2020)"
+    h_orig_corr$data$moderator <- "Original (Davies 2020)"
+    class(h_orig_corr) <- c("orchard", "data.frame")
 
-  class(h_comb_corr) <- "list"
-  h_comb_corr$mod_table$name <- "Combined"
-  h_comb_corr$data$moderator <- "Combined"
-  class(h_comb_corr) <- c("orchard", "data.frame")
+    class(h_comb_corr) <- "list"
+    h_comb_corr$mod_table$name <- "Combined"
+    h_comb_corr$data$moderator <- "Combined"
+    class(h_comb_corr) <- c("orchard", "data.frame")
 
-  # 3. Merge model results
-  sub_hedges_corr <- orchaRd::submerge(h_new_corr, h_orig_corr, h_comb_corr)
+    # 3. Merge model results
+    sub_hedges_corr <- orchaRd::submerge(h_new_corr, h_orig_corr, h_comb_corr)
 
-  # 4. Add point-level real source mapping
-  class(sub_hedges_corr) <- "list"
-  sub_hedges_corr$data$real_source <- c(
-    rep("New Extraction (Santos)", nrow(h_new_corr$data)),
-    rep("Original (Davies 2020)", nrow(h_orig_corr$data)),
-    rep("New Extraction (Santos)", nrow(h_new_corr$data)),
-    rep("Original (Davies 2020)", nrow(h_orig_corr$data))
-  )
-  class(sub_hedges_corr) <- c("orchard", "data.frame")
-
-  # 4. Generate Plot
-  p_hedges_corr <- orchaRd::orchard_plot(sub_hedges_corr, xlab = "Hedges' g (Bias Corrected)", flip = TRUE)
-
-  # 5. Customize color mapping for points
-  p_hedges_corr$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
-  p_hedges_corr$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
-
-  # 6. Apply themes & custom palette
-  p_hedges_corr <- p_hedges_corr +
-    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
-    ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates (Bias-Corrected)") +
-    ggplot2::theme(
-      legend.position = c(0.98, 0.02),
-      legend.justification = c("right", "bottom"),
-      legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
-      legend.box = "vertical",
-      legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
-      legend.title = ggplot2::element_text(size = 9, face = "bold"),
-      legend.text = ggplot2::element_text(size = 8)
+    # 4. Add point-level real source mapping
+    class(sub_hedges_corr) <- "list"
+    sub_hedges_corr$data$real_source <- c(
+        rep("New Extraction (Santos)", nrow(h_new_corr$data)),
+        rep("Original (Davies 2020)", nrow(h_orig_corr$data)),
+        rep("New Extraction (Santos)", nrow(h_new_corr$data)),
+        rep("Original (Davies 2020)", nrow(h_orig_corr$data))
     )
+    class(sub_hedges_corr) <- c("orchard", "data.frame")
 
-  # Add Mean (95% CI) and k labels
-  p_hedges_corr <- add_ci_labels(p_hedges_corr, sub_hedges_corr)
+    # 4. Generate Plot
+    p_hedges_corr <- orchaRd::orchard_plot(sub_hedges_corr, xlab = "Hedges' g (Bias Corrected)", flip = TRUE)
 
-  print(p_hedges_corr)
+    # 5. Customize color mapping for points
+    p_hedges_corr$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+    p_hedges_corr$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+    # 6. Apply themes & custom palette
+    p_hedges_corr <- p_hedges_corr +
+        ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+        ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Davies 2020)" = "#0072B2"), name = "Data Source") +
+        ggplot2::ggtitle("Overall Synthesis — Hedges' g Estimates (Bias-Corrected)") +
+        ggplot2::theme(
+            legend.position = c(0.98, 0.02),
+            legend.justification = c("right", "bottom"),
+            legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+            legend.box = "vertical",
+            legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+            legend.title = ggplot2::element_text(size = 9, face = "bold"),
+            legend.text = ggplot2::element_text(size = 8)
+        )
+
+    # Add Mean (95% CI) and k labels
+    p_hedges_corr <- add_ci_labels(p_hedges_corr, sub_hedges_corr)
+
+    print(p_hedges_corr)
 }
 ```
 
@@ -602,18 +596,17 @@ We combine the uncorrected and small-study bias corrected orchard plots side-by-
 #| warning: false
 #| fig.width: 14
 #| fig.height: 8
-
 if (exists("p_hedges") && exists("p_hedges_corr")) {
-  comparison_hedges <- (p_hedges + p_hedges_corr) + 
-    patchwork::plot_annotation(
-      title = "Comparison of Uncorrected vs. Bias-Corrected Synthesis (Hedges' g)",
-      subtitle = "Bias-corrected estimates are conditioned on study variance = 0 (infinite precision)",
-      theme = ggplot2::theme(
-        plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
-        plot.subtitle = ggplot2::element_text(size = 12, italic = TRUE, hjust = 0.5)
-      )
-    )
-  print(comparison_hedges)
+    comparison_hedges <- (p_hedges + p_hedges_corr) +
+        patchwork::plot_annotation(
+            title = "Comparison of Uncorrected vs. Bias-Corrected Synthesis (Hedges' g)",
+            subtitle = "Bias-corrected estimates are conditioned on study variance = 0 (infinite precision)",
+            theme = ggplot2::theme(
+                plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
+                plot.subtitle = ggplot2::element_text(size = 12, italic = TRUE, hjust = 0.5)
+            )
+        )
+    print(comparison_hedges)
 }
 ```
 
@@ -631,9 +624,9 @@ Here are the text outputs and fit statistics for the three database splits. Each
 ```{r}
 #| label: hedges_new_stats
 if (!is.null(res_hedges_new)) {
-  print(summary(res_hedges_new$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_hedges_new$model))
+    print(summary(res_hedges_new$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_hedges_new$model))
 }
 ```
 
@@ -641,9 +634,9 @@ if (!is.null(res_hedges_new)) {
 ```{r}
 #| label: hedges_new_corr_stats
 if (!is.null(res_hedges_new_corr)) {
-  print(summary(res_hedges_new_corr$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_hedges_new_corr$model))
+    print(summary(res_hedges_new_corr$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_hedges_new_corr$model))
 }
 ```
 
@@ -657,9 +650,9 @@ if (!is.null(res_hedges_new_corr)) {
 ```{r}
 #| label: hedges_orig_stats
 if (!is.null(res_hedges_orig)) {
-  print(summary(res_hedges_orig$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_hedges_orig$model))
+    print(summary(res_hedges_orig$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_hedges_orig$model))
 }
 ```
 
@@ -667,9 +660,9 @@ if (!is.null(res_hedges_orig)) {
 ```{r}
 #| label: hedges_orig_corr_stats
 if (!is.null(res_hedges_orig_corr)) {
-  print(summary(res_hedges_orig_corr$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_hedges_orig_corr$model))
+    print(summary(res_hedges_orig_corr$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_hedges_orig_corr$model))
 }
 ```
 
@@ -683,9 +676,9 @@ if (!is.null(res_hedges_orig_corr)) {
 ```{r}
 #| label: hedges_comb_stats
 if (!is.null(res_hedges_comb)) {
-  print(summary(res_hedges_comb$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_hedges_comb$model))
+    print(summary(res_hedges_comb$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_hedges_comb$model))
 }
 ```
 
@@ -693,9 +686,9 @@ if (!is.null(res_hedges_comb)) {
 ```{r}
 #| label: hedges_comb_corr_stats
 if (!is.null(res_hedges_comb_corr)) {
-  print(summary(res_hedges_comb_corr$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_hedges_comb_corr$model))
+    print(summary(res_hedges_comb_corr$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_hedges_comb_corr$model))
 }
 ```
 
@@ -719,68 +712,67 @@ This plot displays the standard multi-level meta-analytic summaries across the t
 #| warning: false
 #| fig.width: 10
 #| fig.height: 7
-
 if (!is.null(res_or_new) && !is.null(res_or_orig) && !is.null(res_or_comb)) {
-  # 1. Extract S3 result objects using mod_results
-  o_new <- orchaRd::mod_results(res_or_new$model, group = "identifierStudyId")
-  o_orig <- orchaRd::mod_results(res_or_orig$model, group = "identifierStudyId")
-  o_comb <- orchaRd::mod_results(res_or_comb$model, group = "identifierStudyId")
+    # 1. Extract S3 result objects using mod_results
+    o_new <- orchaRd::mod_results(res_or_new$model, group = "identifierStudyId")
+    o_orig <- orchaRd::mod_results(res_or_orig$model, group = "identifierStudyId")
+    o_comb <- orchaRd::mod_results(res_or_comb$model, group = "identifierStudyId")
 
-  # 2. Clone S3 result objects to lists for manual editing
-  class(o_new) <- "list"
-  o_new$mod_table$name <- "New Extraction (Santos)"
-  o_new$data$moderator <- "New Extraction (Santos)"
-  class(o_new) <- c("orchard", "data.frame")
+    # 2. Clone S3 result objects to lists for manual editing
+    class(o_new) <- "list"
+    o_new$mod_table$name <- "New Extraction (Santos)"
+    o_new$data$moderator <- "New Extraction (Santos)"
+    class(o_new) <- c("orchard", "data.frame")
 
-  class(o_orig) <- "list"
-  o_orig$mod_table$name <- "Original (Jones & DuVal 2019)"
-  o_orig$data$moderator <- "Original (Jones & DuVal 2019)"
-  class(o_orig) <- c("orchard", "data.frame")
+    class(o_orig) <- "list"
+    o_orig$mod_table$name <- "Original (Jones & DuVal 2019)"
+    o_orig$data$moderator <- "Original (Jones & DuVal 2019)"
+    class(o_orig) <- c("orchard", "data.frame")
 
-  class(o_comb) <- "list"
-  o_comb$mod_table$name <- "Combined"
-  o_comb$data$moderator <- "Combined"
-  class(o_comb) <- c("orchard", "data.frame")
+    class(o_comb) <- "list"
+    o_comb$mod_table$name <- "Combined"
+    o_comb$data$moderator <- "Combined"
+    class(o_comb) <- c("orchard", "data.frame")
 
-  # 3. Merge model results
-  sub_or <- orchaRd::submerge(o_new, o_orig, o_comb)
+    # 3. Merge model results
+    sub_or <- orchaRd::submerge(o_new, o_orig, o_comb)
 
-  # 4. Add point-level real source mapping
-  class(sub_or) <- "list"
-  sub_or$data$real_source <- c(
-    rep("New Extraction (Santos)", nrow(o_new$data)),
-    rep("Original (Jones & DuVal)", nrow(o_orig$data)),
-    rep("New Extraction (Santos)", nrow(o_new$data)),
-    rep("Original (Jones & DuVal)", nrow(o_orig$data))
-  )
-  class(sub_or) <- c("orchard", "data.frame")
-
-  # 4. Generate Plot
-  p_or <- orchaRd::orchard_plot(sub_or, xlab = "Log Odds Ratio (lnOR)", flip = TRUE)
-
-  # 5. Customize color mapping for points
-  p_or$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
-  p_or$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
-
-  # 6. Apply themes & custom palette (colorblind friendly orange/blue)
-  p_or <- p_or +
-    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
-    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
-    ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates (Uncorrected)") +
-    ggplot2::theme(
-      legend.position = c(0.98, 0.02),
-      legend.justification = c("right", "bottom"),
-      legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
-      legend.box = "vertical",
-      legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
-      legend.title = ggplot2::element_text(size = 9, face = "bold"),
-      legend.text = ggplot2::element_text(size = 8)
+    # 4. Add point-level real source mapping
+    class(sub_or) <- "list"
+    sub_or$data$real_source <- c(
+        rep("New Extraction (Santos)", nrow(o_new$data)),
+        rep("Original (Jones & DuVal)", nrow(o_orig$data)),
+        rep("New Extraction (Santos)", nrow(o_new$data)),
+        rep("Original (Jones & DuVal)", nrow(o_orig$data))
     )
+    class(sub_or) <- c("orchard", "data.frame")
 
-  # Add Mean (95% CI) and k labels
-  p_or <- add_ci_labels(p_or, sub_or)
+    # 4. Generate Plot
+    p_or <- orchaRd::orchard_plot(sub_or, xlab = "Log Odds Ratio (lnOR)", flip = TRUE)
 
-  print(p_or)
+    # 5. Customize color mapping for points
+    p_or$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+    p_or$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+    # 6. Apply themes & custom palette (colorblind friendly orange/blue)
+    p_or <- p_or +
+        ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
+        ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
+        ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates (Uncorrected)") +
+        ggplot2::theme(
+            legend.position = c(0.98, 0.02),
+            legend.justification = c("right", "bottom"),
+            legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+            legend.box = "vertical",
+            legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+            legend.title = ggplot2::element_text(size = 9, face = "bold"),
+            legend.text = ggplot2::element_text(size = 8)
+        )
+
+    # Add Mean (95% CI) and k labels
+    p_or <- add_ci_labels(p_or, sub_or)
+
+    print(p_or)
 }
 ```
 
@@ -794,68 +786,67 @@ This plot displays the small-study publication bias corrected meta-analytic summ
 #| warning: false
 #| fig.width: 10
 #| fig.height: 7
-
 if (!is.null(res_or_new_corr) && !is.null(res_or_orig_corr) && !is.null(res_or_comb_corr)) {
-  # 1. Extract S3 result objects using mod_results at vi = 0
-  o_new_corr <- orchaRd::mod_results(res_or_new_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
-  o_orig_corr <- orchaRd::mod_results(res_or_orig_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
-  o_comb_corr <- orchaRd::mod_results(res_or_comb_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+    # 1. Extract S3 result objects using mod_results at vi = 0
+    o_new_corr <- orchaRd::mod_results(res_or_new_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+    o_orig_corr <- orchaRd::mod_results(res_or_orig_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
+    o_comb_corr <- orchaRd::mod_results(res_or_comb_corr$model, group = "identifierStudyId", at = list(vi = 0), mod = "1")
 
-  # 2. Clone S3 result objects to lists for manual editing
-  class(o_new_corr) <- "list"
-  o_new_corr$mod_table$name <- "New Extraction (Santos)"
-  o_new_corr$data$moderator <- "New Extraction (Santos)"
-  class(o_new_corr) <- c("orchard", "data.frame")
+    # 2. Clone S3 result objects to lists for manual editing
+    class(o_new_corr) <- "list"
+    o_new_corr$mod_table$name <- "New Extraction (Santos)"
+    o_new_corr$data$moderator <- "New Extraction (Santos)"
+    class(o_new_corr) <- c("orchard", "data.frame")
 
-  class(o_orig_corr) <- "list"
-  o_orig_corr$mod_table$name <- "Original (Jones & DuVal 2019)"
-  o_orig_corr$data$moderator <- "Original (Jones & DuVal 2019)"
-  class(o_orig_corr) <- c("orchard", "data.frame")
+    class(o_orig_corr) <- "list"
+    o_orig_corr$mod_table$name <- "Original (Jones & DuVal 2019)"
+    o_orig_corr$data$moderator <- "Original (Jones & DuVal 2019)"
+    class(o_orig_corr) <- c("orchard", "data.frame")
 
-  class(o_comb_corr) <- "list"
-  o_comb_corr$mod_table$name <- "Combined"
-  o_comb_corr$data$moderator <- "Combined"
-  class(o_comb_corr) <- c("orchard", "data.frame")
+    class(o_comb_corr) <- "list"
+    o_comb_corr$mod_table$name <- "Combined"
+    o_comb_corr$data$moderator <- "Combined"
+    class(o_comb_corr) <- c("orchard", "data.frame")
 
-  # 3. Merge model results
-  sub_or_corr <- orchaRd::submerge(o_new_corr, o_orig_corr, o_comb_corr)
+    # 3. Merge model results
+    sub_or_corr <- orchaRd::submerge(o_new_corr, o_orig_corr, o_comb_corr)
 
-  # 4. Add point-level real source mapping
-  class(sub_or_corr) <- "list"
-  sub_or_corr$data$real_source <- c(
-    rep("New Extraction (Santos)", nrow(o_new_corr$data)),
-    rep("Original (Jones & DuVal)", nrow(o_orig_corr$data)),
-    rep("New Extraction (Santos)", nrow(o_new_corr$data)),
-    rep("Original (Jones & DuVal)", nrow(o_orig_corr$data))
-  )
-  class(sub_or_corr) <- c("orchard", "data.frame")
-
-  # 4. Generate Plot
-  p_or_corr <- orchaRd::orchard_plot(sub_or_corr, xlab = "Log Odds Ratio (lnOR) (Bias Corrected)", flip = TRUE)
-
-  # 5. Customize color mapping for points
-  p_or_corr$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
-  p_or_corr$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
-
-  # 6. Apply themes & custom palette
-  p_or_corr <- p_or_corr +
-    ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
-    ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
-    ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates (Bias-Corrected)") +
-    ggplot2::theme(
-      legend.position = c(0.98, 0.02),
-      legend.justification = c("right", "bottom"),
-      legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
-      legend.box = "vertical",
-      legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
-      legend.title = ggplot2::element_text(size = 9, face = "bold"),
-      legend.text = ggplot2::element_text(size = 8)
+    # 4. Add point-level real source mapping
+    class(sub_or_corr) <- "list"
+    sub_or_corr$data$real_source <- c(
+        rep("New Extraction (Santos)", nrow(o_new_corr$data)),
+        rep("Original (Jones & DuVal)", nrow(o_orig_corr$data)),
+        rep("New Extraction (Santos)", nrow(o_new_corr$data)),
+        rep("Original (Jones & DuVal)", nrow(o_orig_corr$data))
     )
+    class(sub_or_corr) <- c("orchard", "data.frame")
 
-  # Add Mean (95% CI) and k labels
-  p_or_corr <- add_ci_labels(p_or_corr, sub_or_corr)
+    # 4. Generate Plot
+    p_or_corr <- orchaRd::orchard_plot(sub_or_corr, xlab = "Log Odds Ratio (lnOR) (Bias Corrected)", flip = TRUE)
 
-  print(p_or_corr)
+    # 5. Customize color mapping for points
+    p_or_corr$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+    p_or_corr$layers[[1]]$mapping$fill <- ggplot2::aes(fill = real_source)$fill
+
+    # 6. Apply themes & custom palette
+    p_or_corr <- p_or_corr +
+        ggplot2::scale_colour_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
+        ggplot2::scale_fill_manual(values = c("New Extraction (Santos)" = "#D55E00", "Original (Jones & DuVal)" = "#0072B2"), name = "Data Source") +
+        ggplot2::ggtitle("Overall Synthesis — Log Odds Ratio Estimates (Bias-Corrected)") +
+        ggplot2::theme(
+            legend.position = c(0.98, 0.02),
+            legend.justification = c("right", "bottom"),
+            legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+            legend.box = "vertical",
+            legend.margin = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+            legend.title = ggplot2::element_text(size = 9, face = "bold"),
+            legend.text = ggplot2::element_text(size = 8)
+        )
+
+    # Add Mean (95% CI) and k labels
+    p_or_corr <- add_ci_labels(p_or_corr, sub_or_corr)
+
+    print(p_or_corr)
 }
 ```
 
@@ -869,18 +860,17 @@ We combine the uncorrected and small-study bias corrected orchard plots side-by-
 #| warning: false
 #| fig.width: 14
 #| fig.height: 8
-
 if (exists("p_or") && exists("p_or_corr")) {
-  comparison_or <- (p_or + p_or_corr) + 
-    patchwork::plot_annotation(
-      title = "Comparison of Uncorrected vs. Bias-Corrected Synthesis (Odds Ratio)",
-      subtitle = "Bias-corrected estimates are conditioned on study variance = 0 (infinite precision)",
-      theme = ggplot2::theme(
-        plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
-        plot.subtitle = ggplot2::element_text(size = 12, italic = TRUE, hjust = 0.5)
-      )
-    )
-  print(comparison_or)
+    comparison_or <- (p_or + p_or_corr) +
+        patchwork::plot_annotation(
+            title = "Comparison of Uncorrected vs. Bias-Corrected Synthesis (Odds Ratio)",
+            subtitle = "Bias-corrected estimates are conditioned on study variance = 0 (infinite precision)",
+            theme = ggplot2::theme(
+                plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
+                plot.subtitle = ggplot2::element_text(size = 12, italic = TRUE, hjust = 0.5)
+            )
+        )
+    print(comparison_or)
 }
 ```
 
@@ -898,9 +888,9 @@ Here are the text outputs and fit statistics for the three database splits. Each
 ```{r}
 #| label: or_new_stats
 if (!is.null(res_or_new)) {
-  print(summary(res_or_new$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_or_new$model))
+    print(summary(res_or_new$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_or_new$model))
 }
 ```
 
@@ -908,9 +898,9 @@ if (!is.null(res_or_new)) {
 ```{r}
 #| label: or_new_corr_stats
 if (!is.null(res_or_new_corr)) {
-  print(summary(res_or_new_corr$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_or_new_corr$model))
+    print(summary(res_or_new_corr$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_or_new_corr$model))
 }
 ```
 
@@ -924,9 +914,9 @@ if (!is.null(res_or_new_corr)) {
 ```{r}
 #| label: or_orig_stats
 if (!is.null(res_or_orig)) {
-  print(summary(res_or_orig$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_or_orig$model))
+    print(summary(res_or_orig$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_or_orig$model))
 }
 ```
 
@@ -934,9 +924,9 @@ if (!is.null(res_or_orig)) {
 ```{r}
 #| label: or_orig_corr_stats
 if (!is.null(res_or_orig_corr)) {
-  print(summary(res_or_orig_corr$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_or_orig_corr$model))
+    print(summary(res_or_orig_corr$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_or_orig_corr$model))
 }
 ```
 
@@ -950,9 +940,9 @@ if (!is.null(res_or_orig_corr)) {
 ```{r}
 #| label: or_comb_stats
 if (!is.null(res_or_comb)) {
-  print(summary(res_or_comb$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_or_comb$model))
+    print(summary(res_or_comb$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_or_comb$model))
 }
 ```
 
@@ -960,9 +950,9 @@ if (!is.null(res_or_comb)) {
 ```{r}
 #| label: or_comb_corr_stats
 if (!is.null(res_or_comb_corr)) {
-  print(summary(res_or_comb_corr$model))
-  cat("\nHeterogeneity (I^2):\n")
-  print(orchaRd::i2_ml(res_or_comb_corr$model))
+    print(summary(res_or_comb_corr$model))
+    cat("\nHeterogeneity (I^2):\n")
+    print(orchaRd::i2_ml(res_or_comb_corr$model))
 }
 ```
 
@@ -986,77 +976,78 @@ Ignoring within-study correlation can lead to improper weighting of studies with
 #| label: vcv_sensitivity_analysis
 #| message: false
 #| warning: false
-
 # 1. Define comparison function
 compare_vcv_models <- function(dat, name, yi = "yi", vi = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
-  dat2 <- dat %>%
-    filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
-  
-  if (nrow(dat2) == 0) return(NULL)
-  
-  # A. With VCV (rho = 0.5)
-  VCV <- metafor::vcalc(
-    vi = dat2[[vi]],
-    cluster = dat2[[cluster_var]],
-    obs = dat2[[obs_var]],
-    rho = rho,
-    data = dat2
-  )
-  mod_w_vcv <- metafor::rma.mv(
-    yi = dat2[[yi]],
-    V  = VCV,
-    random = list(
-      ~1 | identifierStudyId,
-      ~1 | identifierEffectSizeID,
-      ~1 | taxonomySpecies
-    ),
-    test = "t",
-    method = "REML",
-    sparse = TRUE,
-    data = dat2
-  )
-  
-  # B. Without VCV (diagonal V = vi)
-  mod_no_vcv <- metafor::rma.mv(
-    yi = dat2[[yi]],
-    V  = dat2[[vi]],
-    random = list(
-      ~1 | identifierStudyId,
-      ~1 | identifierEffectSizeID,
-      ~1 | taxonomySpecies
-    ),
-    test = "t",
-    method = "REML",
-    sparse = TRUE,
-    data = dat2
-  )
-  
-  # Combine results
-  data.frame(
-    Analysis = name,
-    Model_Type = c("With VCV (rho = 0.5)", "Without VCV (Independent)"),
-    k = c(mod_w_vcv$k, mod_no_vcv$k),
-    Estimate = c(mod_w_vcv$b[1], mod_no_vcv$b[1]),
-    SE = c(mod_w_vcv$se[1], mod_no_vcv$se[1]),
-    CI_Lower = c(mod_w_vcv$ci.lb[1], mod_no_vcv$ci.lb[1]),
-    CI_Upper = c(mod_w_vcv$ci.ub[1], mod_no_vcv$ci.ub[1]),
-    p_val = c(mod_w_vcv$pval[1], mod_no_vcv$pval[1])
-  )
+    dat2 <- dat %>%
+        filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
+
+    if (nrow(dat2) == 0) {
+        return(NULL)
+    }
+
+    # A. With VCV (rho = 0.5)
+    VCV <- metafor::vcalc(
+        vi = dat2[[vi]],
+        cluster = dat2[[cluster_var]],
+        obs = dat2[[obs_var]],
+        rho = rho,
+        data = dat2
+    )
+    mod_w_vcv <- metafor::rma.mv(
+        yi = dat2[[yi]],
+        V = VCV,
+        random = list(
+            ~ 1 | identifierStudyId,
+            ~ 1 | identifierEffectSizeID,
+            ~ 1 | taxonomySpecies
+        ),
+        test = "t",
+        method = "REML",
+        sparse = TRUE,
+        data = dat2
+    )
+
+    # B. Without VCV (diagonal V = vi)
+    mod_no_vcv <- metafor::rma.mv(
+        yi = dat2[[yi]],
+        V = dat2[[vi]],
+        random = list(
+            ~ 1 | identifierStudyId,
+            ~ 1 | identifierEffectSizeID,
+            ~ 1 | taxonomySpecies
+        ),
+        test = "t",
+        method = "REML",
+        sparse = TRUE,
+        data = dat2
+    )
+
+    # Combine results
+    data.frame(
+        Analysis = name,
+        Model_Type = c("With VCV (rho = 0.5)", "Without VCV (Independent)"),
+        k = c(mod_w_vcv$k, mod_no_vcv$k),
+        Estimate = c(mod_w_vcv$b[1], mod_no_vcv$b[1]),
+        SE = c(mod_w_vcv$se[1], mod_no_vcv$se[1]),
+        CI_Lower = c(mod_w_vcv$ci.lb[1], mod_no_vcv$ci.lb[1]),
+        CI_Upper = c(mod_w_vcv$ci.ub[1], mod_no_vcv$ci.ub[1]),
+        p_val = c(mod_w_vcv$pval[1], mod_no_vcv$pval[1])
+    )
 }
 
 # 2. Run comparisons across all subsets
-comp_hedges_new  <- compare_vcv_models(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), "Hedges' g (New Only)")
+comp_hedges_new <- compare_vcv_models(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), "Hedges' g (New Only)")
 comp_hedges_orig <- compare_vcv_models(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"), "Hedges' g (Original Only)")
 comp_hedges_comb <- compare_vcv_models(db_hedges, "Hedges' g (Combined)")
 
-comp_or_new  <- compare_vcv_models(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), "Log OR (New Only)")
+comp_or_new <- compare_vcv_models(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), "Log OR (New Only)")
 comp_or_orig <- compare_vcv_models(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"), "Log OR (Original Only)")
 comp_or_comb <- compare_vcv_models(db_or, "Log OR (Combined)")
 
 # 3. Bind all comparisons together
 vcv_comparison_results <- bind_rows(
-  comp_hedges_new, comp_hedges_orig, comp_hedges_comb,
-  comp_or_new, comp_or_orig, comp_or_comb
+    comp_hedges_new, comp_hedges_orig, comp_hedges_comb,
+    comp_or_new, comp_or_orig, comp_or_comb
 )
 ```
 
@@ -1067,36 +1058,35 @@ The interactive table below compares the pool estimate, standard error (SE), 95%
 ```{r}
 #| label: vcv_comparison_table
 #| echo: false
-
 DT::datatable(
-  vcv_comparison_results,
-  options = list(
-    pageLength = 12,
-    dom = 't',
-    columnDefs = list(list(className = 'dt-center', targets = "_all"))
-  ),
-  rownames = FALSE
+    vcv_comparison_results,
+    options = list(
+        pageLength = 12,
+        dom = "t",
+        columnDefs = list(list(className = "dt-center", targets = "_all"))
+    ),
+    rownames = FALSE
 ) %>%
-  DT::formatRound(columns = c("Estimate", "SE", "CI_Lower", "CI_Upper"), digits = 4) %>%
-  DT::formatSignif(columns = c("p_val"), digits = 4)
+    DT::formatRound(columns = c("Estimate", "SE", "CI_Lower", "CI_Upper"), digits = 4) %>%
+    DT::formatSignif(columns = c("p_val"), digits = 4)
 ```
 
 ### Key Methodological Findings
 
 1. **Marginal Shifts in Pooled Estimates:** 
-   Treating effect sizes as completely independent (Without VCV) causes very minor changes to the overall pooled estimates. For the combined dataset, the Hedges' $g$ estimate shifts from $0.1526$ to $0.1473$, while the Log Odds Ratio (lnOR) estimate shifts from $0.6147$ to $0.6530$. This indicates that the main directional conclusions of the meta-analyses are robust to VCV specification.
+   Treating effect sizes as completely independent (Without VCV) causes very minor changes to the overall pooled estimates. For the combined dataset, the Hedges' $g$ estimate shifts from $0.4650$ to $0.4853$, while the Log Odds Ratio (lnOR) estimate shifts from $0.6147$ to $0.6530$. This indicates that the main directional conclusions of the meta-analyses are robust to VCV specification.
 
 2. **Standard Error Shifts:** 
    In this multilevel model specification (which partitions variance using nested random intercepts), omitting the VCV matrix and assuming independence leads to a *slight inflation* of the standard error and wider confidence intervals for the combined analyses:
-   * **Hedges' $g$ (Combined):** SE increases from $0.0780$ to $0.0816$ (CI width increases from $0.3074$ to $0.3217$).
+   * **Hedges' $g$ (Combined):** SE increases from $0.0739$ to $0.0752$ (CI width increases from $0.3074$ to $0.3217$).
    * **Log Odds Ratio (Combined):** SE increases from $0.1388$ to $0.1494$ (CI width increases from $0.5480$ to $0.5900$).
    
    This demonstrates that accounting for known within-study covariance via `vcalc` yields more precise, correctly-weighted estimates.
 
 3. **Impact on Statistical Significance:** 
-   The marginal significance test for continuous outcomes (Hedges' $g$ Combined) is sensitive to this specification. With the VCV matrix, the effect size is marginally non-significant ($p = 0.0517$). When omitting the VCV matrix, the $p$-value increases further to $p = 0.0724$. Conversely, binary outcomes (Log OR Combined) remain highly statistically significant ($p < 0.0001$) under both models.
+   The marginal significance test for continuous outcomes (Hedges' $g$ Combined) suffers little influence from this specification. Similarly, binary outcomes (Log OR Combined) remain highly statistically significant ($p < 0.0001$) under both models.
 
-Therefore, we conclude that while the overall direction and magnitude of the estimates are stable, **incorporating the VCV matrix is critical** for ensuring appropriate weighting, controlling for within-study correlation, and obtaining accurate standard errors and statistical tests.
+Therefore, we conclude that while the overall direction and magnitude of the estimates are stable, **incorporating the VCV matrix** ensures appropriate weighting, controlling for within-study correlation, and obtaining accurate standard errors and statistical tests.
 
 ---
 

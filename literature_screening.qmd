@@ -543,29 +543,20 @@ All models will be implemented in R. Our pre-registration details are available 
 
 ### Meta-analytic models
 
-Multi-level random-effects meta-analysis to estimate the overall effect size for MCC,
-accounting for trials nested within papers nested within labs.
-Packages: `metafor`, `clubSandwich`.
+Multi-level random-effects meta-analysis to estimate the overall effect size for MCC, accounting for trials nested within papers nested within labs.
+
+Package: `metafor`.
 
 **Heterogeneity** will be quantified with $I^2$ and $\tau^2$ at each level.
-
-### Co-authorship network analysis
-
-The long-format table from extraction Step 2 feeds directly into a bipartite
-lab–paper network constructed in R (`igraph` or `tidygraph`). Hub labs are identified
-by degree centrality. Non-independence is modelled by including a lab-level random
-effect or using network-based weights in the meta-analytic model.
 
 ### Phylogenetic comparative methods
 
 Species non-independence is controlled via a phylogenetic covariance matrix
-incorporated into the meta-analytic model (`metafor` + `ape`). This accounts for the
-possibility that closely related species share similar MCC propensity due to shared
-evolutionary history.
+incorporated into the meta-analytic model (`metafor` + `ape`). This accounts for the possibility that closely related species share similar MCC propensity due to shared evolutionary history.
 
 ### Publication bias
 
-Funnel plot asymmetry, Egger's regression test, and trim-and-fill analysis.
+Funnel plot asymmetry, and Egger's regression test to assess publication bias.
 Time-lag bias will be examined by plotting effect size against publication year.
 
 ### Moderator analyses
@@ -574,11 +565,10 @@ Meta-regression models will test whether effect sizes vary by:
 
 - Sex of the copying individual (female vs. male)
 - Taxonomic group (fish, bird, mammal, invertebrate)
-- Experimental design (lab vs. semi-natural)
-- Model presentation method (live demonstrator vs. video vs. trained model)
+- Experimental design (before-and-after vs. no pre-test)
+- Copying mechanism (individual vs. generalized)
 
 ### Sensitivity analyses
 
 - Inclusion of pre-2019 records.
 - Leave-one-out analysis for influential studies.
-- Re-analysis excluding studies from identified hub labs.

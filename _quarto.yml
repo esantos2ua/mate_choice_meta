@@ -5,9 +5,9 @@ project:
     - styles.css
 
 book:
-  title: "Mate-Choice Copying: A Systematic Meta-Analysis"
+  title: "Mate-choice copying in non-human animals: an update of two meta-analyses"
   subtitle: "Online Supplementary Materials (Reproducible Workflow & Full Outputs)"
-  author: "Eduardo Santos & Collaborators"
+  author: "Eduardo S. A. Santos & Collaborators"
   
   navbar:
     pinned: true

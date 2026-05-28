@@ -1,7 +1,7 @@
 ---
 title: "Publication Bias Diagnostics"
 subtitle: "Small-Study Effects and Time-Lag Bias in Mate-Choice Copying (MCC) Meta-Analyses"
-author: "Eduardo Santos & Collaborators"
+author: "Eduardo S. A. Santos & Collaborators"
 date: today
 bibliography: ../../references.bib
 format:
@@ -35,7 +35,7 @@ Publication bias is a critical threat to the validity of meta-analytic syntheses
 To thoroughly evaluate the presence of publication bias and report-level selection in our Mate-Choice Copying (MCC) dataset, we employ three complementary diagnostic approaches, keeping the exact multilevel modeling logic (e.g., nested random intercepts and taxonomy control) used in our main overall effect calculations:
 
 1. **Visual Inspection (Funnel Plots):** We plot effect size estimates against their precision (inverse of the standard error, $1/\text{SE}$) to check for visual asymmetry around the overall mean estimate.
-2. **Egger's Meta-Regression (Small-Study Effects):** We test whether study precision significantly moderates effect size. Following the recommendations of @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014] from the Daniel Noble workshop, we implement a **two-step approach**:
+2. **Egger's Meta-Regression (Small-Study Effects):** We test whether study precision significantly moderates effect size. Following the recommendations of @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014], we implement a **two-step approach**:
    * We first fit the Egger regression model using the standard error ($\text{SE} = \sqrt{v_i}$) as the precision proxy.
    * If the intercept of the standard error model is statistically significant, it indicates that the estimate is downwardly biased. In this case, we re-fit the model using the sampling variance ($\text{V} = v_i$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 3. **Decline Effect / Time-Lag Bias:** We test whether effect sizes shrink over time by adding publication year (mean-centered) to our models while simultaneously controlling for study precision.
@@ -179,7 +179,7 @@ db_or <- bind_rows(or_new, or_jones) %>%
 
 ### Hedges' $g$ (Continuous outcomes)
 
-We fit multilevel models on the continuous combined dataset ($k = 223$) to run our diagnostics.
+We fit multilevel models on the continuous combined dataset ($k = `r nrow(db_hedges)`$) to run our diagnostics.
 
 #### 1. Baseline Model & Funnel Plot
 
@@ -189,8 +189,8 @@ We run the intercept-only model to establish the global mean effect size and plo
 #| label: hedges_baseline_and_funnel
 #| message: false
 #| warning: false
-#| fig.width: 9
-#| fig.height: 7
+#| fig.width: 12
+#| fig.height: 6
 # Intercept-only model
 VCV_hedges <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges)
 
@@ -206,20 +206,44 @@ ma_hedges <- metafor::rma.mv(
 
 summary(ma_hedges)
 
-# Funnel plot
+# Extract BLUPs for random effects
+blups <- ranef(ma_hedges)
+study_ef <- blups$identifierStudyId$intrcpt[match(db_hedges$identifierStudyId, row.names(blups$identifierStudyId))]
+obs_ef <- blups$identifierEffectSizeID$intrcpt[match(db_hedges$identifierEffectSizeID, row.names(blups$identifierEffectSizeID))]
+spec_ef <- blups$taxonomySpecies$intrcpt[match(db_hedges$taxonomySpecies, row.names(blups$taxonomySpecies))]
+
+# Handle any missing values by replacing with 0
+study_ef[is.na(study_ef)] <- 0
+obs_ef[is.na(obs_ef)] <- 0
+spec_ef[is.na(spec_ef)] <- 0
+
+# Marginal residuals: observed - fixed-effect prediction
+resid_marg <- db_hedges$yi - predict(ma_hedges)[[1]]
+
+# Conditional residuals: observed - fixed - random intercepts (study, obs, species)
+resid_cond <- db_hedges$yi - (predict(ma_hedges)[[1]] + study_ef + obs_ef + spec_ef)
+
+# Side-by-side funnel plots of marginal vs. conditional residuals
+par(mfrow = c(1, 2))
 metafor::funnel(
-    ma_hedges,
-    yaxis = "seinv",
-    las = 1,
-    digits = c(2, 1),
-    xlab = "Standardised Hedges' g Effect Size",
-    ylab = "Precision (Inverse of SE)",
-    pch = 21,
-    bg = alpha("black", 0.2),
-    col = "black",
-    cex = 1.2,
-    main = "Funnel Plot for Continuous Outcomes (Hedges' g)"
+    x = resid_marg, vi = db_hedges$vi,
+    yaxis = "seinv", digits = 2,
+    level = c(0.1, 0.05, 0.01),
+    shade = c("white", "gray55", "gray75"),
+    las = 1, xlab = "Meta-analytic residuals (marginal)",
+    legend = FALSE
 )
+title("Marginal Residual Funnel Plot", adj = 0.5, line = 2.5)
+
+metafor::funnel(
+    x = resid_cond, vi = db_hedges$vi,
+    yaxis = "seinv", digits = 2,
+    level = c(0.1, 0.05, 0.01),
+    shade = c("white", "gray55", "gray75"),
+    las = 1, xlab = "Meta-analytic residuals (conditional)",
+    legend = FALSE
+)
+title("Conditional Residual Funnel Plot", adj = 0.5, line = 2.5)
 ```
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
@@ -300,9 +324,9 @@ print(p_egger_hedges)
 ```
 
 > [!NOTE]
-> The slope for standard error (`se`) is **highly significant** ($\beta = 4.3353$, $SE = 0.5786$, $t = 7.4929$, $p < 0.0001$), indicating extremely clear evidence of small-study effects. Studies with larger standard errors tend to report larger, more positive Hedges' $g$ values.
+> The slope for standard error (`se`) is **strongly positive** ($\beta = `r sprintf("%.2f", egger_hedges$b[2])`$, $SE = `r sprintf("%.2f", egger_hedges$se[2])`$, $t = `r sprintf("%.2f", egger_hedges$zval[2])`$, $`r if(egger_hedges$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", egger_hedges$pval[2]))`$), indicating clear evidence of small-study effects. Studies with larger standard errors tend to report larger, more positive Hedges' $g$ values.
 > 
-> **Two-Step Correction:** Because the intercept of the standard error model is statistically significant ($p < 0.0001$), the intercept provides a downwardly biased estimate of the adjusted mean. Following the two-step recommendation of @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014], we re-fit Egger's regression using the sampling variance (`vi`) as the moderator. In this corrected model, the adjusted overall meta-analytic mean is estimated at $\beta_0 = -0.2040$ ($SE = 0.1017$, $t = -2.0062$, $p = 0.0461$).
+> **Two-Step Correction:** Because the intercept of the standard error model is statistically significant ($`r if(egger_hedges$pval[1] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", egger_hedges$pval[1]))`$), the intercept provides a downwardly biased estimate of the adjusted mean. Following the two-step recommendation of @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014], we re-fit Egger's regression using the sampling variance (`vi`) as the moderator. In this corrected model, the adjusted overall meta-analytic mean is estimated at $\beta_0 = `r sprintf("%.2f", egger_hedges_v$b[1])`$ ($SE = `r sprintf("%.2f", egger_hedges_v$se[1])`$, $t = `r sprintf("%.2f", egger_hedges_v$zval[1])`$, $`r if(egger_hedges_v$pval[1] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", egger_hedges_v$pval[1]))`$).
 
 #### 3. Decline Effect (Time-Lag Bias)
 
@@ -319,11 +343,11 @@ db_hedges_decline <- db_hedges_egger %>%
 # VCV for decline subset
 VCV_hedges_decline <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_decline)
 
-# Time-lag decline model controlling for standard error (se)
+# Time-lag decline model controlling for sampling variance (vi)
 decline_hedges <- metafor::rma.mv(
     yi = yi,
     V = VCV_hedges_decline,
-    mods = ~ 1 + Year_c + se,
+    mods = ~ 1 + Year_c + vi,
     random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
     test = "t",
     method = "REML",
@@ -376,7 +400,7 @@ print(p_decline_hedges_relabeled)
 ```
 
 > [!NOTE]
-> The publication year slope is **non-significant** ($\beta = -0.0009$, $SE = 0.0069$, $t = -0.1263$, $p = 0.8996$), indicating no statistically significant decline effect over time in continuous outcomes.
+> The publication year slope is **non-significant** ($\beta = `r sprintf("%.2f", decline_hedges$b[2])`$, $SE = `r sprintf("%.2f", decline_hedges$se[2])`$, $t = `r sprintf("%.2f", decline_hedges$zval[2])`$, $`r if(decline_hedges$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", decline_hedges$pval[2]))`$), indicating little evidence of a decline effect over time in continuous outcomes.
 
 #### 4. Unified Diagnostic Dashboard (Hedges' $g$)
 
@@ -405,7 +429,7 @@ print(dashboard_hedges)
 
 ### Odds Ratio (Binary outcomes)
 
-We fit multilevel models on the binary combined dataset ($k = 168$) to evaluate bias in Log Odds Ratio ($\ln\text{OR}$) studies.
+We fit multilevel models on the binary combined dataset ($k = `r nrow(db_or)`$) to evaluate bias in Log Odds Ratio ($\ln\text{OR}$) studies.
 
 #### 1. Baseline Model & Funnel Plot
 
@@ -415,8 +439,8 @@ We run the intercept-only model for Odds Ratio and inspect the funnel plot repre
 #| label: or_baseline_and_funnel
 #| message: false
 #| warning: false
-#| fig.width: 9
-#| fig.height: 7
+#| fig.width: 12
+#| fig.height: 6
 # Intercept-only model
 VCV_or <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or)
 
@@ -432,20 +456,44 @@ ma_or <- metafor::rma.mv(
 
 summary(ma_or)
 
-# Funnel plot
+# Extract BLUPs for random effects
+blups <- ranef(ma_or)
+study_ef <- blups$identifierStudyId$intrcpt[match(db_or$identifierStudyId, row.names(blups$identifierStudyId))]
+obs_ef <- blups$identifierEffectSizeID$intrcpt[match(db_or$identifierEffectSizeID, row.names(blups$identifierEffectSizeID))]
+spec_ef <- blups$taxonomySpecies$intrcpt[match(db_or$taxonomySpecies, row.names(blups$taxonomySpecies))]
+
+# Handle any missing values by replacing with 0
+study_ef[is.na(study_ef)] <- 0
+obs_ef[is.na(obs_ef)] <- 0
+spec_ef[is.na(spec_ef)] <- 0
+
+# Marginal residuals: observed - fixed-effect prediction
+resid_marg <- db_or$yi - predict(ma_or)[[1]]
+
+# Conditional residuals: observed - fixed - random intercepts (study, obs, species)
+resid_cond <- db_or$yi - (predict(ma_or)[[1]] + study_ef + obs_ef + spec_ef)
+
+# Side-by-side funnel plots of marginal vs. conditional residuals
+par(mfrow = c(1, 2))
 metafor::funnel(
-    ma_or,
-    yaxis = "seinv",
-    las = 1,
-    digits = c(2, 1),
-    xlab = "Standardised Log Odds Ratio (lnOR)",
-    ylab = "Precision (Inverse of SE)",
-    pch = 21,
-    bg = alpha("black", 0.2),
-    col = "black",
-    cex = 1.2,
-    main = "Funnel Plot for Binary Outcomes (Log Odds Ratio)"
+    x = resid_marg, vi = db_or$vi,
+    yaxis = "seinv", digits = 2,
+    level = c(0.1, 0.05, 0.01),
+    shade = c("white", "gray55", "gray75"),
+    las = 1, xlab = "Meta-analytic residuals (marginal)",
+    legend = FALSE
 )
+title("Marginal Residual Funnel Plot", adj = 0.5, line = 2.5)
+
+metafor::funnel(
+    x = resid_cond, vi = db_or$vi,
+    yaxis = "seinv", digits = 2,
+    level = c(0.1, 0.05, 0.01),
+    shade = c("white", "gray55", "gray75"),
+    las = 1, xlab = "Meta-analytic residuals (conditional)",
+    legend = FALSE
+)
+title("Conditional Residual Funnel Plot", adj = 0.5, line = 2.5)
 ```
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
@@ -526,9 +574,9 @@ print(p_egger_or)
 ```
 
 > [!NOTE]
-> The slope for the standard error is **extremely significant** ($\beta = 2.1129$, $SE = 0.4471$, $t = 4.7257$, $p < 0.0001$), indicating highly pronounced small-study effects in binary mate-choice copying outcomes. Studies with higher standard errors (smaller precision) report significantly larger log odds ratios.
+> The slope for the standard error is **strongly positive** ($\beta = `r sprintf("%.2f", egger_or$b[2])`$, $SE = `r sprintf("%.2f", egger_or$se[2])`$, $t = `r sprintf("%.2f", egger_or$zval[2])`$, $`r if(egger_or$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", egger_or$pval[2]))`$), indicating pronounced small-study effects in binary mate-choice copying outcomes. Studies with higher standard errors (smaller precision) report  larger log odds ratios.
 > 
-> **Two-Step Correction:** Because the intercept in the standard error model is statistically significant ($p = 0.0495$), we re-fit the model using the sampling variance (`vi`) as the moderator to obtain a less biased estimate of the adjusted mean. In this corrected model, the adjusted overall log odds ratio is non-significant at $\beta_0 = 0.1139$ ($SE = 0.1627$, $t = 0.7003$, $p = 0.4847$).
+> **Two-Step Correction:** Because the intercept in the standard error model is statistically significant ($`r if(egger_or$pval[1] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", egger_or$pval[1]))`$), we re-fit the model using the sampling variance (`vi`) as the moderator to obtain a less biased estimate of the adjusted mean. In this corrected model, the adjusted overall log odds ratio is non-significant at $\beta_0 = `r sprintf("%.2f", egger_or_v$b[1])`$ ($SE = `r sprintf("%.2f", egger_or_v$se[1])`$, $t = `r sprintf("%.2f", egger_or_v$zval[1])`$, $`r if(egger_or_v$pval[1] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", egger_or_v$pval[1]))`$).
 
 #### 3. Decline Effect (Time-Lag Bias)
 
@@ -545,11 +593,11 @@ db_or_decline <- db_or_egger %>%
 # VCV for decline subset
 VCV_or_decline <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or_decline)
 
-# Time-lag decline model
+# Time-lag decline model controlling for sampling variance (vi)
 decline_or <- metafor::rma.mv(
     yi = yi,
     V = VCV_or_decline,
-    mods = ~ 1 + Year_c + se,
+    mods = ~ 1 + Year_c + vi,
     random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
     test = "t",
     method = "REML",
@@ -602,7 +650,7 @@ print(p_decline_or_relabeled)
 ```
 
 > [!NOTE]
-> The publication year slope is **statistically significant** ($\beta = -0.0282$, $SE = 0.0109$, $t = -2.5924$, $p = 0.0104$). This provides clear evidence of a **decline effect (Time-Lag Bias)** in binary outcomes—the reported strength of mate-choice copying has significantly decreased over the course of academic publication history.
+> The publication year slope is **statistically significant** ($\beta = `r sprintf("%.2f", decline_or$b[2])`$, $SE = `r sprintf("%.2f", decline_or$se[2])`$, $t = `r sprintf("%.2f", decline_or$zval[2])`$, $`r if(decline_or$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", decline_or$pval[2]))`$). This provides evidence of a **decline effect (Time-Lag Bias)** in binary outcomes—the reported strength of mate-choice copying has significantly decreased over the course of academic publication history.
 
 #### 4. Unified Diagnostic Dashboard (Log Odds Ratio)
 
@@ -669,10 +717,10 @@ DT::datatable(
    Both Hedges' $g$ (continuous) and Log Odds Ratio (binary) datasets show statistically significant evidence of small-study effects. Smaller, less precise trials systematically report larger mate-choice copying effect sizes. This asymmetrical pattern is a classic signature of publication selection, where small-sample studies are more likely to be published or reported if they find large, hypothesis-supportive effects.
    
 2. **Decline Effect (Time-Lag Bias) in Binary Outcomes:**
-   We found robust evidence of a decline effect in binary mate-choice copying studies ($\beta = -0.0282$, $p = 0.0104$). Over the last two decades, the strength of reported mate-choice copying (as measured by Log Odds Ratios) has significantly decreased. This is typical in fields experiencing a "novelty effect," where initial breakthrough publications show large effect sizes, and subsequent rigorous replications or expanded testing reveal more moderate, realistic estimates.
+   We found robust evidence of a decline effect in binary mate-choice copying studies ($\beta = `r sprintf("%.2f", decline_or$b[2])`$, $`r if(decline_or$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", decline_or$pval[2]))`$). Over the last two decades, the strength of reported mate-choice copying (as measured by Log Odds Ratios) has significantly decreased. This is typical in fields experiencing a "novelty effect," where initial breakthrough publications show large effect sizes, and subsequent rigorous replications or expanded testing reveal more moderate, realistic estimates.
    
 3. **Continuous Outcomes Show More Stable Trends Over Time:**
-   For Hedges' $g$ (continuous), although small-study effects are present, the publication year trend is non-significant ($\beta = -0.0009$, $p = 0.8996$). This suggests that the continuous reporting scales have been relatively more stable in magnitude over the history of the literature.
+   For Hedges' $g$ (continuous), although small-study effects are present, the publication year trend is non-significant ($\beta = `r sprintf("%.2f", decline_hedges$b[2])`$, $`r if(decline_hedges$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", sprintf("%.2f", decline_hedges$pval[2]))`$). This suggests that the continuous reporting scales have been relatively more stable in magnitude over the history of the literature.
 
 These diagnostic results suggest that while mate-choice copying is a genuine ecological phenomenon, the overall raw pooled estimates from both continuous and binary literatures may be moderately inflated due to selective reporting and publication biases. Future research should prioritize large-sample pre-registered replication studies to provide unbiased baselines.
 
