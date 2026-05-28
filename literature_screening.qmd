@@ -525,7 +525,7 @@ Calculated depending on the data type extracted:
 Calculated for categorical outcomes from $2 \times 2$ contingency tables ($A$, $B$, $C$, $D$), where the sampling variance of the log odds ratio is approximated using the delta method.
 
 ### 3. Odds Ratio $\leftrightarrow$ Hedges' $g$ Cross-Conversion
-For rows containing only one of the two metrics, the missing metric is derived using the logistic-normal approximation [@chinnConversionOddsRatios2000; @borensteinIntroductionMetaanalysis2009]:
+For rows containing only one of the two metrics, the missing metric is derived using the logistic-normal approximation [@chinnSimpleMethodConverting2000; @borensteinIntroductionMetaanalysis2011]:
 
 * **$\text{OR} \rightarrow \text{Hedges' } g$**: $d = \ln(\text{OR}) \times \frac{\sqrt{3}}{\pi}$ and then bias-corrected to $g$ using the $J$ correction factor.
 * **$\text{Hedges' } g \rightarrow \text{OR}$**: $\ln(\text{OR}) = g \times \frac{\pi}{\sqrt{3}}$ and $\text{Var}(\ln\text{OR}) = \text{Var}(g) \times \frac{\pi^2}{3}$.
@@ -539,7 +539,7 @@ python scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py
 
 ## Planned Analyses {#sec-analyses}
 
-All models will be implemented in R. Our pre-registration details are available in Santos et al. -[@santosMatechoiceCopyingNonhuman2026].
+All models will be implemented in R. Our pre-registration details are available in Santos et al. [-@santosMatechoiceCopyingNonhuman2026].
 
 ### Meta-analytic models
 
