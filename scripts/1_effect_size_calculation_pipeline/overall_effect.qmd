@@ -25,6 +25,14 @@ pacman::p_load(
     DT,
     scales
 )
+
+# Helper function to format numbers to a given precision and clean negative zeros
+fmt <- function(x, digits = 2) {
+    res <- sprintf(paste0("%.", digits, "f"), x)
+    zero_pattern <- paste0("-0.", paste0(rep("0", digits), collapse = ""))
+    res[res == zero_pattern] <- paste0("0.", paste0(rep("0", digits), collapse = ""))
+    res
+}
 ```
 
 ## Introduction & Project Update
@@ -1074,12 +1082,12 @@ DT::datatable(
 ### Key Methodological Findings
 
 1. **Marginal Shifts in Pooled Estimates:** 
-   Treating effect sizes as completely independent (Without VCV) causes very minor changes to the overall pooled estimates. For the combined dataset, the Hedges' $g$ estimate shifts from $0.4650$ to $0.4853$, while the Log Odds Ratio (lnOR) estimate shifts from $0.6147$ to $0.6530$. This indicates that the main directional conclusions of the meta-analyses are robust to VCV specification.
+   Treating effect sizes as completely independent (Without VCV) causes very minor changes to the overall pooled estimates. For the combined dataset, the Hedges' $g$ estimate shifts from $`r fmt(comp_hedges_comb$Estimate[1])`$ to $`r fmt(comp_hedges_comb$Estimate[2])`$, while the Log Odds Ratio (lnOR) estimate shifts from $`r fmt(comp_or_comb$Estimate[1])`$ to $`r fmt(comp_or_comb$Estimate[2])`$. This indicates that the main directional conclusions of the meta-analyses are robust to VCV specification.
 
 2. **Standard Error Shifts:** 
    In this multilevel model specification (which partitions variance using nested random intercepts), omitting the VCV matrix and assuming independence leads to a *slight inflation* of the standard error and wider confidence intervals for the combined analyses:
-   * **Hedges' $g$ (Combined):** SE increases from $0.0739$ to $0.0752$ (CI width increases from $0.3074$ to $0.3217$).
-   * **Log Odds Ratio (Combined):** SE increases from $0.1388$ to $0.1494$ (CI width increases from $0.5480$ to $0.5900$).
+   * **Hedges' $g$ (Combined):** SE increases from $`r fmt(comp_hedges_comb$SE[1])`$ to $`r fmt(comp_hedges_comb$SE[2])`$ (CI width increases from $`r fmt(comp_hedges_comb$CI_Upper[1] - comp_hedges_comb$CI_Lower[1])`$ to $`r fmt(comp_hedges_comb$CI_Upper[2] - comp_hedges_comb$CI_Lower[2])`$).
+   * **Log Odds Ratio (Combined):** SE increases from $`r fmt(comp_or_comb$SE[1])`$ to $`r fmt(comp_or_comb$SE[2])`$ (CI width increases from $`r fmt(comp_or_comb$CI_Upper[1] - comp_or_comb$CI_Lower[1])`$ to $`r fmt(comp_or_comb$CI_Upper[2] - comp_or_comb$CI_Lower[2])`$).
    
    This demonstrates that accounting for known within-study covariance via `vcalc` yields more precise, correctly-weighted estimates.
 
