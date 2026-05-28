@@ -1,7 +1,7 @@
 ---
-title: "Mate-Choice Copying: A Systematic Meta-Analysis"
+title: "Mate-choice copying in non-human animals: an update of two meta-analyses."
 subtitle: "Online Supplementary Materials (Reproducible Workflow & Full Outputs)"
-author: "Eduardo Santos & Collaborators"
+author: "Eduardo S. A. Santos & Collaborators"
 date: today
 date-format: "MMMM YYYY"
 toc: false
@@ -14,11 +14,12 @@ format:
 ::: card
 # Project Overview
 
-This online supplement provides the complete computational workflow and interactive reports for the systematic review and multi-level meta-analysis of **Mate-Choice Copying (MCC)** across animal taxa. 
+This online supplement provides the complete computational workflow and interactive reports for the systematic review and multi-level meta-analysis of **Mate-Choice Copying (MCC)** update across animal taxa. 
 
 Mate-choice copying is a form of socially acquired preference where an individual's evaluation of a potential mate is altered after observing the sexual decisions of others. This synthesis aims to:
+
 - Estimate the updated global effect size of mate-choice copying across species.
-- Model the nested hierarchical structures (trials nested in papers nested in primary labs).
+- Model the related structures (e.g., trials nested in papers).
 - Control for evolutionary relationships using phylogenetic covariance.
 - Rigorously diagnose and adjust for potential selective reporting and publication bias.
 :::
