@@ -66,23 +66,39 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Enhancing code blocks to feel premium */
 pre {
-  background-color: #1E293B !important;
+  background-color: #0F172A !important; /* Rich deep navy slate for high contrast */
   border-radius: 12px !important;
   padding: 1.1rem 1.3rem !important;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   transition: border-color 0.2s ease;
 }
 
 pre:hover {
-  border-color: rgba(99, 179, 237, 0.3) !important;
+  border-color: rgba(99, 179, 237, 0.4) !important;
 }
 
 code {
   font-family: 'Fira Code', 'Courier New', Courier, monospace;
   font-size: 0.9em;
   border-radius: 6px;
+  color: #E2E8F0; /* Default text color is bright grey-white */
 }
+
+/* Custom premium syntax highlighting overrides for outstanding code legibility */
+pre code span.kw { color: #FF79C6 !important; font-weight: 600; } /* Pink Keywords */
+pre code span.cf { color: #FF79C6 !important; font-weight: 600; } /* Control Flow */
+pre code span.fu { color: #50FA7B !important; } /* Neon Green Functions (mutate, filter, library) */
+pre code span.st { color: #F1FA8C !important; } /* Neon Yellow Strings */
+pre code span.co { color: #94A3B8 !important; font-style: italic; } /* Bright slate grey for Comments - very legible! */
+pre code span.dv { color: #BD93F9 !important; } /* Pastel purple Decimals/numbers */
+pre code span.fl { color: #BD93F9 !important; } /* Floats */
+pre code span.va { color: #F8FAFC !important; } /* White Variables */
+pre code span.op { color: #FF79C6 !important; } /* Pink Operators (<- , %>%, +) */
+pre code span.cn { color: #BD93F9 !important; font-weight: 600; } /* Constants */
+pre code span.ot { color: #E2E8F0 !important; } /* Other tokens */
+pre code span.at { color: #8BE9FD !important; } /* Cyan Attributes */
+pre code span.sc { color: #F8FAFC !important; } /* Special characters */
 
 /* Polish Callout Boxes */
 .callout {

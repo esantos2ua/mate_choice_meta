@@ -38,6 +38,9 @@ format:
       light: cosmo
       dark: darkly
     css: styles.css
+    code-fold: true
+    code-summary: "Show R code"
+    highlight-style: dracula
     fontsize: 1.05em
     linestretch: 1.35
     toc: true
