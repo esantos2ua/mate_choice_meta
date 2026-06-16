@@ -14,8 +14,16 @@ format:
 ```{r}
 #| label: setup
 #| include: false
+# Ensure a CRAN mirror is set so package installation works in non-interactive renders
+if (is.null(getOption("repos")) || getOption("repos")["CRAN"] %in% c(NA, "@CRAN@")) {
+    options(repos = c(CRAN = "https://cloud.r-project.org"))
+}
 # Ensure pacman is loaded to manage dependencies
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+# orchaRd is hosted on GitHub (not CRAN); install from GitHub if missing
+if (!requireNamespace("orchaRd", quietly = TRUE)) {
+    pacman::p_load_gh("daniel1noble/orchaRd")
+}
 pacman::p_load(
     readxl,
     tidyverse,
@@ -32,6 +40,16 @@ fmt <- function(x, digits = 2) {
     zero_pattern <- paste0("-0.", paste0(rep("0", digits), collapse = ""))
     res[res == zero_pattern] <- paste0("0.", paste0(rep("0", digits), collapse = ""))
     res
+}
+
+# Inline p-value formatter (reports "p < 0.0001" for very small p-values)
+pstr <- function(p) {
+    if (length(p) == 0 || is.na(p)) "p = NA" else if (p < 0.0001) "p < 0.0001" else paste0("p = ", fmt(p, 3))
+}
+
+# Significance-word helper: returns `yes` when p < 0.05, else `no`
+sigw <- function(p, yes = "statistically significant", no = "non-significant") {
+    if (length(p) == 0 || is.na(p)) "indeterminate" else if (p < 0.05) yes else no
 }
 ```
 
@@ -1091,8 +1109,8 @@ DT::datatable(
    
    This demonstrates that accounting for known within-study covariance via `vcalc` yields more precise, correctly-weighted estimates.
 
-3. **Impact on Statistical Significance:** 
-   The marginal significance test for continuous outcomes (Hedges' $g$ Combined) suffers little influence from this specification. Similarly, binary outcomes (Log OR Combined) remain highly statistically significant ($p < 0.0001$) under both models.
+3. **Impact on Statistical Significance:**
+   For continuous outcomes (Hedges' $g$ Combined), the pooled estimate is `r sigw(comp_hedges_comb$p_val[1])` with the VCV matrix ($`r pstr(comp_hedges_comb$p_val[1])`$) and `r sigw(comp_hedges_comb$p_val[2])` without it ($`r pstr(comp_hedges_comb$p_val[2])`$). Binary outcomes (Log OR Combined) are `r sigw(comp_or_comb$p_val[1])` under both specifications ($`r pstr(comp_or_comb$p_val[1])`$ with VCV; $`r pstr(comp_or_comb$p_val[2])`$ without).
 
 Therefore, we conclude that while the overall direction and magnitude of the estimates are stable, **incorporating the VCV matrix** ensures appropriate weighting, controlling for within-study correlation, and obtaining accurate standard errors and statistical tests.
 

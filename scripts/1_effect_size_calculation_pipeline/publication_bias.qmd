@@ -15,8 +15,16 @@ format:
 ```{r}
 #| label: setup
 #| include: false
+# Ensure a CRAN mirror is set so package installation works in non-interactive renders
+if (is.null(getOption("repos")) || getOption("repos")["CRAN"] %in% c(NA, "@CRAN@")) {
+    options(repos = c(CRAN = "https://cloud.r-project.org"))
+}
 # Ensure pacman is loaded to manage dependencies
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+# orchaRd is hosted on GitHub (not CRAN); install from GitHub if missing
+if (!requireNamespace("orchaRd", quietly = TRUE)) {
+    pacman::p_load_gh("daniel1noble/orchaRd")
+}
 pacman::p_load(
     readxl,
     tidyverse,
@@ -33,6 +41,21 @@ fmt <- function(x, digits = 2) {
     zero_pattern <- paste0("-0.", paste0(rep("0", digits), collapse = ""))
     res[res == zero_pattern] <- paste0("0.", paste0(rep("0", digits), collapse = ""))
     res
+}
+
+# Inline p-value formatter (reports "p < 0.0001" for very small p-values)
+pstr <- function(p) {
+    if (length(p) == 0 || is.na(p)) "p = NA" else if (p < 0.0001) "p < 0.0001" else paste0("p = ", fmt(p, 3))
+}
+
+# Significance-word helper: returns `yes` when p < 0.05, else `no`
+sigw <- function(p, yes = "statistically significant", no = "non-significant") {
+    if (length(p) == 0 || is.na(p)) "indeterminate" else if (p < 0.05) yes else no
+}
+
+# Directional-word helper based on the sign of a coefficient
+dirw <- function(b, pos = "positive", neg = "negative") {
+    if (length(b) == 0 || is.na(b)) "undetermined" else if (b >= 0) pos else neg
 }
 ```
 
@@ -332,9 +355,9 @@ print(p_egger_hedges)
 ```
 
 > [!NOTE]
-> The slope for standard error (`se`) is **strongly positive** ($\beta = `r fmt(egger_hedges$b[2])`$, $SE = `r fmt(egger_hedges$se[2])`$, $t = `r fmt(egger_hedges$zval[2])`$, $`r if(egger_hedges$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(egger_hedges$pval[2], 3))`$), indicating clear evidence of small-study effects. Studies with larger standard errors tend to report larger, more positive Hedges' $g$ values.
-> 
-> **Two-Step Correction:** Because the intercept of the standard error model is statistically significant ($`r if(egger_hedges$pval[1] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(egger_hedges$pval[1], 3))`$), the intercept provides a downwardly biased estimate of the adjusted mean. Following the two-step recommendation of @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014], we re-fit Egger's regression using the sampling variance (`vi`) as the moderator. In this corrected model, the adjusted overall meta-analytic mean is estimated at $\beta_0 = `r fmt(egger_hedges_v$b[1])`$ ($SE = `r fmt(egger_hedges_v$se[1])`$, $t = `r fmt(egger_hedges_v$zval[1])`$, $`r if(egger_hedges_v$pval[1] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(egger_hedges_v$pval[1], 3))`$).
+> The slope for standard error (`se`) is **`r dirw(egger_hedges$b[2])`** ($\beta = `r fmt(egger_hedges$b[2])`$, $SE = `r fmt(egger_hedges$se[2])`$, $t = `r fmt(egger_hedges$zval[2])`$, $`r pstr(egger_hedges$pval[2])`$), indicating `r sigw(egger_hedges$pval[2], "clear evidence of small-study effects", "little evidence of small-study effects")`.
+>
+> **Two-Step Correction:** The intercept of the standard error model is `r sigw(egger_hedges$pval[1])` ($`r pstr(egger_hedges$pval[1])`$). Following the two-step recommendation of @nakagawaMethodsTestingPublication2022 and Stanley [-@stanleyMetaregressionAnalysisEconomics2012; -@stanleyMetaregressionApproximationsReduce2014], we re-fit Egger's regression using the sampling variance (`vi`) as the moderator. In this corrected model, the adjusted overall meta-analytic mean is estimated at $\beta_0 = `r fmt(egger_hedges_v$b[1])`$ ($SE = `r fmt(egger_hedges_v$se[1])`$, $t = `r fmt(egger_hedges_v$zval[1])`$, $`r pstr(egger_hedges_v$pval[1])`$).
 
 #### 3. Decline Effect (Time-Lag Bias)
 
@@ -408,7 +431,7 @@ print(p_decline_hedges_relabeled)
 ```
 
 > [!NOTE]
-> The publication year slope is **non-significant** ($\beta = `r fmt(decline_hedges$b[2])`$, $SE = `r fmt(decline_hedges$se[2])`$, $t = `r fmt(decline_hedges$zval[2])`$, $`r if(decline_hedges$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(decline_hedges$pval[2], 3))`$), indicating little evidence of a decline effect over time in continuous outcomes.
+> The publication year slope is **`r sigw(decline_hedges$pval[2])`** ($\beta = `r fmt(decline_hedges$b[2])`$, $SE = `r fmt(decline_hedges$se[2])`$, $t = `r fmt(decline_hedges$zval[2])`$, $`r pstr(decline_hedges$pval[2])`$), indicating `r sigw(decline_hedges$pval[2], "evidence of a decline effect over time", "little evidence of a decline effect over time")` in continuous outcomes.
 
 #### 4. Unified Diagnostic Dashboard (Hedges' $g$)
 
@@ -506,9 +529,9 @@ title("Conditional Residual Funnel Plot", adj = 0.5, line = 2.5)
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
 
-For Odds Ratio studies, we use the standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy in the two-step framework. If the standard error moderator slope is statistically significant ($p < 0.05$), it represents a significant small-study effect. 
+For Odds Ratio studies, we use the standard error ($\text{SE} = \sqrt{v_i}$) as our precision proxy in the two-step framework. If the standard error moderator slope is statistically significant ($p < 0.05$), it represents a significant small-study effect.
 
-Because the intercept of the standard error model is statistically significant ($p = 0.0495$), we perform Step 2 of the two-step correction, re-fitting the Egger's regression model using the sampling variance ($\text{V} = \text{vi}$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
+As with the continuous outcomes, we apply the two-step correction: if the intercept of the standard error model is statistically significant, we re-fit the Egger's regression model using the sampling variance ($\text{V} = \text{vi}$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 
 ```{r}
 #| label: or_eggers_regression
@@ -582,9 +605,9 @@ print(p_egger_or)
 ```
 
 > [!NOTE]
-> The slope for the standard error is **strongly positive** ($\beta = `r fmt(egger_or$b[2])`$, $SE = `r fmt(egger_or$se[2])`$, $t = `r fmt(egger_or$zval[2])`$, $`r if(egger_or$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(egger_or$pval[2], 3))`$), indicating pronounced small-study effects in binary mate-choice copying outcomes. Studies with higher standard errors (smaller precision) report  larger log odds ratios.
-> 
-> **Two-Step Correction:** Because the intercept in the standard error model is statistically significant ($`r if(egger_or$pval[1] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(egger_or$pval[1], 3))`$), we re-fit the model using the sampling variance (`vi`) as the moderator to obtain a less biased estimate of the adjusted mean. In this corrected model, the adjusted overall log odds ratio is non-significant at $\beta_0 = `r fmt(egger_or_v$b[1])`$ ($SE = `r fmt(egger_or_v$se[1])`$, $t = `r fmt(egger_or_v$zval[1])`$, $`r if(egger_or_v$pval[1] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(egger_or_v$pval[1], 3))`$).
+> The slope for the standard error is **`r dirw(egger_or$b[2])`** ($\beta = `r fmt(egger_or$b[2])`$, $SE = `r fmt(egger_or$se[2])`$, $t = `r fmt(egger_or$zval[2])`$, $`r pstr(egger_or$pval[2])`$), indicating `r sigw(egger_or$pval[2], "pronounced small-study effects", "little evidence of small-study effects")` in binary mate-choice copying outcomes.
+>
+> **Two-Step Correction:** The intercept of the standard error model is `r sigw(egger_or$pval[1])` ($`r pstr(egger_or$pval[1])`$). Following the two-step framework, we re-fit the model using the sampling variance (`vi`) as the moderator to obtain a less biased estimate of the adjusted mean. In this corrected model, the adjusted overall log odds ratio is `r sigw(egger_or_v$pval[1], "significant", "non-significant")` at $\beta_0 = `r fmt(egger_or_v$b[1])`$ ($SE = `r fmt(egger_or_v$se[1])`$, $t = `r fmt(egger_or_v$zval[1])`$, $`r pstr(egger_or_v$pval[1])`$).
 
 #### 3. Decline Effect (Time-Lag Bias)
 
@@ -658,7 +681,7 @@ print(p_decline_or_relabeled)
 ```
 
 > [!NOTE]
-> The publication year slope is **statistically significant** ($\beta = `r fmt(decline_or$b[2])`$, $SE = `r fmt(decline_or$se[2])`$, $t = `r fmt(decline_or$zval[2])`$, $`r if(decline_or$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(decline_or$pval[2], 3))`$). This provides evidence of a **decline effect (Time-Lag Bias)** in binary outcomes—the reported strength of mate-choice copying has significantly decreased over the course of academic publication history.
+> The publication year slope is **`r sigw(decline_or$pval[2])`** ($\beta = `r fmt(decline_or$b[2])`$, $SE = `r fmt(decline_or$se[2])`$, $t = `r fmt(decline_or$zval[2])`$, $`r pstr(decline_or$pval[2])`$). `r if(decline_or$pval[2] < 0.05) "This provides evidence of a **decline effect (Time-Lag Bias)** in binary outcomes—the reported strength of mate-choice copying has decreased over the course of academic publication history." else "This indicates little evidence of a decline effect (Time-Lag Bias) in binary outcomes over the course of academic publication history."`
 
 #### 4. Unified Diagnostic Dashboard (Log Odds Ratio)
 
@@ -696,6 +719,21 @@ We compile the results of the small-study effect regressions and time-lag meta-r
 ```{r}
 #| label: summary_table_creation
 #| echo: false
+# Dynamically classify the strength of evidence from each diagnostic p-value
+classify_bias <- function(p) {
+    if (length(p) == 0 || is.na(p)) {
+        "Indeterminate (p = NA)"
+    } else if (p < 0.0001) {
+        "Highly Significant Bias (p < 0.0001)"
+    } else if (p < 0.05) {
+        paste0("Significant Bias (p = ", fmt(p, 4), ")")
+    } else {
+        paste0("No Significant Bias (p = ", fmt(p, 4), ")")
+    }
+}
+
+p_vec <- c(egger_hedges$pval[2], decline_hedges$pval[2], egger_or$pval[2], decline_or$pval[2])
+
 bias_summary <- data.frame(
     Effect_Size_Class = c("Hedges' g (Continuous)", "Hedges' g (Continuous)", "Log Odds Ratio (Binary)", "Log Odds Ratio (Binary)"),
     Diagnostic_Test = c("Egger's Regression (Small-Study)", "Time-Lag (Decline Effect)", "Egger's Regression (Small-Study)", "Time-Lag (Decline Effect)"),
@@ -703,8 +741,8 @@ bias_summary <- data.frame(
     Slope_Beta = c(egger_hedges$b[2], decline_hedges$b[2], egger_or$b[2], decline_or$b[2]),
     Std_Error = c(egger_hedges$se[2], decline_hedges$se[2], egger_or$se[2], decline_or$se[2]),
     t_z_value = c(egger_hedges$zval[2], decline_hedges$zval[2], egger_or$zval[2], decline_or$zval[2]),
-    p_value = c(egger_hedges$pval[2], decline_hedges$pval[2], egger_or$pval[2], decline_or$pval[2]),
-    Evidence_of_Bias = c("Highly Significant Bias (p < 0.0001)", "No Significant Bias (p = 0.8996)", "Highly Significant Bias (p < 0.0001)", "Significant Bias (p = 0.0104)")
+    p_value = p_vec,
+    Evidence_of_Bias = vapply(p_vec, classify_bias, character(1))
 )
 
 DT::datatable(
@@ -721,14 +759,14 @@ DT::datatable(
 
 ### Main Takeaways
 
-1. **Small-Study Effects Are Pervasive:** 
-   Both Hedges' $g$ (continuous) and Log Odds Ratio (binary) datasets show statistically significant evidence of small-study effects. Smaller, less precise trials systematically report larger mate-choice copying effect sizes. This asymmetrical pattern is a classic signature of publication selection, where small-sample studies are more likely to be published or reported if they find large, hypothesis-supportive effects.
-   
+1. **Small-Study Effects:**
+   The Egger's regressions indicate `r sigw(egger_hedges$pval[2])` small-study effects for Hedges' $g$ ($`r pstr(egger_hedges$pval[2])`$) and `r sigw(egger_or$pval[2])` small-study effects for Log Odds Ratio ($`r pstr(egger_or$pval[2])`$). Where present, smaller and less precise trials systematically report larger mate-choice copying effect sizes—a classic signature of publication selection, in which small-sample studies are more likely to be published or reported if they find large, hypothesis-supportive effects.
+
 2. **Decline Effect (Time-Lag Bias) in Binary Outcomes:**
-   We found robust evidence of a decline effect in binary mate-choice copying studies ($\beta = `r fmt(decline_or$b[2])`$, $`r if(decline_or$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(decline_or$pval[2], 3))`$). Over the last two decades, the strength of reported mate-choice copying (as measured by Log Odds Ratios) has significantly decreased. This is typical in fields experiencing a "novelty effect," where initial breakthrough publications show large effect sizes, and subsequent rigorous replications or expanded testing reveal more moderate, realistic estimates.
-   
-3. **Continuous Outcomes Show More Stable Trends Over Time:**
-   For Hedges' $g$ (continuous), although small-study effects are present, the publication year trend is non-significant ($\beta = `r fmt(decline_hedges$b[2])`$, $`r if(decline_hedges$pval[2] < 0.0001) "p < 0.0001" else paste0("p = ", fmt(decline_hedges$pval[2], 3))`$). This suggests that the continuous reporting scales have been relatively more stable in magnitude over the history of the literature.
+   The publication-year trend for binary outcomes is `r sigw(decline_or$pval[2])` ($\beta = `r fmt(decline_or$b[2])`$, $`r pstr(decline_or$pval[2])`$). `r if(decline_or$pval[2] < 0.05) "Over the last two decades, the reported strength of mate-choice copying (measured by Log Odds Ratios) has decreased, a pattern typical of fields experiencing a novelty effect in which early breakthrough publications report large effect sizes and subsequent rigorous replications reveal more moderate, realistic estimates." else "This indicates the reported strength of mate-choice copying (measured by Log Odds Ratios) has remained relatively stable across publication history."`
+
+3. **Time Trend in Continuous Outcomes:**
+   For Hedges' $g$ (continuous), the publication-year trend is `r sigw(decline_hedges$pval[2])` ($\beta = `r fmt(decline_hedges$b[2])`$, $`r pstr(decline_hedges$pval[2])`$). `r if(decline_hedges$pval[2] < 0.05) "This indicates a shift in the reported magnitude of continuous effects over the history of the literature." else "This suggests the continuous reporting scales have been relatively stable in magnitude over the history of the literature."`
 
 These diagnostic results suggest that while mate-choice copying is a genuine ecological phenomenon, the overall raw pooled estimates from both continuous and binary literatures may be moderately inflated due to selective reporting and publication biases. Future research should prioritize large-sample pre-registered replication studies to provide unbiased baselines.
 
