@@ -3,6 +3,7 @@ project:
   output-dir: docs
   resources:
     - styles.css
+    - outputs/
 
 book:
   title: "Mate-choice copying in non-human animals: an update of two meta-analyses"

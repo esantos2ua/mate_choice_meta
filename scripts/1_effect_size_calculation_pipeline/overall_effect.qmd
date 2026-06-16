@@ -204,6 +204,100 @@ db_or <- bind_rows(or_new, or_jones) %>%
 
 ---
 
+## Dataset Composition Summary {#sec-composition}
+
+Before inspecting the effect size distributions, we summarize how the aligned datasets are composed. The first table reports the number of studies (`k`) and effect sizes contributed by each original source and by our new extraction. The second table summarizes the number of effect sizes per species, ordered from most to least common.
+
+```{r}
+#| label: build_summary_tables
+#| message: false
+#| warning: false
+# Combine both aligned effect-size datasets, tagging the effect-size class.
+# Note: the New Extraction (Santos) contributes to BOTH the Hedges' g and the
+# Odds Ratio datasets; n_distinct() on study IDs therefore avoids double-counting
+# studies while total effect sizes are summed across classes.
+db_summary_all <- bind_rows(
+    db_hedges %>% mutate(EffectType = "Hedges' g"),
+    db_or %>% mutate(EffectType = "Log Odds Ratio")
+) %>%
+    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source, EffectType), as.character))
+```
+
+### Studies & Effect Sizes by Source
+
+```{r}
+#| label: source_summary_table
+#| echo: false
+# Per-source counts of studies and effect sizes, broken down by effect-size class
+source_summary <- db_summary_all %>%
+    group_by(`Data Source` = Dataset_Source) %>%
+    summarise(
+        `Studies (k)` = n_distinct(identifierStudyId),
+        `Hedges' g (ES)` = sum(EffectType == "Hedges' g"),
+        `Log OR (ES)` = sum(EffectType == "Log Odds Ratio"),
+        `Total Effect Sizes` = n(),
+        `Species` = n_distinct(taxonomySpecies),
+        .groups = "drop"
+    ) %>%
+    arrange(`Data Source`)
+
+# Append an overall TOTAL row (unique studies/species pooled across all sources)
+source_total <- tibble(
+    `Data Source` = "TOTAL",
+    `Studies (k)` = n_distinct(db_summary_all$identifierStudyId),
+    `Hedges' g (ES)` = sum(db_summary_all$EffectType == "Hedges' g"),
+    `Log OR (ES)` = sum(db_summary_all$EffectType == "Log Odds Ratio"),
+    `Total Effect Sizes` = nrow(db_summary_all),
+    `Species` = n_distinct(db_summary_all$taxonomySpecies)
+)
+
+source_summary_tbl <- bind_rows(source_summary, source_total)
+
+DT::datatable(
+    source_summary_tbl,
+    caption = "Number of studies and effect sizes contributed by each data source.",
+    options = list(
+        dom = "t",
+        pageLength = 10,
+        columnDefs = list(list(className = "dt-center", targets = "_all"))
+    ),
+    rownames = FALSE
+)
+```
+
+### Effect Sizes per Species
+
+```{r}
+#| label: species_summary_table
+#| echo: false
+# Effect sizes per species (combining both effect-size classes), most to least common
+species_summary <- db_summary_all %>%
+    group_by(Species = taxonomySpecies) %>%
+    summarise(
+        `Studies (k)` = n_distinct(identifierStudyId),
+        `Hedges' g (ES)` = sum(EffectType == "Hedges' g"),
+        `Log OR (ES)` = sum(EffectType == "Log Odds Ratio"),
+        `Total Effect Sizes` = n(),
+        .groups = "drop"
+    ) %>%
+    arrange(desc(`Total Effect Sizes`), Species)
+
+DT::datatable(
+    species_summary,
+    caption = "Number of effect sizes per species, ordered from most to least common.",
+    options = list(
+        pageLength = 15,
+        order = list(list(3, "desc")),
+        columnDefs = list(list(className = "dt-center", targets = "_all"))
+    ),
+    rownames = FALSE
+)
+```
+
+In total, the aligned data comprise `r nrow(db_summary_all)` effect sizes from `r n_distinct(db_summary_all$identifierStudyId)` studies across `r n_distinct(db_summary_all$taxonomySpecies)` species. The most-studied species is *`r str_to_title(species_summary$Species[1])`* (`r species_summary$"Total Effect Sizes"[1]` effect sizes from `r species_summary$"Studies (k)"[1]` studies).
+
+---
+
 ## Effect Size Distribution (Density Plots) {#sec-density}
 
 Before fitting the multi-level models, we inspect the distribution of our aligned effect sizes across the different subsets (New Extraction, Original Only, and Combined). 
