@@ -204,6 +204,67 @@ db_or <- bind_rows(or_new, or_jones) %>%
 
 ---
 
+## Study Inclusion & Exclusion {#sec-inclusion}
+
+The following tables document which effect sizes from the new extraction are included in the meta-analytic models and which have been removed, with the reason for each exclusion.
+
+### Excluded Effect Sizes
+
+```{r}
+#| label: excluded_studies_table
+#| echo: false
+db_excluded <- db_new_raw %>%
+    filter(!is.na(RemoveFromDataset) & RemoveFromDataset == "Yes") %>%
+    transmute(
+        `Effect Size ID` = identifierEffectSizeID,
+        `Study` = identifierStudyId,
+        `Year` = identifierStudyYear,
+        `Exclusion Reason` = ExclusionReason
+    ) %>%
+    arrange(`Effect Size ID`)
+
+DT::datatable(
+    db_excluded,
+    caption = "Effect sizes removed from the meta-analytic models and their reasons for exclusion.",
+    options = list(
+        dom = "t",
+        pageLength = 20,
+        columnDefs = list(list(className = "dt-left", targets = "_all"))
+    ),
+    rownames = FALSE
+)
+```
+
+### Included Effect Sizes
+
+```{r}
+#| label: included_studies_table
+#| echo: false
+db_included <- db_new %>%
+    transmute(
+        `Effect Size ID` = identifierEffectSizeID,
+        `Study` = identifierStudyId,
+        `Year` = identifierStudyYear,
+        `Species` = taxonomySpecies,
+        `Data Type` = effectSizeDataTypeForCalculation,
+        `Hedges' g` = round(effectSizeCalculatedHedgesD, 3),
+        `OR` = round(effectSizeCalculatedOddsRatio, 3)
+    ) %>%
+    arrange(`Effect Size ID`)
+
+DT::datatable(
+    db_included,
+    caption = "Effect sizes included in the meta-analytic models.",
+    options = list(
+        pageLength = 25,
+        columnDefs = list(list(className = "dt-left", targets = "_all"))
+    ),
+    rownames = FALSE
+)
+```
+
+---
+
 ## Dataset Composition Summary {#sec-composition}
 
 Before inspecting the effect size distributions, we summarize how the aligned datasets are composed. The first table reports the number of studies (`k`) and effect sizes contributed by each original source and by our new extraction. The second table summarizes the number of effect sizes per species, ordered from most to least common.

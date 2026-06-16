@@ -1,10 +1,19 @@
-% Requires in preamble: \usepackage{longtable,booktabs,array,url}
-% Titles in Chinese require XeLaTeX or LuaLaTeX with a CJK font
-%   (e.g. \usepackage{xeCJK}); pdfLaTeX will not render them.
-% Requires in preamble: \usepackage{pdflscape} (for the landscape environment).
-\begin{landscape}
+% === Supplementary table: excluded studies (PORTRAIT, fits \textwidth at any margin) ===
+% Same format as the included-studies table.
+% Preamble needs: \usepackage{longtable,booktabs,array,hyperref}
+%   and \usepackage{xurl} (load AFTER hyperref) so long DOIs break.
 {\footnotesize
-\begin{longtable}{>{\raggedright\arraybackslash}p{2.3cm} l >{\raggedright\arraybackslash}p{4.3cm} >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{2.5cm}}
+\setlength{\tabcolsep}{3pt}
+\setlength{\LTcapwidth}{\textwidth}
+\newlength{\exclw}\setlength{\exclw}{\dimexpr\textwidth-12\tabcolsep\relax}% usable width
+% column fractions sum to 1.0 -> always fits \textwidth
+\begin{longtable}{@{}
+  >{\raggedright\arraybackslash}p{0.13\exclw}
+  >{\raggedright\arraybackslash}p{0.06\exclw}
+  >{\raggedright\arraybackslash}p{0.30\exclw}
+  >{\raggedright\arraybackslash}p{0.15\exclw}
+  >{\raggedright\arraybackslash}p{0.16\exclw}
+  >{\raggedright\arraybackslash}p{0.20\exclw}@{}}
 \caption{Studies excluded from the meta-analysis after full-text assessment, with reasons for exclusion.}\label{tab:excluded}\\
 \toprule
 \textbf{Author} & \textbf{Year} & \textbf{Title} & \textbf{Journal} & \textbf{DOI / Source} & \textbf{Reason for exclusion} \\
@@ -21,22 +30,23 @@
 \bottomrule
 \endlastfoot
 Bridges et al. & 2019 & Animal Behaviour: Conformity and the Beginnings of Culture in an Insect. & Current Biology & \url{10.1016/j.cub.2019.01.023} & Not the type of study necessary \\
-Harrison-Weiss et al. & 2025 & Assessing the Cues Required for Mate Choice Copying in the Plainfin Midshipman Fish. & Animal Behaviour & \url{10.1016/j.anbehav.2025.123292} & Same data as in Harrison-Weiss 2024 Dissertation \\
-Plath et al. & 2009 & Audience Effect Alters Male but Not Female Mating Preferences. & Behavioral Ecology and Sociobiology & \url{10.1007/s00265-008-0672-7} & Not the study design necessary \\
-Ziege et al. & 2009 & Audience Effects in the Atlantic Molly (Poecilia Mexicana)--Prudent Male Mate Choice in Response to Perceived Sperm Competition Risk? & Frontiers in Zoology & \url{10.1186/1742-9994-6-17} & Not the study design necessary \\
-Cruz & 2014 & Communication Networks in the Zebrafish, Danio rerio. & Dissertation Universidade de Lisboa & \url{https://search.proquest.com/openview/aaeafb1c91f2d0dfbd0dbd892c8ce4fe/1?pq-origsite=gscholar&cbl=2026366&diss=y} & Not the study design necessary \\
-Mendelson et al. & 2023 & Could Sexual Selection Be Driven by the Mistaken Inferences of Young Females? & PLOS Biology & \url{10.1371/journal.pbio.3002321} & Not the type of study necessary \\
-Gilman et al. & 2020 & Demonstrating Mate Choice Copying in Spiders Requires Further Research & Current Zoology & \url{10.1093/cz/zoz033} & Not the type of study necessary \\
-Durey et al. & 2008 & Do Female Siamese Fighting Fish Copy the Mate Choice of Others? & European Conference on Behavioural Biology & \url{https://researchprofiles.ku.dk/da/publications/b2bc1be0-ddbe-11dd-b5fc-000ea68e967b} & No full-text available \\
-Yang et al. & 2025 & Evolutionary Divergence of Developmental Plasticity and Learning of Mating Tactics in Trinidadian Guppies. & Journal of Animal Ecology & \url{10.1111/1365-2656.14043} & Not the study design necessary \\
-Vega-Trejo et al. & 2024 & Fear of Mating out & Scientific Reports & \url{10.1038/s41598-024-83465-6} & Not the study design necessary \\
-Imperio et al. & 2020 & Female Mating Tactics in Lekking Fallow Deer & Scientific Reports & \url{10.1038/s41598-020-58681-5} & Not the study design necessary \\
-Schütz and Taborsky & 2000 & Giant Males or Dwarf Females: What Determines the Extreme Sexual Size Dimorphism in Lamprologus Callipterus ? & Journal of Fish Biology & \url{10.1111/j.1095-8649.2000.tb00485.x} & Not the study design necessary \\
 Chen  et al. & 2021 & Love the Love of Other Men: Male's Mate-Choice Copying under the Activation of Mating Motives; 君子不夺人所好？择偶动机启动下的男性择偶复制 & Journal of Psychological Science & \url{10.16719/j.cnki.1671-6981.20210424} & Study on humans \\
+Cruz & 2014 & Communication Networks in the Zebrafish, Danio rerio. & Dissertation Universidade de Lisboa & \url{https://search.proquest.com/openview/aaeafb1c91f2d0dfbd0dbd892c8ce4fe/1?pq-origsite=gscholar&cbl=2026366&diss=y} & Not the study design necessary \\
+Durey et al. & 2008 & Do Female Siamese Fighting Fish Copy the Mate Choice of Others? & European Conference on Behavioural Biology & \url{https://researchprofiles.ku.dk/da/publications/b2bc1be0-ddbe-11dd-b5fc-000ea68e967b} & No full-text available \\
+Gilman et al. & 2020 & Demonstrating Mate Choice Copying in Spiders Requires Further Research & Current Zoology & \url{10.1093/cz/zoz033} & Not the type of study necessary \\
+Harrison-Weiss et al. & 2025 & Assessing the Cues Required for Mate Choice Copying in the Plainfin Midshipman Fish. & Animal Behaviour & \url{10.1016/j.anbehav.2025.123292} & Same data as in Harrison-Weiss 2024 Dissertation \\
+Huckvale & 2016 & An Investigation into the Influence of Hunger-State on the Mate-Choice Copying Phenomenon in Trinidadian Guppies (Poecilia Reticulata). & Thesis & \href{https://figshare.com/articles/thesis/An_Investigation_into_the_Influence_of_Hunger-State_on_the_Mate-Choice_Copying_Phenomenon_in_Trinidadian_Guppies_Poecilia_reticulata_/29736311}{figshare} & Does not contain data to calculate effect sizes \\
+Imperio et al. & 2020 & Female Mating Tactics in Lekking Fallow Deer & Scientific Reports & \url{10.1038/s41598-020-58681-5} & Not the study design necessary \\
+李卫卫 & 2017 & 择偶复制的影响因素及心理机制 & 心理技术与应用 & \url{10.16842/j.cnki.issn2095-5588.2017.03.008} & Study on humans \\
+Mendelson et al. & 2023 & Could Sexual Selection Be Driven by the Mistaken Inferences of Young Females? & PLOS Biology & \url{10.1371/journal.pbio.3002321} & Not the type of study necessary \\
+Nöbel et al. & 2022 & The Importance of Population Heterogeneities in Detecting Social Learning as the Foundation of Animal Cultural Transmission. & Proceedings of the Royal Society B: Biological Sciences & \url{10.1098/rspb.2022.0431} & Does not contain data to calculate effect sizes \\
 Plath et al. & 2008 & Male Fish Deceive Competitors about Mating Preferences. & Current Biology & \url{10.1016/j.cub.2008.06.067} & Not the study design necessary \\
+Plath et al. & 2009 & Audience Effect Alters Male but Not Female Mating Preferences. & Behavioral Ecology and Sociobiology & \url{10.1007/s00265-008-0672-7} & Not the study design necessary \\
 Roberts and Gosling & 2004 & Manipulation of Olfactory Signaling and Mate Choice for Conservation Breeding: A Case Study of Harvest Mice & Conservation Biology & \url{10.1111/j.1523-1739.2004.00514.x} & Not the study design necessary \\
 Sapage and Varela & 2020 & Two Research Avenues for Future Mate-Choice Copying Studies: A Comment on Davies et Al & Behavioral Ecology & \url{10.1093/beheco/araa075} & Not the study design necessary \\
-李卫卫 & 2017 & 择偶复制的影响因素及心理机制 & 心理技术与应用 & \url{10.16842/j.cnki.issn2095-5588.2017.03.008} & Study on humans \\
+Schütz and Taborsky & 2000 & Giant Males or Dwarf Females: What Determines the Extreme Sexual Size Dimorphism in Lamprologus Callipterus ? & Journal of Fish Biology & \url{10.1111/j.1095-8649.2000.tb00485.x} & Not the study design necessary \\
+Vega-Trejo et al. & 2024 & Fear of Mating out & Scientific Reports & \url{10.1038/s41598-024-83465-6} & Not the study design necessary \\
+Yang et al. & 2025 & Evolutionary Divergence of Developmental Plasticity and Learning of Mating Tactics in Trinidadian Guppies. & Journal of Animal Ecology & \url{10.1111/1365-2656.14043} & Not the study design necessary \\
+Ziege et al. & 2009 & Audience Effects in the Atlantic Molly (Poecilia Mexicana)--Prudent Male Mate Choice in Response to Perceived Sperm Competition Risk? & Frontiers in Zoology & \url{10.1186/1742-9994-6-17} & Not the study design necessary \\
 \end{longtable}
 }
-\end{landscape}
