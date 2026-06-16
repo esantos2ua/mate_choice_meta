@@ -21,8 +21,12 @@ if (is.null(getOption("repos")) || getOption("repos")["CRAN"] %in% c(NA, "@CRAN@
 }
 # Ensure pacman is loaded to manage dependencies
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-# orchaRd is hosted on GitHub (not CRAN); install from GitHub if missing
-if (!requireNamespace("orchaRd", quietly = TRUE)) {
+# orchaRd is hosted on GitHub (not CRAN); install from GitHub if missing.
+# We require a recent build that ships `pub_bias_plot()` (Yang et al. 2024
+# bias-robust correction), so we (re)install from GitHub if the function is
+# not yet available in the locally installed version.
+if (!requireNamespace("orchaRd", quietly = TRUE) ||
+    !("pub_bias_plot" %in% getNamespaceExports("orchaRd"))) {
     pacman::p_load_gh("daniel1noble/orchaRd")
 }
 pacman::p_load(
@@ -30,6 +34,7 @@ pacman::p_load(
     tidyverse,
     metafor,
     orchaRd,
+    clubSandwich,
     patchwork,
     DT,
     scales
@@ -70,6 +75,7 @@ To thoroughly evaluate the presence of publication bias and report-level selecti
    * We first fit the Egger regression model using the standard error ($\text{SE} = \sqrt{v_i}$) as the precision proxy.
    * If the intercept of the standard error model is statistically significant, it indicates that the estimate is downwardly biased. In this case, we re-fit the model using the sampling variance ($\text{V} = v_i$) as the moderator to obtain a less biased estimate of the adjusted overall meta-analytic mean.
 3. **Decline Effect / Time-Lag Bias:** We test whether effect sizes shrink over time by adding publication year (mean-centered) to our models while simultaneously controlling for study precision.
+4. **Bias-Corrected Meta-Analytic Means (Method Comparison):** Finally, we estimate the *adjusted* overall mean under two complementary correction frameworks and compare them directly. The **current** approach follows @nakagawaMethodsTestingPublication2022: the intercept of a multilevel meta-regression on the sampling variance ($v_i$) is interpreted as the mean when sampling error is zero (i.e., an infinitely precise study). The **new** approach follows @yangRobustPointVariance2024: a *bias-robust* weighting scheme (a fixed-/common-effect GLS estimator that is less susceptible to selective reporting) is combined with **cluster-robust (CR2) variance estimation** to handle the non-independence of effect sizes within studies. We overlay both corrected means on an orchard plot using `orchaRd::pub_bias_plot()`.
 
 ---
 
@@ -710,6 +716,196 @@ print(dashboard_or)
 
 ---
 
+## Bias-Corrected Meta-Analytic Means: Current vs. New Method
+
+The diagnostics above *detect* small-study and time-lag bias. Here we turn to *correcting* the pooled mean, and we directly compare two correction philosophies on the same data.
+
+* **Current method — Nakagawa et al. [-@nakagawaMethodsTestingPublication2022] regression correction.** We re-use the multilevel meta-regression that includes the sampling variance ($v_i$) as a moderator (the Step-2 models `egger_hedges_v` / `egger_or_v` fitted above). Its **intercept** estimates the meta-analytic mean extrapolated to $v_i = 0$ — i.e., the effect a hypothetical infinitely-precise (infinite-$n$) study would report, with the small-study component removed. This is the *"bias-corrected estimate"* in @yangRobustPointVariance2024's terminology and in `orchaRd`.
+* **New method — Yang et al. [-@yangRobustPointVariance2024] bias-robust estimation.** A two-step procedure: (1) fit a **fixed-/common-effect** model, whose precision-based GLS weighting is far less inflated by selectively-reported small studies than the random-effects mean; then (2) apply **cluster-robust (CR2) variance estimation** (`clubSandwich`), clustering by study, so that the standard errors and confidence intervals remain valid under the non-independence of multiple effect sizes per study. This is the *"bias-robust estimate"*.
+
+We compute both, overlay them on an orchard plot of the uncorrected multilevel mean with `orchaRd::pub_bias_plot()`, and tabulate the three estimates (uncorrected vs. the two corrections) side by side.
+
+::: {.panel-tabset}
+
+### Hedges' $g$ (Continuous outcomes)
+
+```{r}
+#| label: hedges_biasrobust_models
+#| message: false
+#| warning: false
+# --- New method: Yang et al. (2024) bias-robust estimate ---------------------
+# Step 1: common-/fixed-effect model (bias-robust GLS weighting).
+fe_hedges <- metafor::rma(
+    yi = yi,
+    vi = vi,
+    data = db_hedges_egger,
+    method = "FE",
+    test = "t"
+)
+
+# Step 2: cluster-robust (CR2) variance estimation, clustering by study,
+# to account for non-independence of multiple effect sizes per study.
+fe_hedges_robust <- metafor::robust(
+    fe_hedges,
+    cluster = db_hedges_egger$identifierStudyId,
+    clubSandwich = TRUE
+)
+
+summary(fe_hedges_robust)
+
+# `egger_hedges_v` (fitted above) is the current-method Nakagawa et al. (2022)
+# vi-moderator model; its intercept is the bias-corrected mean at vi = 0.
+```
+
+```{r}
+#| label: hedges_pub_bias_plot
+#| message: false
+#| warning: false
+#| fig.width: 9
+#| fig.height: 5
+# Orchard plot of the uncorrected multilevel meta-analytic mean ...
+oc_hedges <- orchaRd::orchard_plot(
+    ma_hedges,
+    group = "identifierStudyId",
+    xlab = "Hedges' g",
+    angle = 0
+)
+
+# ... with both corrected means overlaid:
+#   red  = Yang et al. 2024 "Bias Robust"     (fixed-effect + CR2 robust)
+#   blue = Nakagawa et al. 2022 "Bias Corrected" (vi-moderator intercept)
+p_pubbias_hedges <- orchaRd::pub_bias_plot(
+    oc_hedges,
+    fe_model = fe_hedges_robust,
+    v_model  = egger_hedges_v
+) +
+    ggplot2::ggtitle("Bias-Corrected Means — Hedges' g") +
+    ggplot2::theme_minimal()
+
+print(p_pubbias_hedges)
+```
+
+> [!NOTE]
+> The uncorrected multilevel mean is $\hat\mu = `r fmt(ma_hedges$b[1])`$ (95% CI [`r fmt(ma_hedges$ci.lb[1])`, `r fmt(ma_hedges$ci.ub[1])`]). The **current** Nakagawa correction gives a bias-corrected mean of $`r fmt(egger_hedges_v$b[1])`$ (95% CI [`r fmt(egger_hedges_v$ci.lb[1])`, `r fmt(egger_hedges_v$ci.ub[1])`]), and the **new** Yang bias-robust estimate is $`r fmt(fe_hedges_robust$b[1])`$ (95% CI [`r fmt(fe_hedges_robust$ci.lb[1])`, `r fmt(fe_hedges_robust$ci.ub[1])`]).
+
+### Odds Ratio (Binary outcomes)
+
+```{r}
+#| label: or_biasrobust_models
+#| message: false
+#| warning: false
+# --- New method: Yang et al. (2024) bias-robust estimate ---------------------
+fe_or <- metafor::rma(
+    yi = yi,
+    vi = vi,
+    data = db_or_egger,
+    method = "FE",
+    test = "t"
+)
+
+fe_or_robust <- metafor::robust(
+    fe_or,
+    cluster = db_or_egger$identifierStudyId,
+    clubSandwich = TRUE
+)
+
+summary(fe_or_robust)
+
+# `egger_or_v` (fitted above) is the current-method Nakagawa et al. (2022)
+# vi-moderator model; its intercept is the bias-corrected mean at vi = 0.
+```
+
+```{r}
+#| label: or_pub_bias_plot
+#| message: false
+#| warning: false
+#| fig.width: 9
+#| fig.height: 5
+oc_or <- orchaRd::orchard_plot(
+    ma_or,
+    group = "identifierStudyId",
+    xlab = "Log Odds Ratio (lnOR)",
+    angle = 0
+)
+
+p_pubbias_or <- orchaRd::pub_bias_plot(
+    oc_or,
+    fe_model = fe_or_robust,
+    v_model  = egger_or_v
+) +
+    ggplot2::ggtitle("Bias-Corrected Means — Log Odds Ratio") +
+    ggplot2::theme_minimal()
+
+print(p_pubbias_or)
+```
+
+> [!NOTE]
+> The uncorrected multilevel mean is $\hat\mu = `r fmt(ma_or$b[1])`$ (95% CI [`r fmt(ma_or$ci.lb[1])`, `r fmt(ma_or$ci.ub[1])`]) on the $\ln\text{OR}$ scale. The **current** Nakagawa correction gives $`r fmt(egger_or_v$b[1])`$ (95% CI [`r fmt(egger_or_v$ci.lb[1])`, `r fmt(egger_or_v$ci.ub[1])`]), and the **new** Yang bias-robust estimate is $`r fmt(fe_or_robust$b[1])`$ (95% CI [`r fmt(fe_or_robust$ci.lb[1])`, `r fmt(fe_or_robust$ci.ub[1])`]).
+
+:::
+
+### Side-by-Side Comparison Table
+
+```{r}
+#| label: bias_correction_comparison_table
+#| echo: false
+#| message: false
+#| warning: false
+# Helper to pull a one-row summary (estimate, SE, CI, p) from any rma/rma.mv/robust object
+extract_mean <- function(model, label, method) {
+    data.frame(
+        Effect_Class = label,
+        Method = method,
+        Estimate = as.numeric(model$b[1]),
+        SE = as.numeric(model$se[1]),
+        CI_Lower = as.numeric(model$ci.lb[1]),
+        CI_Upper = as.numeric(model$ci.ub[1]),
+        p_value = as.numeric(model$pval[1]),
+        stringsAsFactors = FALSE
+    )
+}
+
+bias_correction_summary <- rbind(
+    extract_mean(ma_hedges,         "Hedges' g (Continuous)",  "Uncorrected (Multilevel mean)"),
+    extract_mean(egger_hedges_v,    "Hedges' g (Continuous)",  "Bias-Corrected — Nakagawa 2022 (current; vi-intercept)"),
+    extract_mean(fe_hedges_robust,  "Hedges' g (Continuous)",  "Bias-Robust — Yang 2024 (new; FE + CR2)"),
+    extract_mean(ma_or,             "Log Odds Ratio (Binary)", "Uncorrected (Multilevel mean)"),
+    extract_mean(egger_or_v,        "Log Odds Ratio (Binary)", "Bias-Corrected — Nakagawa 2022 (current; vi-intercept)"),
+    extract_mean(fe_or_robust,      "Log Odds Ratio (Binary)", "Bias-Robust — Yang 2024 (new; FE + CR2)")
+)
+
+# Shrinkage of each corrected mean relative to the uncorrected multilevel mean
+uncorrected_lookup <- c(
+    "Hedges' g (Continuous)"  = ma_hedges$b[1],
+    "Log Odds Ratio (Binary)" = ma_or$b[1]
+)
+bias_correction_summary$Pct_Change_vs_Uncorrected <- ifelse(
+    grepl("Uncorrected", bias_correction_summary$Method),
+    NA_real_,
+    100 * (bias_correction_summary$Estimate - uncorrected_lookup[bias_correction_summary$Effect_Class]) /
+        abs(uncorrected_lookup[bias_correction_summary$Effect_Class])
+)
+
+DT::datatable(
+    bias_correction_summary,
+    caption = "Comparison of the uncorrected multilevel mean against the current (Nakagawa 2022) and new (Yang 2024) bias corrections. Estimates for the binary class are on the log-odds-ratio scale.",
+    options = list(
+        dom = "t",
+        pageLength = 6,
+        columnDefs = list(list(className = "dt-center", targets = "_all"))
+    ),
+    rownames = FALSE
+) %>%
+    DT::formatRound(columns = c("Estimate", "SE", "CI_Lower", "CI_Upper"), digits = 3) %>%
+    DT::formatRound(columns = "Pct_Change_vs_Uncorrected", digits = 1) %>%
+    DT::formatSignif(columns = "p_value", digits = 3)
+```
+
+> [!IMPORTANT]
+> **How to read the comparison.** Both corrections should pull the pooled estimate *toward zero* relative to the uncorrected multilevel mean if small-study/selective-reporting bias is present; the `Pct_Change_vs_Uncorrected` column quantifies that shrinkage. The two methods answer slightly different questions. The **Nakagawa** intercept is a *model-based extrapolation* to a perfectly precise study and tends to give wide confidence intervals (it is an out-of-range prediction). The **Yang** bias-robust estimate stays within the observed data, down-weights heterogeneity-driven inflation through fixed-effect weighting, and uses cluster-robust CR2 standard errors that explicitly respect the within-study dependence — making it a more conservative, inference-valid sensitivity analysis. Agreement between the two corrections strengthens confidence in the adjusted conclusion; divergence flags that the corrected mean is sensitive to modelling assumptions.
+
+---
+
 ## Methodological Synthesis & Discussion
 
 We compile the results of the small-study effect regressions and time-lag meta-regressions for both effect size classes below:
@@ -767,6 +963,9 @@ DT::datatable(
 
 3. **Time Trend in Continuous Outcomes:**
    For Hedges' $g$ (continuous), the publication-year trend is `r sigw(decline_hedges$pval[2])` ($\beta = `r fmt(decline_hedges$b[2])`$, $`r pstr(decline_hedges$pval[2])`$). `r if(decline_hedges$pval[2] < 0.05) "This indicates a shift in the reported magnitude of continuous effects over the history of the literature." else "This suggests the continuous reporting scales have been relatively stable in magnitude over the history of the literature."`
+
+4. **Bias-Corrected Means — Current vs. New Method:**
+   We compared two correction frameworks on the adjusted pooled mean. For Hedges' $g$, the **current** Nakagawa [-@nakagawaMethodsTestingPublication2022] $v_i$-intercept correction yields $`r fmt(egger_hedges_v$b[1])`$ while the **new** Yang [-@yangRobustPointVariance2024] bias-robust (fixed-effect + CR2) estimate yields $`r fmt(fe_hedges_robust$b[1])`$ (uncorrected multilevel mean: $`r fmt(ma_hedges$b[1])`$). For Log Odds Ratio, the corresponding values are $`r fmt(egger_or_v$b[1])`$ (Nakagawa) and $`r fmt(fe_or_robust$b[1])`$ (Yang), against an uncorrected mean of $`r fmt(ma_or$b[1])`$. The Yang bias-robust estimate is generally the more conservative, inference-valid option because it respects within-study dependence through cluster-robust variance estimation and avoids the wide-interval extrapolation inherent in the regression-intercept approach; where the two corrections agree, the adjusted conclusion is robust to modelling choice.
 
 These diagnostic results suggest that while mate-choice copying is a genuine ecological phenomenon, the overall raw pooled estimates from both continuous and binary literatures may be moderately inflated due to selective reporting and publication biases. Future research should prioritize large-sample pre-registered replication studies to provide unbiased baselines.
 
