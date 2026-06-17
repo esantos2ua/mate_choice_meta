@@ -98,6 +98,50 @@ db_davies_raw <- readxl::read_excel(path_davies, sheet = "Data")
 db_jones_raw <- readr::read_csv(path_jones)
 
 # ---------------------------------------------------------------------------
+# 1b. Species-name reconciliation + phylogenetic correlation matrices
+# ---------------------------------------------------------------------------
+# The phylogenetic correlation matrices (built in scripts/2_phylogeny/
+# build_phylogeny.R) are indexed by FULL species binomials. The mappings below
+# reproduce that script's reconciliation so the `species_phylo` grouping in the
+# effect-size data matches the tree tip labels (and matrix dimnames) exactly.
+recode_new    <- c("Taeniopygia guttata castanotis" = "Taeniopygia guttata")
+recode_davies <- c("Schizocosa" = "Schizocosa ocreata")
+
+# Jones & DuVal store only the species EPITHET; rebuild full binomials from
+# Family + epithet (identical to build_phylogeny.R).
+jones_binomial <- tibble::tribble(
+    ~family,            ~epithet,        ~species_phylo,
+    "Adrianichthyidae", "latipes",       "Oryzias latipes",
+    "Blenniidae",       "nitidus",       "Rhabdoblennius nitidus",
+    "Gasterosteidae",   "aculeatus",     "Gasterosteus aculeatus",
+    "Gobiidae",         "minutu",        "Pomatoschistus minutus",
+    "Percidae",         "olmstedi",      "Etheostoma olmstedi",
+    "Poeciliidae",      "latipinna",     "Poecilia latipinna",
+    "Poeciliidae",      "nigrofasciata", "Limia nigrofasciata",
+    "Poeciliidae",      "perugiae",      "Limia perugiae",
+    "Poeciliidae",      "reticulata",    "Poecilia reticulata",
+    "Pomacentridae",    "leucogaster",   "Amblyglyphidodon leucogaster",
+    "Lycosidae",        "ocreata",       "Schizocosa ocreata",
+    "Estrildidae",      "guttata",       "Taeniopygia guttata",
+    "Icteridae",        "ater",          "Molothrus ater",
+    "Muscicapidae",     "hypoleuca",     "Ficedula hypoleuca",
+    "Drosophilidae",    "melanogaster",  "Drosophila melanogaster",
+    "Drosophilidae",    "serrata",       "Drosophila serrata",
+    "Ocypodidae",       "mjoebergi",     "Uca mjoebergi"
+)
+
+# Phylogenetic correlation matrices (full binomials as dimnames). Loaded
+# defensively: if the phylogeny build has not been run, these are NULL and the
+# models gracefully fall back to a non-phylogenetic species random effect only.
+read_phylo <- function(f) {
+    p <- here::here("outputs", "2_phylogeny", f)
+    if (file.exists(p)) readRDS(p) else NULL
+}
+phylo_cor_new    <- read_phylo("phylo_cor_new_extraction.rds") # new-extraction tree
+phylo_cor_hedges <- read_phylo("phylo_cor_hedges_model.rds")   # combined Hedges' g species
+phylo_cor_or     <- read_phylo("phylo_cor_or_model.rds")       # combined log OR species
+
+# ---------------------------------------------------------------------------
 # 2. Process and Filter New Extraction
 # ---------------------------------------------------------------------------
 db_new <- db_new_raw %>%
@@ -128,6 +172,8 @@ hedges_new <- db_new %>%
     mutate(
         identifierStudyId = as.character(identifierStudyId),
         identifierEffectSizeID = as.character(identifierEffectSizeID),
+        # Full binomial for the phylogeny (matches tree tip labels / matrix dimnames)
+        species_phylo = dplyr::recode(str_squish(as.character(taxonomySpecies)), !!!recode_new),
         # Extract species epithet (last word) and make lowercase for cross-dataset mapping
         taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
         Dataset_Source = "New Extraction (Santos)"
@@ -150,6 +196,8 @@ hedges_davies <- db_davies_raw %>%
     mutate(
         identifierStudyId = as.character(identifierStudyId),
         identifierEffectSizeID = as.character(identifierEffectSizeID),
+        # Full binomial for the phylogeny (matches tree tip labels / matrix dimnames)
+        species_phylo = dplyr::recode(str_squish(as.character(taxonomySpecies)), !!!recode_davies),
         # Extract species epithet (last word) and make lowercase
         taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
         Dataset_Source = "Original (Davies 2020)"
@@ -157,7 +205,7 @@ hedges_davies <- db_davies_raw %>%
 
 # C. Unified Hedges' g Dataset
 db_hedges <- bind_rows(hedges_new, hedges_davies) %>%
-    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+    mutate(across(c(identifierStudyId, taxonomySpecies, species_phylo, Dataset_Source), as.factor))
 
 # ---------------------------------------------------------------------------
 # 4. Align Datasets for Odds Ratio (Binary Analysis)
@@ -176,6 +224,8 @@ or_new <- db_new %>%
     mutate(
         identifierStudyId = as.character(identifierStudyId),
         identifierEffectSizeID = as.character(identifierEffectSizeID),
+        # Full binomial for the phylogeny (matches tree tip labels / matrix dimnames)
+        species_phylo = dplyr::recode(str_squish(as.character(taxonomySpecies)), !!!recode_new),
         taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
         Dataset_Source = "New Extraction (Santos)"
     )
@@ -183,12 +233,19 @@ or_new <- db_new %>%
 # B. Log Odds Ratio from Jones & DuVal 2019 (Original)
 or_jones <- db_jones_raw %>%
     filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
+    mutate(
+        family  = str_squish(as.character(Family)),
+        epithet = str_squish(as.character(Species))
+    ) %>%
+    # Rebuild full binomial (species_phylo) from Family + epithet
+    left_join(jones_binomial, by = c("family", "epithet")) %>%
     select(
         yi = lnOR,
         vi = VlnOR,
         identifierStudyId = study,
         identifierEffectSizeID = study_Exp,
-        taxonomySpecies = Species
+        taxonomySpecies = Species,
+        species_phylo
     ) %>%
     mutate(
         identifierStudyId = as.character(identifierStudyId),
@@ -197,9 +254,17 @@ or_jones <- db_jones_raw %>%
         Dataset_Source = "Original (Jones & DuVal 2019)"
     )
 
+# Sanity check: every Jones epithet should map to a full binomial
+if (any(is.na(or_jones$species_phylo))) {
+    warning(
+        "Unmapped Jones epithets (phylogeny): ",
+        paste(unique(or_jones$taxonomySpecies[is.na(or_jones$species_phylo)]), collapse = ", ")
+    )
+}
+
 # C. Unified Log Odds Ratio Dataset
 db_or <- bind_rows(or_new, or_jones) %>%
-    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+    mutate(across(c(identifierStudyId, taxonomySpecies, species_phylo, Dataset_Source), as.factor))
 ```
 
 ---
@@ -456,11 +521,14 @@ This helper function handles the variance–covariance (VCV) matrix construction
 
   * Study (`identifierStudyId`)
   * Individual trial/effect size (`identifierEffectSizeID`)
-  * Species (`taxonomySpecies`) to control for taxonomic/species-level variation
+  * Species (`taxonomySpecies`) — the *non-phylogenetic* species effect, capturing species-specific deviations not explained by shared ancestry
+  * Phylogeny (`species_phylo`) — a *phylogenetic* random effect supplied with a species-by-species correlation matrix (`R = list(species_phylo = phylo_cor)`) derived from the Open Tree of Life topology with Grafen branch lengths (see `scripts/2_phylogeny/build_phylogeny.R`). This partitions the among-species variance into a component attributable to phylogenetic relatedness and a residual species component.
+
+The phylogenetic term is added to the **uncorrected** models only (for the New, Original, and Combined datasets); the small-study bias-corrected (Egger-type) models retain the original structure. When a phylogenetic correlation matrix is unavailable, the fit gracefully falls back to the non-phylogenetic structure.
 
 ```{r}
 #| label: model_fitting_function
-fit_overall_mv <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
+fit_overall_mv <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5, phylo_cor = NULL, phylo_var = "species_phylo") {
     # Remove rows with missing values
     dat2 <- dat %>%
         filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
@@ -479,22 +547,52 @@ fit_overall_mv <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierS
         data = dat2
     )
 
-    # 2. Fit Multi-Level Random-Effects Model
+    # 2. Assemble random-effects structure. Always include study, effect-size,
+    #    and a (non-phylogenetic) species intercept. If a phylogenetic
+    #    correlation matrix is supplied AND every species level is present in it,
+    #    add a phylogenetic random effect with R = subset-of-correlation-matrix.
+    random_list <- list(
+        ~ 1 | identifierStudyId,
+        ~ 1 | identifierEffectSizeID,
+        ~ 1 | taxonomySpecies
+    )
+    R_arg <- NULL
+    used_phylo <- FALSE
+
+    if (!is.null(phylo_cor) && phylo_var %in% colnames(dat2)) {
+        sp <- unique(as.character(dat2[[phylo_var]]))
+        missing_sp <- setdiff(sp, rownames(phylo_cor))
+        if (length(missing_sp) == 0) {
+            # Subset the correlation matrix to the species actually present so the
+            # dimnames match the grouping levels exactly. Also drop any stale
+            # (unused) factor levels on the grouping column so metafor's level
+            # set matches the R-matrix dimnames.
+            dat2[[phylo_var]] <- factor(as.character(dat2[[phylo_var]]))
+            Csub <- phylo_cor[sp, sp, drop = FALSE]
+            random_list <- c(random_list, list(stats::as.formula(paste0("~ 1 | ", phylo_var))))
+            R_arg <- stats::setNames(list(Csub), phylo_var)
+            used_phylo <- TRUE
+        } else {
+            warning(
+                "Phylogenetic random effect skipped (species absent from correlation matrix): ",
+                paste(missing_sp, collapse = ", ")
+            )
+        }
+    }
+
+    # 3. Fit Multi-Level Random-Effects Model
     mod <- metafor::rma.mv(
         yi = dat2[[yi]],
         V = VCV,
-        random = list(
-            ~ 1 | identifierStudyId,
-            ~ 1 | identifierEffectSizeID,
-            ~ 1 | taxonomySpecies
-        ),
+        random = random_list,
+        R = R_arg,
         test = "t",
         method = "REML",
         sparse = TRUE,
         data = dat2
     )
 
-    list(data = dat2, VCV = VCV, model = mod)
+    list(data = dat2, VCV = VCV, model = mod, used_phylo = used_phylo)
 }
 
 # Helper function to fit bias-corrected multilevel models with a continuous moderator (Egger-type)
@@ -585,11 +683,13 @@ We fit the multilevel meta-analysis across all three database splits (New Only, 
 #| message: false
 #| warning: false
 # ---------------------------------------------------------------------------
-# HEDGES' G MODELS (UNCORRECTED)
+# HEDGES' G MODELS (UNCORRECTED) — now incorporating phylogenetic relatedness
 # ---------------------------------------------------------------------------
-res_hedges_new <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"))
-res_hedges_orig <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"))
-res_hedges_comb <- fit_overall_mv(db_hedges)
+# New-only uses the new-extraction tree; Original-only and Combined use the
+# combined Hedges' g tree (Davies species are a subset of the combined tree).
+res_hedges_new <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), phylo_cor = phylo_cor_new)
+res_hedges_orig <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"), phylo_cor = phylo_cor_hedges)
+res_hedges_comb <- fit_overall_mv(db_hedges, phylo_cor = phylo_cor_hedges)
 
 # HEDGES' G MODELS (BIAS-CORRECTED)
 res_hedges_new_corr <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
@@ -597,11 +697,13 @@ res_hedges_orig_corr <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == 
 res_hedges_comb_corr <- fit_corrected_mv(db_hedges, moderator = "vi")
 
 # ---------------------------------------------------------------------------
-# ODDS RATIO MODELS (UNCORRECTED)
+# ODDS RATIO MODELS (UNCORRECTED) — now incorporating phylogenetic relatedness
 # ---------------------------------------------------------------------------
-res_or_new <- fit_overall_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"))
-res_or_orig <- fit_overall_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"))
-res_or_comb <- fit_overall_mv(db_or)
+# New-only uses the new-extraction tree; Original-only and Combined use the
+# combined log OR tree (Jones species are a subset of the combined tree).
+res_or_new <- fit_overall_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), phylo_cor = phylo_cor_new)
+res_or_orig <- fit_overall_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"), phylo_cor = phylo_cor_or)
+res_or_comb <- fit_overall_mv(db_or, phylo_cor = phylo_cor_or)
 
 # ODDS RATIO MODELS (BIAS-CORRECTED)
 res_or_new_corr <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
@@ -1144,6 +1246,95 @@ if (!is.null(res_or_comb_corr)) {
 :::
 
 :::
+
+---
+
+## Heterogeneity Decomposition (Partial $I^2$) {#sec-heterogeneity}
+
+Total heterogeneity ($I^2_{\text{Total}}$) quantifies the proportion of variance in the observed effect sizes that reflects true differences among effects rather than sampling error. In a multilevel model this total can be *partitioned* into the contribution of each random effect [@nakagawaMethodsTestingPublication2022]. Here the variance is split among four components: between-**study** differences, the residual **effect-size** (within-study) level, a **species** (non-phylogenetic) component, and a **phylogenetic** component that captures variance shared among species in proportion to their relatedness. We compute these partial $I^2$ values with `orchaRd::i2_ml()` for each uncorrected model.
+
+```{r}
+#| label: heterogeneity_i2_compute
+#| message: false
+#| warning: false
+# Human-readable labels for the i2_ml components (names are prefixed with "I2_")
+comp_labels <- c(
+    Total                  = "Total",
+    identifierStudyId      = "Study",
+    identifierEffectSizeID = "Effect size (residual)",
+    taxonomySpecies        = "Species (non-phylogenetic)",
+    species_phylo          = "Phylogeny"
+)
+
+# Pull the partial I^2 vector from a fitted model into tidy long form
+get_i2 <- function(res, effect, model) {
+    if (is.null(res) || is.null(res$model)) {
+        return(NULL)
+    }
+    v <- tryCatch(orchaRd::i2_ml(res$model), error = function(e) NULL)
+    if (is.null(v)) {
+        return(NULL)
+    }
+    tibble::tibble(
+        Effect    = effect,
+        Model     = model,
+        Component = sub("^I2_", "", names(v)),
+        I2        = as.numeric(v)
+    )
+}
+
+i2_long <- dplyr::bind_rows(
+    get_i2(res_hedges_new, "Hedges' g", "New Only"),
+    get_i2(res_hedges_orig, "Hedges' g", "Original Only"),
+    get_i2(res_hedges_comb, "Hedges' g", "Combined"),
+    get_i2(res_or_new, "Log OR", "New Only"),
+    get_i2(res_or_orig, "Log OR", "Original Only"),
+    get_i2(res_or_comb, "Log OR", "Combined")
+) %>%
+    mutate(ComponentLabel = dplyr::recode(Component, !!!comp_labels))
+
+# Lookup helper for inline narrative (returns NA if a component is absent)
+i2get <- function(effect, model, component) {
+    v <- i2_long$I2[i2_long$Effect == effect & i2_long$Model == model & i2_long$ComponentLabel == component]
+    if (length(v) == 0 || all(is.na(v))) NA_real_ else v[1]
+}
+```
+
+### Partial $I^2$ by Random Effect
+
+```{r}
+#| label: heterogeneity_i2_table
+#| echo: false
+i2_wide <- i2_long %>%
+    mutate(Analysis = paste0(Effect, " — ", Model), I2 = round(I2, 1)) %>%
+    select(Analysis, ComponentLabel, I2) %>%
+    tidyr::pivot_wider(names_from = ComponentLabel, values_from = I2)
+
+# Order columns consistently (only those that exist)
+desired_cols <- c("Analysis", "Total", "Study", "Effect size (residual)", "Species (non-phylogenetic)", "Phylogeny")
+i2_wide <- i2_wide %>% select(dplyr::any_of(desired_cols))
+
+DT::datatable(
+    i2_wide,
+    caption = "Partial I² (%) for each random effect across the uncorrected multilevel models. Total is the overall proportion of variance due to heterogeneity (vs. sampling error); the remaining columns partition that heterogeneity among the study, residual effect-size, non-phylogenetic species, and phylogenetic components.",
+    options = list(
+        dom = "t",
+        pageLength = 12,
+        columnDefs = list(list(className = "dt-center", targets = "_all"))
+    ),
+    rownames = FALSE
+)
+```
+
+### Interpreting the Heterogeneity {#sec-heterogeneity-narrative}
+
+The combined models show that mate-choice copying effect sizes are **highly heterogeneous**: total $I^2$ reaches `r fmt(i2get("Hedges' g", "Combined", "Total"), 1)`% for Hedges' $g$ and `r fmt(i2get("Log OR", "Combined", "Total"), 1)`% for the log odds ratio. In other words, the large majority of the observed variation reflects genuine differences among effects rather than sampling error alone, so the pooled means should be read as averages over a broad distribution of true effects rather than as a single common effect.
+
+Decomposing that heterogeneity is where the phylogeny becomes informative. For the combined Hedges' $g$ model, the **phylogenetic** component accounts for `r fmt(i2get("Hedges' g", "Combined", "Phylogeny"), 1)`% of the variance, the **non-phylogenetic species** component for `r fmt(i2get("Hedges' g", "Combined", "Species (non-phylogenetic)"), 1)`%, between-**study** differences for `r fmt(i2get("Hedges' g", "Combined", "Study"), 1)`%, and the residual **effect-size** level for `r fmt(i2get("Hedges' g", "Combined", "Effect size (residual)"), 1)`%. The combined log-odds-ratio model partitions similarly: phylogeny `r fmt(i2get("Log OR", "Combined", "Phylogeny"), 1)`%, species `r fmt(i2get("Log OR", "Combined", "Species (non-phylogenetic)"), 1)`%, study `r fmt(i2get("Log OR", "Combined", "Study"), 1)`%, and residual `r fmt(i2get("Log OR", "Combined", "Effect size (residual)"), 1)`%.
+
+The size of the phylogenetic component is the key new result. A substantial value would indicate that closely related species tend to show similar degrees of mate-choice copying — i.e., the trait carries a phylogenetic signal and effects are not independent across the tree — which would caution against treating species as exchangeable and would motivate phylogenetically informed interpretation. A small phylogenetic component, by contrast, indicates that relatedness explains little of the among-species variation: most of the species-level differences are idiosyncratic (captured by the non-phylogenetic species term) rather than inherited, and the earlier non-phylogenetic models were not materially biased by ignoring the tree. The contrast between the phylogenetic and non-phylogenetic species components is therefore the most direct readout of how much shared ancestry, as opposed to species-specific biology, structures the data.
+
+Two further patterns are worth noting. First, the residual effect-size level typically absorbs a large share of the variance, reflecting heterogeneity among individual trials within studies (different paradigms, demonstrators, and conditions). Second, comparing the New-Only, Original-Only, and Combined columns shows whether the new extraction introduces or dilutes heterogeneity relative to the legacy datasets; where the new and original subsets allocate variance differently, the combined estimate reflects a weighted blend of the two. Because this high heterogeneity is the rule rather than the exception, it justifies the moderator and sub-group analyses pursued elsewhere in the workflow, and it is the reason the pooled estimates are reported with prediction intervals in addition to confidence intervals.
 
 ---
 
