@@ -85,8 +85,8 @@ We read the three datasets, perform data type conversions, extract species epith
 
 # Paths to legacy and new datasets
 path_new <- here::here("data", "1_effect_size_calculation_pipeline", "Data Extraction Mate Choice Meta Analysis.xlsx")
-path_davies <- here::here("data", "2_original_meta_analyses_datasets", "Davies_et_al_2020_Final_data.xlsx")
-path_jones <- here::here("data", "2_original_meta_analyses_datasets", "Jones_DuVal_2019_data.CSV")
+path_davies <- here::here("data", "original_meta_analyses_datasets", "Davies_et_al_2020_Final_data.xlsx")
+path_jones <- here::here("data", "original_meta_analyses_datasets", "Jones_DuVal_2019_data.CSV")
 
 # A. Read new extraction dataset (EduardoExtraction sheet)
 db_new_raw <- readxl::read_excel(path_new, sheet = "EduardoExtraction")
