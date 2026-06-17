@@ -9,3 +9,10 @@
 
 # Quarto temporary directories
 *_files/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local-only Claude Code guidance
+CLAUDE.md
