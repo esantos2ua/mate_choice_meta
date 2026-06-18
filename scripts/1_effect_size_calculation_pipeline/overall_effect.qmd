@@ -1512,6 +1512,359 @@ print(fig_or)
 
 ---
 
+## Taxonomic Moderator (Heteroscedastic Model) {#sec-taxonomic-moderator}
+
+The combined synthesis pools effect sizes across very different organisms — insects and other arthropods, ray-finned fishes, and the remaining vertebrates (birds and mammals). Two questions follow naturally: does the *average* strength of mate-choice copying differ among these groups, and is the *amount of heterogeneity* itself group-specific? To answer both we fit a single `rma.mv` model with **taxonomic group as a categorical moderator** and a **heteroscedastic** random-effects structure that lets the variance components differ across groups.
+
+Three design choices define this model:
+
+* **Taxonomic grouping.** Each species (full binomial) is assigned to **Arthropods**, **Fish**, or **Other Vertebrates** by genus. The genus uniquely determines the class for every species in these data, so the mapping is unambiguous (verified in the table below).
+* **No phylogenetic term.** The heterogeneity decomposition shows the phylogenetic component contributes very little variance, so it is dropped here; the species random intercept (`taxonomySpecies`) still absorbs among-species differences within each group.
+* **Heteroscedasticity (`struct = "DIAG"`).** Both the **between-study** variance and the **residual (within-study) effect-size** variance are allowed to take a separate value in each taxonomic group, rather than being forced to a single common value. This is the canonical `metafor` heteroscedastic subgroup specification (`~ tax_group | identifierStudyId` and `~ tax_group | identifierEffectSizeID`, each with `struct = "DIAG"`).
+
+```{r}
+#| label: taxon_classify
+#| message: false
+#| warning: false
+# ---------------------------------------------------------------------------
+# Genus-based taxonomic classification of the combined-dataset species.
+# Classification keys on the FULL binomial (`species_phylo`); the genus alone
+# unambiguously determines the class for every species in these datasets
+# (cross-checked against the higher-taxon cascade in build_phylogeny.R).
+# ---------------------------------------------------------------------------
+arthropod_genera <- c("Drosophila", "Enchenopa", "Schizocosa", "Uca")
+fish_genera <- c(
+    "Amblyglyphidodon", "Brachyrhaphis", "Danio", "Etheostoma", "Gambusia",
+    "Gasterosteus", "Limia", "Oryzias", "Poecilia", "Pomatoschistus",
+    "Porichthys", "Rhabdoblennius", "Syngnathus"
+)
+othervert_genera <- c("Coturnix", "Dama", "Ficedula", "Molothrus", "Mus", "Rattus", "Taeniopygia")
+
+tax_levels  <- c("Arthropods", "Fish", "Other Vertebrates")
+tax_palette <- c("Arthropods" = "#E69F00", "Fish" = "#56B4E9", "Other Vertebrates" = "#009E73")
+
+classify_taxon <- function(binomial) {
+    genus <- stringr::word(as.character(binomial), 1)
+    grp <- dplyr::case_when(
+        genus %in% arthropod_genera ~ "Arthropods",
+        genus %in% fish_genera      ~ "Fish",
+        genus %in% othervert_genera ~ "Other Vertebrates",
+        TRUE                        ~ NA_character_
+    )
+    factor(grp, levels = tax_levels)
+}
+
+# Add the taxonomic group to the combined Hedges' g and log OR datasets.
+db_hedges_tax <- db_hedges %>% mutate(tax_group = classify_taxon(species_phylo))
+db_or_tax     <- db_or     %>% mutate(tax_group = classify_taxon(species_phylo))
+
+# Defensive check: every species should be classified.
+unmapped_tax <- sort(unique(as.character(c(
+    db_hedges_tax$species_phylo[is.na(db_hedges_tax$tax_group)],
+    db_or_tax$species_phylo[is.na(db_or_tax$tax_group)]
+))))
+if (length(unmapped_tax) > 0) {
+    warning("Unclassified species (no taxonomic group): ", paste(unmapped_tax, collapse = ", "))
+}
+```
+
+### Species-to-Group Mapping (verification)
+
+The table below lists every species in the combined datasets, its full binomial, the species level used as a random effect (the epithet), and the taxonomic group it was assigned to, with the number of effect sizes it contributes to each effect-size class. This is the audit the analysis is built on — each row should look correct.
+
+```{r}
+#| label: taxon_check_table
+#| echo: false
+tax_map_check <- dplyr::bind_rows(
+    db_hedges_tax %>% transmute(
+        species_phylo = as.character(species_phylo),
+        epithet = as.character(taxonomySpecies), tax_group, Class = "Hedges' g"
+    ),
+    db_or_tax %>% transmute(
+        species_phylo = as.character(species_phylo),
+        epithet = as.character(taxonomySpecies), tax_group, Class = "Log OR"
+    )
+) %>%
+    dplyr::count(tax_group, species_phylo, epithet, Class, name = "n") %>%
+    tidyr::pivot_wider(names_from = Class, values_from = n, values_fill = 0) %>%
+    arrange(tax_group, species_phylo) %>%
+    rename(
+        `Taxonomic group` = tax_group,
+        `Species (full binomial)` = species_phylo,
+        `Species level (epithet)` = epithet
+    )
+
+DT::datatable(
+    tax_map_check,
+    caption = "Each combined-dataset species, its assigned taxonomic group, and the number of effect sizes it contributes to the Hedges' g and log OR classes. Use this to confirm the categorical variable matches the original species.",
+    options = list(dom = "tip", pageLength = 40, columnDefs = list(list(className = "dt-center", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+### Model Fitting
+
+```{r}
+#| label: fit_taxon_hetero_models
+#| message: false
+#| warning: false
+# ---------------------------------------------------------------------------
+# Heteroscedastic taxonomic-moderator model. The moderator enters without an
+# intercept (`~ tax_group - 1`) so each coefficient is a group mean. Both the
+# between-study (`~ tax_group | identifierStudyId`) and the residual effect-size
+# (`~ tax_group | identifierEffectSizeID`) variances are made group-specific via
+# struct = "DIAG"; a homoscedastic species intercept (`~ 1 | taxonomySpecies`)
+# is retained. NO phylogenetic term. A cascade of fallbacks guards against
+# non-convergence of the most flexible structure.
+# ---------------------------------------------------------------------------
+fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "vi",
+                                cluster_var = "identifierStudyId",
+                                obs_var = "identifierEffectSizeID", rho = 0.5) {
+    dat2 <- dat %>%
+        filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0, !is.na(.data[[group_var]]))
+    if (nrow(dat2) == 0) {
+        message("No complete cases found.")
+        return(NULL)
+    }
+    dat2[[group_var]] <- droplevels(factor(dat2[[group_var]], levels = tax_levels))
+
+    VCV <- metafor::vcalc(vi = dat2[[vi]], cluster = dat2[[cluster_var]], obs = dat2[[obs_var]], rho = rho, data = dat2)
+
+    mods_f  <- stats::as.formula(paste0("~ ", group_var, " - 1"))
+    study_f <- stats::as.formula(paste0("~ ", group_var, " | ", cluster_var))
+    obs_f   <- stats::as.formula(paste0("~ ", group_var, " | ", obs_var))
+
+    try_fit <- function(random_list, struct) {
+        tryCatch(
+            metafor::rma.mv(
+                yi = dat2[[yi]], V = VCV, mods = mods_f, random = random_list,
+                struct = struct, test = "t", method = "REML", sparse = TRUE, data = dat2
+            ),
+            error = function(e) {
+                message("Taxon model fit failed (", paste(struct, collapse = "/"), "): ", conditionMessage(e))
+                NULL
+            }
+        )
+    }
+
+    # Primary: heteroscedastic at BOTH the between-study and residual levels.
+    mod <- try_fit(list(study_f, obs_f, ~ 1 | taxonomySpecies), c("DIAG", "DIAG"))
+    spec <- "Heteroscedastic (between-study + residual, per group)"
+
+    # Fallback 1: heteroscedastic between-study only.
+    if (is.null(mod)) {
+        mod <- try_fit(list(study_f, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies), "DIAG")
+        spec <- "Heteroscedastic (between-study only, per group)"
+    }
+    # Fallback 2: fully homoscedastic moderator model.
+    if (is.null(mod)) {
+        mod <- tryCatch(
+            metafor::rma.mv(
+                yi = dat2[[yi]], V = VCV, mods = mods_f,
+                random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+                test = "t", method = "REML", sparse = TRUE, data = dat2
+            ),
+            error = function(e) NULL
+        )
+        spec <- "Homoscedastic (single variance per component)"
+    }
+    if (is.null(mod)) {
+        return(NULL)
+    }
+    list(data = dat2, VCV = VCV, model = mod, spec = spec)
+}
+
+res_tax_hedges <- fit_taxon_hetero_mv(db_hedges_tax)
+res_tax_or     <- fit_taxon_hetero_mv(db_or_tax)
+
+# Omnibus among-group test via simultaneous pairwise contrasts against the first
+# group (Wald-type). On the no-intercept fit, the built-in QM tests all means = 0,
+# which is NOT the among-group test we want; the contrast matrix below gives it.
+among_group_test <- function(res) {
+    if (is.null(res) || is.null(res$model)) {
+        return(NULL)
+    }
+    ng <- length(res$model$b)
+    if (ng < 2) {
+        return(NULL)
+    }
+    L <- cbind(rep(1, ng - 1), -diag(ng - 1))
+    tryCatch(anova(res$model, L = L), error = function(e) NULL)
+}
+qm_tax_hedges <- among_group_test(res_tax_hedges)
+qm_tax_or     <- among_group_test(res_tax_or)
+
+# Total I^2 (orchaRd if available; otherwise a Higgins typical-variance fallback
+# so a heterogeneity figure is always reported even under the DIAG structure).
+total_i2 <- function(res) {
+    if (is.null(res) || is.null(res$model)) {
+        return(NA_real_)
+    }
+    m <- res$model
+    i2 <- tryCatch(orchaRd::i2_ml(m), error = function(e) NULL)
+    if (!is.null(i2) && any(grepl("Total", names(i2)))) {
+        return(as.numeric(i2[grep("Total", names(i2))[1]]))
+    }
+    vi <- res$data$vi
+    wi <- 1 / vi
+    k  <- length(vi)
+    s2 <- (k - 1) * sum(wi) / (sum(wi)^2 - sum(wi^2))
+    vc <- sum(c(m$sigma2, m$tau2, m$gamma2), na.rm = TRUE)
+    100 * vc / (vc + s2)
+}
+i2_tax_hedges <- total_i2(res_tax_hedges)
+i2_tax_or     <- total_i2(res_tax_or)
+```
+
+### Model Output: Hedges' $g$
+
+```{r}
+#| label: taxon_hedges_summary
+#| echo: false
+if (!is.null(res_tax_hedges)) {
+    cat("Random-effects structure:", res_tax_hedges$spec, "\n\n")
+    print(summary(res_tax_hedges$model))
+}
+```
+
+### Model Output: Log Odds Ratio
+
+```{r}
+#| label: taxon_or_summary
+#| echo: false
+if (!is.null(res_tax_or)) {
+    cat("Random-effects structure:", res_tax_or$spec, "\n\n")
+    print(summary(res_tax_or$model))
+}
+```
+
+### Group Means and Heterogeneity
+
+```{r}
+#| label: taxon_group_means_table
+#| echo: false
+group_means <- function(res, label) {
+    if (is.null(res) || is.null(res$model)) {
+        return(NULL)
+    }
+    mr <- orchaRd::mod_results(res$model, mod = "tax_group", group = "identifierStudyId")
+    mr$mod_table %>%
+        transmute(
+            Analysis = label,
+            `Taxonomic group` = name,
+            Estimate = round(estimate, 3),
+            `CI lower` = round(lowerCL, 3), `CI upper` = round(upperCL, 3),
+            `PI lower` = round(lowerPR, 3), `PI upper` = round(upperPR, 3)
+        )
+}
+
+means_tbl <- dplyr::bind_rows(
+    group_means(res_tax_hedges, "Hedges' g"),
+    group_means(res_tax_or, "Log OR")
+)
+
+DT::datatable(
+    means_tbl,
+    caption = "Estimated mean effect (with 95% confidence and prediction intervals) for each taxonomic group, from the heteroscedastic moderator models.",
+    options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+```{r}
+#| label: taxon_variance_table
+#| echo: false
+# Pull the (group-specific) variance components out of a fitted model. Under the
+# both-DIAG structure: tau2 = between-study variance per group, gamma2 = residual
+# variance per group, sigma2 = species variance. Labels fall back gracefully if a
+# simpler fallback structure was used.
+variance_components <- function(res, label) {
+    if (is.null(res) || is.null(res$model)) {
+        return(NULL)
+    }
+    m   <- res$model
+    glv <- levels(droplevels(factor(res$data$tax_group, levels = tax_levels)))
+    out <- tibble::tibble(Analysis = character(), Component = character(), Variance = numeric())
+    add <- function(out, comp, vals, labs) {
+        if (is.null(vals) || length(vals) == 0) {
+            return(out)
+        }
+        dplyr::bind_rows(out, tibble::tibble(
+            Analysis = label, Component = paste0(comp, labs), Variance = round(as.numeric(vals), 4)
+        ))
+    }
+    out <- add(out, "Between-study τ² — ", m$tau2, glv[seq_along(m$tau2)])
+    out <- add(out, "Residual σ² — ", m$gamma2, glv[seq_along(m$gamma2)])
+    sig_lab <- if (length(m$sigma2) == 1) "Species" else paste0("Component ", seq_along(m$sigma2))
+    out <- add(out, "", stats::setNames(m$sigma2, NULL), sig_lab)
+    out
+}
+
+var_tbl <- dplyr::bind_rows(
+    variance_components(res_tax_hedges, "Hedges' g"),
+    variance_components(res_tax_or, "Log OR")
+)
+
+DT::datatable(
+    var_tbl,
+    caption = "Variance components from the heteroscedastic models. Under the both-DIAG structure the between-study and residual variances are estimated separately within each taxonomic group; the species component is shared.",
+    options = list(dom = "t", pageLength = 20, columnDefs = list(list(className = "dt-center", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+```{r}
+#| label: taxon_qm_helpers
+#| include: false
+# Inline helpers for the narrative below.
+qm_p   <- function(a) if (is.null(a) || is.null(a$QMp)) NA_real_ else as.numeric(a$QMp)
+qm_stat <- function(a) if (is.null(a) || is.null(a$QM)) NA_real_ else as.numeric(a$QM)
+```
+
+For Hedges' $g$, total heterogeneity is `r fmt(i2_tax_hedges, 1)`% and the among-group test is `r pstr(qm_p(qm_tax_hedges))` (Wald $Q_M$ = `r fmt(qm_stat(qm_tax_hedges), 2)`), so the difference among taxonomic groups is **`r sigw(qm_p(qm_tax_hedges))`**. For the log odds ratio, total heterogeneity is `r fmt(i2_tax_or, 1)`% and the among-group test is `r pstr(qm_p(qm_tax_or))` (Wald $Q_M$ = `r fmt(qm_stat(qm_tax_or), 2)`), a **`r sigw(qm_p(qm_tax_or))`** difference among groups. The group means and their intervals are tabulated above; the variance-component table shows where the heteroscedastic structure assigns the most within- and between-study variability across the three groups.
+
+### Orchard Plot
+
+```{r}
+#| label: taxon_orchard_plots
+#| message: false
+#| warning: false
+#| fig.width: 10
+#| fig.height: 9
+plot_taxon_orchard <- function(res, xlab, title) {
+    if (is.null(res) || is.null(res$model)) {
+        return(NULL)
+    }
+    mr <- orchaRd::mod_results(res$model, mod = "tax_group", group = "identifierStudyId")
+    oc <- orchaRd::orchard_plot(mr, xlab = xlab, angle = 0, g = TRUE, k = TRUE)
+    oc +
+        ggplot2::scale_colour_manual(values = tax_palette, name = "Taxonomic group", aesthetics = c("colour", "fill")) +
+        ggplot2::ggtitle(title) +
+        ggplot2::theme(
+            plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
+            legend.position = "none"
+        )
+}
+
+p_tax_h <- plot_taxon_orchard(res_tax_hedges, "Hedges' g", "Hedges' g by taxonomic group")
+p_tax_o <- plot_taxon_orchard(res_tax_or, "Log Odds Ratio (lnOR)", "Log OR by taxonomic group")
+
+if (!is.null(p_tax_h) && !is.null(p_tax_o)) {
+    fig_tax <- (p_tax_h / p_tax_o) +
+        patchwork::plot_annotation(
+            tag_levels = "a", tag_prefix = "(", tag_suffix = ")",
+            title = "Mate-choice copying by taxonomic group (heteroscedastic moderator model)",
+            theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 15, face = "bold", hjust = 0.5))
+        )
+    print(fig_tax)
+} else {
+    if (!is.null(p_tax_h)) print(p_tax_h)
+    if (!is.null(p_tax_o)) print(p_tax_o)
+}
+```
+
+---
+
 ## Heterogeneity Decomposition (Partial $I^2$) {#sec-heterogeneity}
 
 Total heterogeneity ($I^2_{\text{Total}}$) quantifies the proportion of variance in the observed effect sizes that reflects true differences among effects rather than sampling error. In a multilevel model this total can be *partitioned* into the contribution of each random effect [@nakagawaMethodsTestingPublication2022]. Here the variance is split among four components: between-**study** differences, the residual **effect-size** (within-study) level, a **species** (non-phylogenetic) component, and a **phylogenetic** component that captures variance shared among species in proportion to their relatedness. We compute these partial $I^2$ values with `orchaRd::i2_ml()` for each uncorrected model.

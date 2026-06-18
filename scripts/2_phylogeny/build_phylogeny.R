@@ -300,10 +300,36 @@ sil_aspect <- function(img) {
   if (!is.finite(a) || a <= 0) 1 else a
 }
 
+# -----------------------------------------------------------------------------
+# Taxonomic-group classifier (matches overall_effect.qmd). Keys on the full
+# binomial via the genus; the genus uniquely determines the class for every
+# species in these datasets. Used to draw clade bounding boxes on the combined
+# tree.
+# -----------------------------------------------------------------------------
+classify_taxon <- function(binomial) {
+  genus <- word(as.character(binomial), 1)
+  arthropod_genera <- c("Drosophila", "Enchenopa", "Schizocosa", "Uca")
+  fish_genera <- c("Amblyglyphidodon", "Brachyrhaphis", "Danio", "Etheostoma",
+                   "Gambusia", "Gasterosteus", "Limia", "Oryzias", "Poecilia",
+                   "Pomatoschistus", "Porichthys", "Rhabdoblennius", "Syngnathus")
+  othervert_genera <- c("Coturnix", "Dama", "Ficedula", "Molothrus", "Mus",
+                        "Rattus", "Taeniopygia")
+  ifelse(genus %in% arthropod_genera, "Arthropods",
+         ifelse(genus %in% fish_genera, "Fish",
+                ifelse(genus %in% othervert_genera, "Other Vertebrates", NA_character_)))
+}
+
+# Colours for the taxonomic-group bounding boxes (colourblind-friendly).
+tax_box_cols <- c("Arthropods"        = "#E69F00",
+                  "Fish"              = "#56B4E9",
+                  "Other Vertebrates" = "#009E73")
+
 # Plot a tree with a PhyloPic silhouette at each tip, the italic species name,
 # and TWO right-hand count columns (effect sizes `k` in red, studies in blue),
 # mirroring the example figure. Saves both a PDF and a PNG (`file` is the .pdf).
-plot_tree_with_counts <- function(tree, es_named, st_named, title, file, sil = NULL) {
+# If `group_map` (a named species -> taxonomic-group vector) is supplied, draws a
+# coloured bounding box around each group's contiguous run of tips, with a legend.
+plot_tree_with_counts <- function(tree, es_named, st_named, title, file, sil = NULL, group_map = NULL) {
   tree <- ladderize(tree)
   n    <- ape::Ntip(tree)
   es   <- es_named[tree$tip.label]; es[is.na(es)] <- 0
@@ -323,6 +349,28 @@ plot_tree_with_counts <- function(tree, es_named, st_named, title, file, sil = N
     x_name <- xmax + 0.14 * span             # species name (left-aligned)
     x_es   <- 0.83 * span                     # effect-sizes column
     x_st   <- 0.99 * span                     # studies column
+
+    # Taxonomic-group bounding boxes (drawn first so tree, silhouettes, names,
+    # and counts all sit on top). Each group is boxed around its contiguous
+    # run(s) of tips; a faint fill plus a coloured border marks the clade.
+    if (!is.null(group_map)) {
+      grps   <- group_map[tree$tip.label]
+      x_left  <- -0.02 * span
+      x_right <-  0.80 * span                 # stop before the count columns
+      for (g in intersect(names(tax_box_cols), unique(stats::na.omit(grps)))) {
+        ys <- sort(yy[which(grps == g)])
+        # Split into contiguous runs (handles any non-monophyletic placement).
+        runs <- split(ys, cumsum(c(1, diff(ys) > 1.5)))
+        for (r in runs) {
+          rect(x_left, min(r) - 0.5, x_right, max(r) + 0.5,
+               border = tax_box_cols[[g]], lwd = 2.5,
+               col = grDevices::adjustcolor(tax_box_cols[[g]], alpha.f = 0.08))
+        }
+      }
+      legend("bottomleft", legend = names(tax_box_cols), col = tax_box_cols,
+             lwd = 2.5, bty = "n", cex = 0.8, title = "Taxonomic group",
+             title.adj = 0, inset = c(0.06, 0.05))
+    }
 
     # Silhouettes (one per tip; skipped silently where none resolved).
     # Standardise by AREA: scale height by 1/sqrt(aspect) so a long, thin
@@ -385,10 +433,16 @@ tree_comb <- reconcile_and_augment(res_comb, counts_combined$species)
 es_comb  <- setNames(counts_combined$n_total_es, counts_combined$species)
 st_comb  <- setNames(counts_combined$n_studies,  counts_combined$species)
 sil_comb <- fetch_silhouettes(tree_comb$tip.label)
+# Taxonomic-group map for the bounding boxes (species -> Arthropods/Fish/Other).
+group_comb <- stats::setNames(classify_taxon(tree_comb$tip.label), tree_comb$tip.label)
+if (any(is.na(group_comb)))
+  warning("Unclassified tips (no taxonomic group): ",
+          paste(names(group_comb)[is.na(group_comb)], collapse = ", "))
 plot_tree_with_counts(tree_comb, es_comb, st_comb,
                  title = "MCC phylogeny - Combined (New + Davies 2020 + Jones & DuVal 2019)",
                  file  = file.path(dir_out, "phylogeny_combined.pdf"),
-                 sil   = sil_comb)
+                 sil   = sil_comb,
+                 group_map = group_comb)
 
 # PhyloPic requires attribution. Record which silhouette was used per species
 # (the resolved taxon + uuid) so the figure legend can credit the artists.
