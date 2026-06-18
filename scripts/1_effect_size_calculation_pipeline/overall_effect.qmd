@@ -36,7 +36,8 @@ pacman::p_load(
     patchwork,
     DT,
     scales,
-    clubSandwich
+    clubSandwich,
+    emmeans
 )
 
 # Helper function to format numbers to a given precision and clean negative zeros
@@ -1520,7 +1521,8 @@ Three design choices define this model:
 
 * **Taxonomic grouping.** Each species (full binomial) is assigned to **Arthropods**, **Fish**, or **Other Vertebrates** by genus. The genus uniquely determines the class for every species in these data, so the mapping is unambiguous (verified in the table below).
 * **No phylogenetic term.** The heterogeneity decomposition shows the phylogenetic component contributes very little variance, so it is dropped here; the species random intercept (`taxonomySpecies`) still absorbs among-species differences within each group.
-* **Heteroscedasticity (`struct = "DIAG"`).** Both the **between-study** variance and the **residual (within-study) effect-size** variance are allowed to take a separate value in each taxonomic group, rather than being forced to a single common value. This is the canonical `metafor` heteroscedastic subgroup specification (`~ tax_group | identifierStudyId` and `~ tax_group | identifierEffectSizeID`, each with `struct = "DIAG"`).
+* **Heteroscedasticity (`struct = "HCS"`, `rho = 0`).** Both the **between-study** variance and the **residual (within-study) effect-size** variance are allowed to take a separate value in each taxonomic group, rather than being forced to a single common value. This follows the `orchaRd` 2.0 recommendation for meta-regression with heterogeneous variances [@nakagawaOrchaRd2Visualising2023]: each heteroscedastic random term is written as an `~ moderator | unit` formula (`~ tax_group | identifierStudyId` and `~ tax_group | identifierEffectSizeID`) with a heteroscedastic compound-symmetry structure and the between-level covariance fixed to zero (`rho = 0`, `phi = 0`), since each effect size belongs to exactly one taxonomic group and a cross-group covariance is not identifiable.
+* **Marginalised means.** The moderator is fitted **with an intercept** (`mods = ~ tax_group`) and the per-group means, confidence intervals, and prediction intervals are obtained as **marginalised means** through `orchaRd::mod_results()` (which calls `emmeans` internally), again as recommended in the `orchaRd` 2.0 workflow. The overall test for differences among groups is the model's omnibus moderator test ($Q_M$).
 
 ```{r}
 #| label: taxon_classify
@@ -1609,13 +1611,25 @@ DT::datatable(
 #| message: false
 #| warning: false
 # ---------------------------------------------------------------------------
-# Heteroscedastic taxonomic-moderator model. The moderator enters without an
-# intercept (`~ tax_group - 1`) so each coefficient is a group mean. Both the
-# between-study (`~ tax_group | identifierStudyId`) and the residual effect-size
-# (`~ tax_group | identifierEffectSizeID`) variances are made group-specific via
-# struct = "DIAG"; a homoscedastic species intercept (`~ 1 | taxonomySpecies`)
-# is retained. NO phylogenetic term. A cascade of fallbacks guards against
-# non-convergence of the most flexible structure.
+# Heteroscedastic taxonomic-moderator model, following the orchaRd 2.0
+# heterogeneous-variance workflow (Nakagawa et al. 2023, vignette Example 4).
+#
+# * The moderator is fitted WITH an intercept (`mods = ~ tax_group`); per-group
+#   means / CIs / PIs are obtained downstream as marginalised means via
+#   orchaRd::mod_results() (emmeans), and the among-group test is the model's
+#   omnibus moderator test (QM).
+# * Heterogeneous variances are specified as `~ tax_group | unit` random terms
+#   with struct = "HCS" and the between-level covariance fixed to zero
+#   (rho = 0 for the study term, phi = 0 for the effect-size term) — exactly the
+#   structure used in the orchaRd documentation. With each unit belonging to a
+#   single group this estimates one variance per group with no cross-group
+#   covariance (equivalent to a diagonal structure).
+# * Both the between-study (`~ tax_group | identifierStudyId`) and the residual
+#   effect-size (`~ tax_group | identifierEffectSizeID`) variances are made
+#   group-specific; a homoscedastic species intercept (`~ 1 | taxonomySpecies`)
+#   is retained. NO phylogenetic term.
+# * A Nelder-Mead optimiser (as in the vignette) and a fallback cascade guard
+#   against non-convergence of the most flexible structure.
 # ---------------------------------------------------------------------------
 fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "vi",
                                 cluster_var = "identifierStudyId",
@@ -1630,31 +1644,40 @@ fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "v
 
     VCV <- metafor::vcalc(vi = dat2[[vi]], cluster = dat2[[cluster_var]], obs = dat2[[obs_var]], rho = rho, data = dat2)
 
-    mods_f  <- stats::as.formula(paste0("~ ", group_var, " - 1"))
-    study_f <- stats::as.formula(paste0("~ ", group_var, " | ", cluster_var))
-    obs_f   <- stats::as.formula(paste0("~ ", group_var, " | ", obs_var))
-
-    try_fit <- function(random_list, struct) {
-        tryCatch(
-            metafor::rma.mv(
-                yi = dat2[[yi]], V = VCV, mods = mods_f, random = random_list,
-                struct = struct, test = "t", method = "REML", sparse = TRUE, data = dat2
-            ),
-            error = function(e) {
-                message("Taxon model fit failed (", paste(struct, collapse = "/"), "): ", conditionMessage(e))
-                NULL
-            }
-        )
-    }
+    mods_f  <- stats::as.formula(paste0("~ ", group_var))                       # intercept-coded
+    study_f <- stats::as.formula(paste0("~ ", group_var, " | ", cluster_var))   # heteroscedastic between-study
+    obs_f   <- stats::as.formula(paste0("~ ", group_var, " | ", obs_var))       # heteroscedastic residual
+    ctrl    <- list(optimizer = "optim", optmethod = "Nelder-Mead")
 
     # Primary: heteroscedastic at BOTH the between-study and residual levels.
-    mod <- try_fit(list(study_f, obs_f, ~ 1 | taxonomySpecies), c("DIAG", "DIAG"))
-    spec <- "Heteroscedastic (between-study + residual, per group)"
+    # struct = HCS with rho = 0 (study term) and phi = 0 (effect-size term).
+    mod <- tryCatch(
+        metafor::rma.mv(
+            yi = dat2[[yi]], V = VCV, mods = mods_f,
+            random = list(study_f, obs_f, ~ 1 | taxonomySpecies),
+            struct = c("HCS", "HCS"), rho = 0, phi = 0,
+            test = "t", dfs = "contain", method = "REML", sparse = TRUE,
+            control = ctrl, data = dat2
+        ),
+        error = function(e) {
+            message("Both-level heteroscedastic fit failed: ", conditionMessage(e)); NULL
+        }
+    )
+    spec <- "Heteroscedastic (between-study + residual, per group; HCS, rho = phi = 0)"
 
-    # Fallback 1: heteroscedastic between-study only.
+    # Fallback 1: heteroscedastic residual only (the single-level orchaRd default).
     if (is.null(mod)) {
-        mod <- try_fit(list(study_f, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies), "DIAG")
-        spec <- "Heteroscedastic (between-study only, per group)"
+        mod <- tryCatch(
+            metafor::rma.mv(
+                yi = dat2[[yi]], V = VCV, mods = mods_f,
+                random = list(~ 1 | identifierStudyId, obs_f, ~ 1 | taxonomySpecies),
+                struct = "HCS", rho = 0,
+                test = "t", dfs = "contain", method = "REML", sparse = TRUE,
+                control = ctrl, data = dat2
+            ),
+            error = function(e) NULL
+        )
+        spec <- "Heteroscedastic (residual only, per group; HCS, rho = 0)"
     }
     # Fallback 2: fully homoscedastic moderator model.
     if (is.null(mod)) {
@@ -1662,7 +1685,7 @@ fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "v
             metafor::rma.mv(
                 yi = dat2[[yi]], V = VCV, mods = mods_f,
                 random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
-                test = "t", method = "REML", sparse = TRUE, data = dat2
+                test = "t", dfs = "contain", method = "REML", sparse = TRUE, data = dat2
             ),
             error = function(e) NULL
         )
@@ -1677,25 +1700,21 @@ fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "v
 res_tax_hedges <- fit_taxon_hetero_mv(db_hedges_tax)
 res_tax_or     <- fit_taxon_hetero_mv(db_or_tax)
 
-# Omnibus among-group test via simultaneous pairwise contrasts against the first
-# group (Wald-type). On the no-intercept fit, the built-in QM tests all means = 0,
-# which is NOT the among-group test we want; the contrast matrix below gives it.
+# Omnibus among-group test. With the intercept-coded moderator, metafor's built-in
+# QM tests all non-intercept coefficients jointly — i.e. exactly whether the group
+# means differ — so it is used directly (no custom contrast matrix needed).
 among_group_test <- function(res) {
     if (is.null(res) || is.null(res$model)) {
         return(NULL)
     }
-    ng <- length(res$model$b)
-    if (ng < 2) {
-        return(NULL)
-    }
-    L <- cbind(rep(1, ng - 1), -diag(ng - 1))
-    tryCatch(anova(res$model, L = L), error = function(e) NULL)
+    list(QM = res$model$QM, QMp = res$model$QMp, QMdf = res$model$QMdf)
 }
 qm_tax_hedges <- among_group_test(res_tax_hedges)
 qm_tax_or     <- among_group_test(res_tax_or)
 
 # Total I^2 (orchaRd if available; otherwise a Higgins typical-variance fallback
-# so a heterogeneity figure is always reported even under the DIAG structure).
+# so a heterogeneity figure is always reported even under the heteroscedastic
+# structure).
 total_i2 <- function(res) {
     if (is.null(res) || is.null(res$model)) {
         return(NA_real_)
