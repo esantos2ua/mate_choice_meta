@@ -1521,7 +1521,7 @@ Three design choices define this model:
 
 * **Taxonomic grouping.** Each species (full binomial) is assigned to **Arthropods**, **Fish**, or **Other Vertebrates** by genus. The genus uniquely determines the class for every species in these data, so the mapping is unambiguous (verified in the table below).
 * **No phylogenetic term.** The heterogeneity decomposition shows the phylogenetic component contributes very little variance, so it is dropped here; the species random intercept (`taxonomySpecies`) still absorbs among-species differences within each group.
-* **Heteroscedasticity (`struct = "HCS"`, `rho = 0`).** Both the **between-study** variance and the **residual (within-study) effect-size** variance are allowed to take a separate value in each taxonomic group, rather than being forced to a single common value. This follows the `orchaRd` 2.0 recommendation for meta-regression with heterogeneous variances [@nakagawaOrchaRd2Visualising2023]: each heteroscedastic random term is written as an `~ moderator | unit` formula (`~ tax_group | identifierStudyId` and `~ tax_group | identifierEffectSizeID`) with a heteroscedastic compound-symmetry structure and the between-level covariance fixed to zero (`rho = 0`, `phi = 0`), since each effect size belongs to exactly one taxonomic group and a cross-group covariance is not identifiable.
+* **Heteroscedasticity (`struct = "HCS"`, `rho = 0`).** The **residual (within-study) effect-size** variance is allowed to take a separate value in each taxonomic group, over a single pooled between-study variance, rather than forcing one common residual variance. This follows the `orchaRd` 2.0 recommendation for meta-regression with heterogeneous variances [@nakagawaOrchaRd2Visualising2023]: the heteroscedastic random term is written as an `~ moderator | unit` formula (`~ tax_group | identifierEffectSizeID`) with a heteroscedastic compound-symmetry structure and the between-level covariance fixed to zero (`rho = 0`), since each effect size belongs to exactly one taxonomic group and a cross-group covariance is not identifiable. (A fuller structure that *also* made the between-study variance group-specific was considered but dropped: its per-group between-study variances collapse to zero for the groups with few studies, so it is over-parameterised for these data.)
 * **Marginalised means.** The moderator is fitted **with an intercept** (`mods = ~ tax_group`) and the per-group means, confidence intervals, and prediction intervals are obtained as **marginalised means** through `orchaRd::mod_results()` (which calls `emmeans` internally), again as recommended in the `orchaRd` 2.0 workflow. The overall test for differences among groups is the model's omnibus moderator test ($Q_M$).
 
 ```{r}
@@ -1618,18 +1618,22 @@ DT::datatable(
 #   means / CIs / PIs are obtained downstream as marginalised means via
 #   orchaRd::mod_results() (emmeans), and the among-group test is the model's
 #   omnibus moderator test (QM).
-# * Heterogeneous variances are specified as `~ tax_group | unit` random terms
-#   with struct = "HCS" and the between-level covariance fixed to zero
-#   (rho = 0 for the study term, phi = 0 for the effect-size term) — exactly the
-#   structure used in the orchaRd documentation. With each unit belonging to a
-#   single group this estimates one variance per group with no cross-group
-#   covariance (equivalent to a diagonal structure).
-# * Both the between-study (`~ tax_group | identifierStudyId`) and the residual
-#   effect-size (`~ tax_group | identifierEffectSizeID`) variances are made
-#   group-specific; a homoscedastic species intercept (`~ 1 | taxonomySpecies`)
-#   is retained. NO phylogenetic term.
-# * A Nelder-Mead optimiser (as in the vignette) and a fallback cascade guard
-#   against non-convergence of the most flexible structure.
+# * The heterogeneous (residual) variance is specified as a `~ tax_group | unit`
+#   random term with struct = "HCS" and the between-level covariance fixed to
+#   zero (rho = 0) — exactly the structure used in the orchaRd documentation.
+#   With each unit belonging to a single group this estimates one residual
+#   variance per group with no cross-group covariance.
+# * PRIMARY structure: group-specific RESIDUAL variance
+#   (`~ tax_group | identifierEffectSizeID`) over a single pooled between-study
+#   variance (`~ 1 | identifierStudyId`) and a homoscedastic species intercept
+#   (`~ 1 | taxonomySpecies`). NO phylogenetic term. (The fuller both-level
+#   structure was dropped: its per-group between-study variances collapse to
+#   zero for the thin groups, i.e. it is over-parameterised for these data.)
+# * Each heteroscedastic structure is tried with several optimisers (nlminb,
+#   optim/BFGS, optim/L-BFGS-B, then a high-iteration Nelder-Mead) before being
+#   declared a failure; only if none converge does the cascade fall back to a
+#   simpler structure. The vignette's default Nelder-Mead alone hits its
+#   iteration cap on these data (convergence = 1), so robust optimisers go first.
 # ---------------------------------------------------------------------------
 fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "vi",
                                 cluster_var = "identifierStudyId",
@@ -1645,56 +1649,120 @@ fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "v
     VCV <- metafor::vcalc(vi = dat2[[vi]], cluster = dat2[[cluster_var]], obs = dat2[[obs_var]], rho = rho, data = dat2)
 
     mods_f  <- stats::as.formula(paste0("~ ", group_var))                       # intercept-coded
-    study_f <- stats::as.formula(paste0("~ ", group_var, " | ", cluster_var))   # heteroscedastic between-study
     obs_f   <- stats::as.formula(paste0("~ ", group_var, " | ", obs_var))       # heteroscedastic residual
-    ctrl    <- list(optimizer = "optim", optmethod = "Nelder-Mead")
 
-    # Primary: heteroscedastic at BOTH the between-study and residual levels.
-    # struct = HCS with rho = 0 (study term) and phi = 0 (effect-size term).
-    mod <- tryCatch(
-        metafor::rma.mv(
-            yi = dat2[[yi]], V = VCV, mods = mods_f,
-            random = list(study_f, obs_f, ~ 1 | taxonomySpecies),
-            struct = c("HCS", "HCS"), rho = 0, phi = 0,
-            test = "t", dfs = "contain", method = "REML", sparse = TRUE,
-            control = ctrl, data = dat2
-        ),
-        error = function(e) {
-            message("Both-level heteroscedastic fit failed: ", conditionMessage(e)); NULL
-        }
+    # Optimisers tried (in order) for the heteroscedastic structures. The default
+    # Nelder-Mead used in the orchaRd vignette hits its iteration cap on these
+    # data (convergence = 1), so we lead with the more robust derivative-based
+    # optimisers and only then fall back to a high-iteration Nelder-Mead.
+    opt_grid <- list(
+        "nlminb"            = list(optimizer = "nlminb", iter.max = 10000, eval.max = 10000),
+        "optim/BFGS"        = list(optimizer = "optim", optmethod = "BFGS", maxit = 10000),
+        "optim/L-BFGS-B"    = list(optimizer = "optim", optmethod = "L-BFGS-B", maxit = 10000),
+        "optim/Nelder-Mead" = list(optimizer = "optim", optmethod = "Nelder-Mead", maxit = 50000, reltol = 1e-9)
     )
-    spec <- "Heteroscedastic (between-study + residual, per group; HCS, rho = phi = 0)"
 
-    # Fallback 1: heteroscedastic residual only (the single-level orchaRd default).
-    if (is.null(mod)) {
-        mod <- tryCatch(
-            metafor::rma.mv(
-                yi = dat2[[yi]], V = VCV, mods = mods_f,
-                random = list(~ 1 | identifierStudyId, obs_f, ~ 1 | taxonomySpecies),
-                struct = "HCS", rho = 0,
-                test = "t", dfs = "contain", method = "REML", sparse = TRUE,
-                control = ctrl, data = dat2
-            ),
-            error = function(e) NULL
+    # Build one rma.mv call for a candidate structure + optimiser control.
+    build <- function(cand, ctrl) {
+        args <- c(
+            list(yi = dat2[[yi]], V = VCV, mods = mods_f, random = cand$random,
+                 test = "t", dfs = "contain", method = "REML", sparse = TRUE, data = dat2),
+            cand$args
         )
-        spec <- "Heteroscedastic (residual only, per group; HCS, rho = 0)"
+        if (!is.null(cand$struct)) args$struct <- cand$struct
+        if (!is.null(ctrl))        args$control <- ctrl
+        do.call(metafor::rma.mv, args)
     }
-    # Fallback 2: fully homoscedastic moderator model.
-    if (is.null(mod)) {
+
+    # Candidate structures, tried in order. The cascade stops at the FIRST one
+    # that fits without error; warnings do NOT stop the cascade but are recorded.
+    # PRIMARY = residual-only HCS (orchaRd Example 4 default): a single pooled
+    # between-study variance plus a group-specific residual variance. The fuller
+    # both-level structure was dropped because its per-group between-study
+    # variances collapse to the zero boundary for the thin groups (Other
+    # Vertebrates, Arthropods) — i.e. it is over-parameterised for these data.
+    candidates <- list(
+        list(spec = "Heteroscedastic (residual only, per group; HCS, rho = 0)",
+             random = list(~ 1 | identifierStudyId, obs_f, ~ 1 | taxonomySpecies),
+             struct = "HCS", args = list(rho = 0), het = TRUE),
+        list(spec = "Homoscedastic (single variance per component)",
+             random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+             struct = NULL, args = list(), het = FALSE)
+    )
+
+    # Attempt one candidate. Heteroscedastic structures cycle through opt_grid
+    # until one converges; the homoscedastic structure uses the metafor default.
+    # Errors AND warnings are captured (warnings do not abort).
+    fit_once <- function(cand, ctrl) {
+        warns <- character(0)
+        t0 <- Sys.time()
         mod <- tryCatch(
-            metafor::rma.mv(
-                yi = dat2[[yi]], V = VCV, mods = mods_f,
-                random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
-                test = "t", dfs = "contain", method = "REML", sparse = TRUE, data = dat2
+            withCallingHandlers(
+                build(cand, ctrl),
+                warning = function(w) {
+                    warns[[length(warns) + 1L]] <<- conditionMessage(w)
+                    invokeRestart("muffleWarning")
+                }
             ),
-            error = function(e) NULL
+            error = function(e) structure(list(msg = conditionMessage(e)), class = "tax_fit_error")
         )
-        spec <- "Homoscedastic (single variance per component)"
+        list(mod = mod, warns = warns, secs = as.numeric(difftime(Sys.time(), t0, units = "secs")))
     }
-    if (is.null(mod)) {
-        return(NULL)
+
+    attempt <- function(cand) {
+        if (!isTRUE(cand$het)) {
+            r <- fit_once(cand, NULL)
+            failed <- inherits(r$mod, "tax_fit_error")
+            return(list(model = if (failed) NULL else r$mod, failed = failed,
+                        error = if (failed) r$mod$msg else NA_character_,
+                        warnings = r$warns, secs = r$secs, optimizer = "default (nlminb)"))
+        }
+        msgs <- character(0)
+        total <- 0
+        for (onm in names(opt_grid)) {
+            r <- fit_once(cand, opt_grid[[onm]])
+            total <- total + r$secs
+            if (!inherits(r$mod, "tax_fit_error")) {
+                return(list(model = r$mod, failed = FALSE, error = NA_character_,
+                            warnings = r$warns, secs = total, optimizer = onm))
+            }
+            msgs <- c(msgs, paste0(onm, ": ", r$mod$msg))
+        }
+        list(model = NULL, failed = TRUE, error = paste(msgs, collapse = " || "),
+             warnings = character(0), secs = total, optimizer = NA_character_)
     }
-    list(data = dat2, VCV = VCV, model = mod, spec = spec)
+
+    diag_rows <- list()
+    chosen <- NULL
+    chosen_spec <- NA_character_
+    for (i in seq_along(candidates)) {
+        cand <- candidates[[i]]
+        if (!is.null(chosen)) {
+            diag_rows[[i]] <- tibble::tibble(
+                stage = i, structure = cand$spec, status = "not attempted", optimizer = NA_character_,
+                seconds = NA_real_, n_warnings = NA_integer_, detail = "an earlier structure succeeded"
+            )
+            next
+        }
+        a <- attempt(cand)
+        status <- if (a$failed) "ERROR" else if (length(a$warnings) > 0) "OK (with warnings)" else "OK"
+        detail <- if (a$failed) a$error else if (length(a$warnings) > 0) paste(a$warnings, collapse = " || ") else "clean fit"
+        diag_rows[[i]] <- tibble::tibble(
+            stage = i, structure = cand$spec, status = status, optimizer = a$optimizer,
+            seconds = round(a$secs, 2), n_warnings = length(a$warnings), detail = detail
+        )
+        if (!a$failed) {
+            chosen <- a$model
+            chosen_spec <- cand$spec
+        }
+    }
+    diagnostics <- dplyr::bind_rows(diag_rows)
+
+    if (is.null(chosen)) {
+        warning("All taxonomic-moderator structures failed to fit.")
+        return(list(data = dat2, VCV = VCV, model = NULL, spec = "ALL FAILED", diagnostics = diagnostics))
+    }
+    list(data = dat2, VCV = VCV, model = chosen, spec = chosen_spec, diagnostics = diagnostics)
 }
 
 res_tax_hedges <- fit_taxon_hetero_mv(db_hedges_tax)
@@ -1733,6 +1801,140 @@ total_i2 <- function(res) {
 }
 i2_tax_hedges <- total_i2(res_tax_hedges)
 i2_tax_or     <- total_i2(res_tax_or)
+
+# Persist the fitted results + cascade diagnostics so they can be inspected
+# interactively in an R session WITHOUT re-rendering the book, e.g.:
+#   b <- readRDS("outputs/1_effect_size_calculation_pipeline/taxon_model_fits.rds")
+#   b$hedges$spec ; b$hedges$diagnostics ; summary(b$hedges$model)
+# (also consumed by scripts/1_effect_size_calculation_pipeline/diagnose_taxon_model.R)
+tryCatch({
+    tax_out_dir <- here::here("outputs", "1_effect_size_calculation_pipeline")
+    dir.create(tax_out_dir, recursive = TRUE, showWarnings = FALSE)
+    saveRDS(
+        list(
+            hedges = res_tax_hedges, or = res_tax_or,
+            qm = list(hedges = qm_tax_hedges, or = qm_tax_or),
+            i2 = list(hedges = i2_tax_hedges, or = i2_tax_or),
+            saved_at = Sys.time()
+        ),
+        file.path(tax_out_dir, "taxon_model_fits.rds")
+    )
+}, error = function(e) warning("Could not save taxon_model_fits.rds: ", conditionMessage(e)))
+```
+
+### Fit Diagnostics {#sec-taxon-fit-diagnostics}
+
+The model is fitted through a **fallback cascade**: the most flexible heteroscedastic structure is attempted first, and only if it *errors* does the next-simpler structure get tried (warnings do **not** trigger a fallback, but are captured and shown). The report below tells you exactly what happened for each effect-size class — which structures were attempted, whether each fit was clean / produced warnings / errored (with the captured message), how long it took, which structure was ultimately used, the per-group sample sizes, and the variance components of the chosen model (so you can see whether any group's variance collapsed to the zero boundary).
+
+```{r}
+#| label: taxon_fit_diagnostics
+#| echo: false
+#| message: false
+#| warning: false
+# Per-group sample sizes (context for unstable / zero variances).
+group_counts <- function(res) {
+    if (is.null(res) || is.null(res$data)) {
+        return(NULL)
+    }
+    res$data %>%
+        dplyr::group_by(tax_group) %>%
+        dplyr::summarise(
+            `k (effect sizes)` = dplyr::n(),
+            studies = dplyr::n_distinct(identifierStudyId),
+            species = dplyr::n_distinct(taxonomySpecies),
+            .groups = "drop"
+        ) %>%
+        dplyr::rename(`Taxonomic group` = tax_group)
+}
+
+# Variance components of the chosen model, labelled by random-effect term.
+# Labelling is STRUCTURE-AWARE (keyed on res$spec) because which variance lands
+# in metafor's sigma2 / tau2 / gamma2 slots depends on which cascade structure
+# was used:
+#   * both-level het  -> tau2 = between-study (per group), gamma2 = residual
+#                        (per group), sigma2 = species
+#   * residual-only   -> tau2 = residual (per group), sigma2 = c(study, species)
+#   * homoscedastic   -> sigma2 = c(study, effect-size residual, species)
+chosen_varcomp <- function(res) {
+    if (is.null(res) || is.null(res$model)) {
+        return(NULL)
+    }
+    m   <- res$model
+    glv <- levels(droplevels(factor(res$data$tax_group, levels = tax_levels)))
+    out <- tibble::tibble(Component = character(), Variance = numeric())
+    addc <- function(out, labs, vals) {
+        if (is.null(vals) || length(vals) == 0) {
+            return(out)
+        }
+        dplyr::bind_rows(out, tibble::tibble(Component = labs, Variance = round(as.numeric(vals), 5)))
+    }
+    spec <- if (is.null(res$spec)) "" else res$spec
+    if (grepl("between-study \\+ residual", spec)) {
+        out <- addc(out, paste0("Between-study τ² — ", glv[seq_along(m$tau2)]), m$tau2)
+        out <- addc(out, paste0("Residual σ² — ", glv[seq_along(m$gamma2)]), m$gamma2)
+        out <- addc(out, "Species σ²", m$sigma2)
+    } else if (grepl("residual only", spec)) {
+        out <- addc(out, paste0("Residual σ² — ", glv[seq_along(m$tau2)]), m$tau2)
+        out <- addc(out, c("Between-study τ²", "Species σ²")[seq_along(m$sigma2)], m$sigma2)
+    } else {
+        out <- addc(out, c("Between-study τ²", "Residual σ² (effect size)", "Species σ²")[seq_along(m$sigma2)], m$sigma2)
+    }
+    out
+}
+
+# Console-style textual report (prints into the rendered document).
+report_fit <- function(res, label) {
+    cat("\n========================================================\n")
+    cat(" FIT DIAGNOSTIC:", label, "\n")
+    cat("========================================================\n")
+    if (is.null(res)) {
+        cat("  No result object (empty data?).\n")
+        return(invisible())
+    }
+    cat("  Chosen structure :", res$spec, "\n")
+    cat("  Model is NULL    :", is.null(res$model), "\n\n")
+    cat("  Cascade log:\n")
+    print(as.data.frame(res$diagnostics), row.names = FALSE, right = FALSE)
+    gc <- group_counts(res)
+    if (!is.null(gc)) {
+        cat("\n  Per-group sample sizes:\n")
+        print(as.data.frame(gc), row.names = FALSE, right = FALSE)
+    }
+    vc <- chosen_varcomp(res)
+    if (!is.null(vc)) {
+        cat("\n  Variance components (chosen model):\n")
+        print(as.data.frame(vc), row.names = FALSE, right = FALSE)
+        n_zero <- sum(vc$Variance < 1e-6, na.rm = TRUE)
+        if (n_zero > 0) {
+            cat("  NOTE:", n_zero, "variance component(s) at/near zero (boundary estimate).\n")
+        }
+    }
+    cat("\n")
+    invisible()
+}
+
+report_fit(res_tax_hedges, "Hedges' g")
+report_fit(res_tax_or, "Log Odds Ratio")
+```
+
+```{r}
+#| label: taxon_fit_diagnostics_table
+#| echo: false
+diag_combined <- dplyr::bind_rows(
+    if (!is.null(res_tax_hedges)) dplyr::mutate(res_tax_hedges$diagnostics, Analysis = "Hedges' g"),
+    if (!is.null(res_tax_or)) dplyr::mutate(res_tax_or$diagnostics, Analysis = "Log OR")
+)
+if (!is.null(diag_combined) && nrow(diag_combined) > 0) {
+    diag_combined <- diag_combined %>%
+        dplyr::select(Analysis, stage, structure, status, optimizer, seconds, n_warnings, detail)
+}
+
+DT::datatable(
+    diag_combined,
+    caption = "Fallback-cascade log: every candidate random-effects structure, whether it was attempted, its fit status (OK / OK with warnings / ERROR / not attempted), runtime in seconds, warning count, and the captured error or warning text. The first 'OK' row per analysis is the structure that was actually used.",
+    options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-left", targets = "_all"))),
+    rownames = FALSE
+)
 ```
 
 ### Model Output: Hedges' $g$
@@ -1740,9 +1942,11 @@ i2_tax_or     <- total_i2(res_tax_or)
 ```{r}
 #| label: taxon_hedges_summary
 #| echo: false
-if (!is.null(res_tax_hedges)) {
+if (!is.null(res_tax_hedges) && !is.null(res_tax_hedges$model)) {
     cat("Random-effects structure:", res_tax_hedges$spec, "\n\n")
     print(summary(res_tax_hedges$model))
+} else {
+    cat("No Hedges' g model was successfully fitted — see the Fit Diagnostics above.\n")
 }
 ```
 
@@ -1751,9 +1955,11 @@ if (!is.null(res_tax_hedges)) {
 ```{r}
 #| label: taxon_or_summary
 #| echo: false
-if (!is.null(res_tax_or)) {
+if (!is.null(res_tax_or) && !is.null(res_tax_or$model)) {
     cat("Random-effects structure:", res_tax_or$spec, "\n\n")
     print(summary(res_tax_or$model))
+} else {
+    cat("No log OR model was successfully fitted — see the Fit Diagnostics above.\n")
 }
 ```
 
@@ -1797,26 +2003,14 @@ DT::datatable(
 # both-DIAG structure: tau2 = between-study variance per group, gamma2 = residual
 # variance per group, sigma2 = species variance. Labels fall back gracefully if a
 # simpler fallback structure was used.
+# Reuse the structure-aware chosen_varcomp() (defined in the Fit Diagnostics
+# chunk) so the labels stay correct whichever cascade structure was used.
 variance_components <- function(res, label) {
-    if (is.null(res) || is.null(res$model)) {
+    vc <- chosen_varcomp(res)
+    if (is.null(vc) || nrow(vc) == 0) {
         return(NULL)
     }
-    m   <- res$model
-    glv <- levels(droplevels(factor(res$data$tax_group, levels = tax_levels)))
-    out <- tibble::tibble(Analysis = character(), Component = character(), Variance = numeric())
-    add <- function(out, comp, vals, labs) {
-        if (is.null(vals) || length(vals) == 0) {
-            return(out)
-        }
-        dplyr::bind_rows(out, tibble::tibble(
-            Analysis = label, Component = paste0(comp, labs), Variance = round(as.numeric(vals), 4)
-        ))
-    }
-    out <- add(out, "Between-study τ² — ", m$tau2, glv[seq_along(m$tau2)])
-    out <- add(out, "Residual σ² — ", m$gamma2, glv[seq_along(m$gamma2)])
-    sig_lab <- if (length(m$sigma2) == 1) "Species" else paste0("Component ", seq_along(m$sigma2))
-    out <- add(out, "", stats::setNames(m$sigma2, NULL), sig_lab)
-    out
+    dplyr::mutate(vc, Analysis = label) %>% dplyr::select(Analysis, Component, Variance)
 }
 
 var_tbl <- dplyr::bind_rows(
@@ -1840,7 +2034,7 @@ qm_p   <- function(a) if (is.null(a) || is.null(a$QMp)) NA_real_ else as.numeric
 qm_stat <- function(a) if (is.null(a) || is.null(a$QM)) NA_real_ else as.numeric(a$QM)
 ```
 
-For Hedges' $g$, total heterogeneity is `r fmt(i2_tax_hedges, 1)`% and the among-group test is `r pstr(qm_p(qm_tax_hedges))` (Wald $Q_M$ = `r fmt(qm_stat(qm_tax_hedges), 2)`), so the difference among taxonomic groups is **`r sigw(qm_p(qm_tax_hedges))`**. For the log odds ratio, total heterogeneity is `r fmt(i2_tax_or, 1)`% and the among-group test is `r pstr(qm_p(qm_tax_or))` (Wald $Q_M$ = `r fmt(qm_stat(qm_tax_or), 2)`), a **`r sigw(qm_p(qm_tax_or))`** difference among groups. The group means and their intervals are tabulated above; the variance-component table shows where the heteroscedastic structure assigns the most within- and between-study variability across the three groups.
+For Hedges' $g$, total heterogeneity is `r fmt(i2_tax_hedges, 1)`% and the among-group test is `r pstr(qm_p(qm_tax_hedges))` (Wald $Q_M$ = `r fmt(qm_stat(qm_tax_hedges), 2)`), so the difference among taxonomic groups is **`r sigw(qm_p(qm_tax_hedges))`**. For the log odds ratio, total heterogeneity is `r fmt(i2_tax_or, 1)`% and the among-group test is `r pstr(qm_p(qm_tax_or))` (Wald $Q_M$ = `r fmt(qm_stat(qm_tax_or), 2)`), a **`r sigw(qm_p(qm_tax_or))`** difference among groups. The group means and their intervals are tabulated above; the variance-component table shows the group-specific residual (within-study) variances, which is where the heteroscedastic structure lets variability differ across the three groups.
 
 ### Orchard Plot
 
