@@ -1,0 +1,22 @@
+% === Partial I^2 by random effect (heterogeneity decomposition) ===
+% Preamble needs: \usepackage{booktabs,makecell}
+\begin{table}[htbp]
+\centering
+\caption{Partial $I^2$ (\%) for each random effect across the uncorrected multilevel models.
+Total is the overall proportion of variance due to heterogeneity (vs.\ sampling error);
+the remaining columns partition that heterogeneity among the study, residual effect-size,
+non-phylogenetic species, and phylogenetic components.}
+\label{tab:partial-i2}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Analysis} & \textbf{Total} & \textbf{Study} & \makecell[r]{\textbf{Effect size}\\\textbf{(residual)}} & \makecell[r]{\textbf{Species}\\\textbf{(non-phylo.)}} & \textbf{Phylogeny} \\
+\midrule
+Hedges' $g$ --- New Only      & 80.8 & 0.0 & 51.3 & 29.4 & 0.0 \\
+Hedges' $g$ --- Original Only & 86.0 & 1.2 & 79.4 &  0.0 & 5.4 \\
+Hedges' $g$ --- Combined      & 85.7 & 7.4 & 71.7 &  3.1 & 3.5 \\
+Log OR --- New Only           & 80.8 & 0.0 & 51.3 & 29.5 & 0.0 \\
+Log OR --- Original Only      & 75.9 & 0.0 & 23.2 & 45.6 & 7.1 \\
+Log OR --- Combined           & 74.7 & 4.3 & 45.4 & 23.9 & 1.1 \\
+\bottomrule
+\end{tabular}
+\end{table}

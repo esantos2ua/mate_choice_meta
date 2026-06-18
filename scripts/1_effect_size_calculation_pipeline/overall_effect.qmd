@@ -1411,7 +1411,10 @@ make_pub_bias_subplot <- function(unc_res, corr_res, rob_model, src, xlab, title
             legend.margin        = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
             legend.title         = ggplot2::element_text(size = 9, face = "bold"),
             legend.text          = ggplot2::element_text(size = 8),
-            plot.title           = ggplot2::element_text(face = "bold", hjust = 0.5)
+            plot.title           = ggplot2::element_text(face = "bold", hjust = 0.5),
+            # Panel identifier (a)/(b)/(c) in the top-left corner of the box.
+            plot.tag             = ggplot2::element_text(size = 13, face = "bold", hjust = 0, vjust = 1),
+            plot.tag.position    = c(0.015, 0.985)
         )
 
     oc
@@ -1460,8 +1463,9 @@ ph_new  <- make_pub_bias_subplot(res_hedges_new,  res_hedges_new_corr,  rob_hedg
 ph_orig <- make_pub_bias_subplot(res_hedges_orig, res_hedges_orig_corr, rob_hedges_orig, "Original (Davies 2020)",  "Hedges' g", "Original",       xlim = hedges_xlim)
 ph_comb <- make_pub_bias_subplot(res_hedges_comb, res_hedges_comb_corr, rob_hedges_comb, src_h_comb,                "Hedges' g", "Combined",       xlim = hedges_xlim)
 
-fig_hedges <- (ph_new / ph_orig / ph_comb) +
+fig_hedges <- (ph_orig / ph_new / ph_comb) +
     patchwork::plot_annotation(
+        tag_levels = "a", tag_prefix = "(", tag_suffix = ")",
         title = "Hedges' g — Uncorrected mean with Bias-Corrected & Bias-Robust overlays",
         subtitle = "Overlays: purple = Bias-Corrected (Nakagawa 2022), green = Bias-Robust (Yang 2024).",
         theme = ggplot2::theme(
@@ -1492,8 +1496,9 @@ po_new  <- make_pub_bias_subplot(res_or_new,  res_or_new_corr,  rob_or_new,  "Ne
 po_orig <- make_pub_bias_subplot(res_or_orig, res_or_orig_corr, rob_or_orig, "Original (Jones & DuVal 2019)", "Log Odds Ratio (lnOR)", "Original",       xlim = or_xlim)
 po_comb <- make_pub_bias_subplot(res_or_comb, res_or_comb_corr, rob_or_comb, src_o_comb,                      "Log Odds Ratio (lnOR)", "Combined",       xlim = or_xlim)
 
-fig_or <- (po_new / po_orig / po_comb) +
+fig_or <- (po_orig / po_new / po_comb) +
     patchwork::plot_annotation(
+        tag_levels = "a", tag_prefix = "(", tag_suffix = ")",
         title = "Log Odds Ratio — Uncorrected mean with Bias-Corrected & Bias-Robust overlays",
         subtitle = "Overlays: purple = Bias-Corrected (Nakagawa 2022), green = Bias-Robust (Yang 2024).",
         theme = ggplot2::theme(
