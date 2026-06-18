@@ -1,0 +1,127 @@
+% =====================================================================
+% Effect-size calculation — Methods subsection
+% Mate-choice copying meta-analysis
+%
+% Mirrors scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py
+%
+% Requires in preamble:
+%   \usepackage{amsmath}
+%   \usepackage{hyperref}   % for \autoref / \hyperref
+% Citation commands assume natbib/biblatex (\citep). Citation keys:
+%   borensteinIntroductionMetaanalysis2011, chinnSimpleMethodConverting2000
+%
+% Each numbered equation carries a \label{eq:...} so it can be referenced
+% in text, e.g. \autoref{eq:hedges-g-means} or
+% \hyperref[eq:hedges-g-means]{(\autoref{eq:hedges-g-means} pooled-SD form)}.
+% =====================================================================
+
+\subsection{Effect-size calculation}
+
+We expressed every effect as both a bias-corrected standardised mean
+difference (Hedges' $g$) and a (log) odds ratio, computing whichever could
+be derived directly from the reported statistics and obtaining the other by
+conversion (\autoref{eq:or-to-d}--\autoref{eq:g-to-or}). All formulae and
+their sampling variances follow the standard meta-analytic treatments of
+\citet{borensteinIntroductionMetaanalysis2011}.
+
+\subsubsection{Hedges' $g$ from group means and standard deviations}
+
+When a study reported the mean, standard deviation (\textit{SD}) and sample
+size of a treatment and a control group, we computed the standardised mean
+difference $d$ using the pooled standard deviation $S_{p}$
+(\autoref{eq:pooled-sd}) and applied the small-sample bias correction $J$
+(\autoref{eq:J-means}) to obtain Hedges' $g$ (\autoref{eq:hedges-g-means})
+and its sampling variance (\autoref{eq:var-g-means})
+\citep{borensteinIntroductionMetaanalysis2011}:
+
+\begin{align}
+  S_{p}      &= \sqrt{\frac{(n_{1}-1)\,SD_{1}^{2} + (n_{2}-1)\,SD_{2}^{2}}{n_{1}+n_{2}-2}}, \label{eq:pooled-sd} \\[4pt]
+  d          &= \frac{\bar{X}_{\text{treat}} - \bar{X}_{\text{ctrl}}}{S_{p}}, \label{eq:d-means} \\[4pt]
+  J          &= 1 - \frac{3}{4(n_{1}+n_{2}-2) - 1}, \label{eq:J-means} \\[4pt]
+  g          &= J \, d, \label{eq:hedges-g-means} \\[4pt]
+  \mathrm{Var}(g) &= \frac{n_{1}+n_{2}}{n_{1}\,n_{2}} + \frac{g^{2}}{2(n_{1}+n_{2}-2)}, \label{eq:var-g-means}
+\end{align}
+
+\noindent where $n_{1}$ and $n_{2}$ are the treatment and control sample
+sizes. Where only a standard error (\textit{SE}) was reported, the standard
+deviation was recovered as $SD = SE\sqrt{n}$.
+
+\subsubsection{Hedges' $g$ from test statistics}
+
+For studies reporting a $t$-statistic rather than group descriptives, we
+converted $t$ to $d$ following \citet{borensteinIntroductionMetaanalysis2011},
+distinguishing the experimental design by the degrees of freedom. For a
+one-sample or paired design ($\mathit{df} = n - 1$), $d$ was obtained from
+\autoref{eq:d-t-paired} and the variance from \autoref{eq:var-g-t-paired}:
+
+\begin{align}
+  d          &= \frac{t}{\sqrt{n}}, \label{eq:d-t-paired} \\[4pt]
+  J          &= 1 - \frac{3}{4(n-1) - 1}, \label{eq:J-t-paired} \\[4pt]
+  g          &= J \, d, \label{eq:hedges-g-t-paired} \\[4pt]
+  \mathrm{Var}(g) &= \frac{1}{n} + \frac{g^{2}}{2(n-1)}. \label{eq:var-g-t-paired}
+\end{align}
+
+\noindent For an independent two-sample design ($\mathit{df} = n_{1}+n_{2}-2$),
+$d$ was obtained from \autoref{eq:d-t-indep}:
+
+\begin{align}
+  d          &= t \sqrt{\frac{1}{n_{1}} + \frac{1}{n_{2}}}, \label{eq:d-t-indep} \\[4pt]
+  J          &= 1 - \frac{3}{4(n_{1}+n_{2}-2) - 1}, \label{eq:J-t-indep} \\[4pt]
+  g          &= J \, d, \label{eq:hedges-g-t-indep} \\[4pt]
+  \mathrm{Var}(g) &= \frac{n_{1}+n_{2}}{n_{1}\,n_{2}} + \frac{g^{2}}{2(n_{1}+n_{2}-2)}. \label{eq:var-g-t-indep}
+\end{align}
+
+\noindent When individual group sizes were not reported for an
+independent-samples design, we assumed an equal split, $n_{1} = n_{2} = N/2$.
+Effects reported only as $F$-statistics, $\chi^{2}$ values or generalised
+linear mixed-model outputs were not directly convertible and were excluded
+from this step.
+
+\subsubsection{Odds ratio from a $2\times2$ table}
+
+For studies reporting binary choice frequencies, we summarised the outcome
+as an odds ratio (\textit{OR}; \autoref{eq:or}), with the variance of the log
+odds ratio obtained by the delta-method approximation
+(\autoref{eq:var-log-or}) \citep{borensteinIntroductionMetaanalysis2011}:
+
+\begin{align}
+  \mathit{OR}              &= \frac{A \, D}{B \, C}, \label{eq:or} \\[4pt]
+  \mathrm{Var}(\ln \mathit{OR}) &= \frac{1}{A} + \frac{1}{B} + \frac{1}{C} + \frac{1}{D}, \label{eq:var-log-or}
+\end{align}
+
+\noindent where $A$ and $B$ are the number of treatment-group individuals
+choosing the option associated with the social information and the
+alternative, respectively, and $C$ and $D$ the corresponding counts for the
+control group. When no separate control group existed, we used the null
+expectation that individuals chose each option with equal probability,
+setting $C = D = n/2$.
+
+\subsubsection{Conversion between effect-size metrics}
+
+To place all studies on a common scale, effects available in only one metric
+were converted to the other using the logistic-to-normal approximation
+\citep{chinnSimpleMethodConverting2000, borensteinIntroductionMetaanalysis2011}.
+A log odds ratio was converted to a standardised mean difference
+(\autoref{eq:or-to-d}) and then bias-corrected to $g$
+(\autoref{eq:or-to-g}):
+
+\begin{align}
+  d               &= \ln(\mathit{OR}) \times \frac{\sqrt{3}}{\pi}, \label{eq:or-to-d} \\[4pt]
+  \mathrm{Var}(d) &= \mathrm{Var}(\ln \mathit{OR}) \times \frac{3}{\pi^{2}}, \label{eq:or-to-var-d} \\[4pt]
+  g               &= J \, d, \qquad \mathrm{Var}(g) \approx J^{2}\,\mathrm{Var}(d), \label{eq:or-to-g}
+\end{align}
+
+\noindent with $J$ evaluated as above ($J \approx 1$ where $n$ was unknown).
+Conversely, Hedges' $g$ was converted to a log odds ratio using
+\autoref{eq:g-to-or}:
+
+\begin{align}
+  \ln(\mathit{OR})              &= g \times \frac{\pi}{\sqrt{3}}, \label{eq:g-to-or} \\[4pt]
+  \mathrm{Var}(\ln \mathit{OR}) &= \mathrm{Var}(g) \times \frac{\pi^{2}}{3}. \label{eq:g-to-var-or}
+\end{align}
+
+\noindent These conversions are approximate and assume that the underlying
+continuous trait follows a logistic distribution
+\citep{chinnSimpleMethodConverting2000}; converted values were flagged in the
+data set so they could be distinguished from directly calculated effects in
+sensitivity analyses.

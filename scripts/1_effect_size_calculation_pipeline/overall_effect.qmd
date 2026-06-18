@@ -20,8 +20,12 @@ if (is.null(getOption("repos")) || getOption("repos")["CRAN"] %in% c(NA, "@CRAN@
 }
 # Ensure pacman is loaded to manage dependencies
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-# orchaRd is hosted on GitHub (not CRAN); install from GitHub if missing
-if (!requireNamespace("orchaRd", quietly = TRUE)) {
+# orchaRd is hosted on GitHub (not CRAN); install from GitHub if missing.
+# We require a recent build that ships `pub_bias_plot()` (Yang et al. 2024
+# bias-robust correction), so we (re)install from GitHub if the function is
+# not yet available in the locally installed version.
+if (!requireNamespace("orchaRd", quietly = TRUE) ||
+    !("pub_bias_plot" %in% getNamespaceExports("orchaRd"))) {
     pacman::p_load_gh("daniel1noble/orchaRd")
 }
 pacman::p_load(
@@ -31,7 +35,8 @@ pacman::p_load(
     orchaRd,
     patchwork,
     DT,
-    scales
+    scales,
+    clubSandwich
 )
 
 # Helper function to format numbers to a given precision and clean negative zeros
@@ -1246,6 +1251,164 @@ if (!is.null(res_or_comb_corr)) {
 :::
 
 :::
+
+---
+
+## Combined Correction Comparison {#sec-correction-comparison}
+
+The tabs above present the uncorrected and bias-corrected estimates on separate plots. To make the comparison easier to read, we produce **two figures** — one for Hedges' $g$ and one for the log odds ratio — using the same `orchaRd::pub_bias_plot()` approach as the publication-bias chapter. Each figure stacks the three model levels (New Extraction, Original, Combined) as rows; within each row a single orchard trunk shows the uncorrected multilevel mean drawn over its raw effect sizes **once**, with the two corrected means overlaid on top. The raw points are coloured by data source and the legend is boxed in the corner, matching the side-by-side comparison plots above.
+
+The three estimates shown per subplot are:
+
+* **Uncorrected** (the trunk) — the multilevel `rma.mv` mean.
+* **Bias-Corrected (Nakagawa et al. [-@nakagawaMethodsTestingPublication2022]); blue overlay** — the intercept of the multilevel meta-regression with sampling variance ($v_i$) as a moderator, evaluated at $v_i = 0$ (the effect a hypothetical infinitely-precise study would report).
+* **Bias-Robust (Yang et al. [-@yangRobustPointVariance2024]); red overlay** — a fixed-/common-effect model with cluster-robust (CR2) variance estimation clustered by study.
+
+```{r}
+#| label: fit_bias_robust_splits
+#| message: false
+#| warning: false
+# Yang et al. (2024) bias-robust estimate (fixed-effect + CR2 cluster-robust),
+# fitted for each database split. Mirrors the construction in publication_bias.qmd
+# but applied to New, Original, and Combined subsets.
+fit_bias_robust <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierStudyId") {
+    dat2 <- dat %>% filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
+    if (nrow(dat2) == 0) return(NULL)
+    tryCatch({
+        fe <- metafor::rma(yi = dat2[[yi]], vi = dat2[[vi]], method = "FE", test = "t")
+        metafor::robust(fe, cluster = dat2[[cluster_var]], clubSandwich = TRUE)
+    }, error = function(e) {
+        warning("Bias-robust fit failed: ", conditionMessage(e)); NULL
+    })
+}
+
+rob_hedges_new  <- fit_bias_robust(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"))
+rob_hedges_orig <- fit_bias_robust(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"))
+rob_hedges_comb <- fit_bias_robust(db_hedges)
+
+rob_or_new  <- fit_bias_robust(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"))
+rob_or_orig <- fit_bias_robust(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"))
+rob_or_comb <- fit_bias_robust(db_or)
+```
+
+```{r}
+#| label: correction_comparison_builder
+#| message: false
+#| warning: false
+# ---------------------------------------------------------------------------
+# Subplot builder: one orchard trunk per model level via orchaRd::pub_bias_plot()
+# (same approach as publication_bias.qmd's `hedges_pub_bias_plot` chunk), but
+# styled to match the `hedges_comparison_plot` aesthetics — raw points coloured
+# by data source (colourblind orange/blue) with the boxed corner legend.
+# The two corrected means are overlaid by pub_bias_plot() with fixed colours:
+#   * red  = Bias-Robust (Yang et al. 2024)  -> fe_model (FE + CR2 robust)
+#   * blue = Bias-Corrected (Nakagawa 2022)  -> v_model  (vi-moderator intercept)
+# ---------------------------------------------------------------------------
+source_palette <- c(
+    "New Extraction (Santos)"       = "#D55E00",
+    "Original (Davies 2020)"        = "#0072B2",
+    "Original (Jones & DuVal 2019)" = "#0072B2"
+)
+
+# src: either a single data-source label (recycled) or a per-point character
+# vector matching the order of the model's effect sizes (used for Combined).
+make_pub_bias_subplot <- function(unc_res, corr_res, rob_model, src, xlab, title) {
+    if (is.null(unc_res) || is.null(unc_res$model) ||
+        is.null(corr_res) || is.null(corr_res$model) || is.null(rob_model)) {
+        return(NULL)
+    }
+    # Single-trunk orchard result; attach the true per-point data source.
+    h <- orchaRd::mod_results(unc_res$model, group = "identifierStudyId")
+    if (length(src) == 1) src <- rep(src, nrow(h$data))
+    class(h) <- "list"
+    h$data$real_source <- src
+    class(h) <- c("orchard", "data.frame")
+
+    oc <- orchaRd::orchard_plot(h, xlab = xlab, flip = TRUE)
+
+    # Recolour the raw points (layer 1) by data source — as in hedges_comparison_plot.
+    oc$layers[[1]]$mapping$colour <- ggplot2::aes(colour = real_source)$colour
+    oc$layers[[1]]$mapping$fill   <- ggplot2::aes(fill = real_source)$fill
+
+    oc <- oc +
+        ggplot2::scale_colour_manual(values = source_palette, name = "Data Source") +
+        ggplot2::scale_fill_manual(values = source_palette, name = "Data Source") +
+        ggplot2::ggtitle(title) +
+        ggplot2::theme(
+            legend.position      = c(0.98, 0.02),
+            legend.justification = c("right", "bottom"),
+            legend.background    = ggplot2::element_rect(fill = scales::alpha("white", 0.75), color = "grey90"),
+            legend.box           = "vertical",
+            legend.margin        = ggplot2::margin(t = 4, r = 4, b = 4, l = 4),
+            legend.title         = ggplot2::element_text(size = 9, face = "bold"),
+            legend.text          = ggplot2::element_text(size = 8),
+            plot.title           = ggplot2::element_text(face = "bold", hjust = 0.5)
+        )
+
+    # Overlay the two corrected means (fixed red/blue; no colour-scale conflict).
+    orchaRd::pub_bias_plot(oc, fe_model = rob_model, v_model = corr_res$model)
+}
+
+# Per-point source vectors for the Combined trunks (new rows then original rows,
+# matching bind_rows() order — same assumption as hedges_comparison_plot).
+n_h_new  <- nrow(orchaRd::mod_results(res_hedges_new$model,  group = "identifierStudyId")$data)
+n_h_orig <- nrow(orchaRd::mod_results(res_hedges_orig$model, group = "identifierStudyId")$data)
+src_h_comb <- c(rep("New Extraction (Santos)", n_h_new), rep("Original (Davies 2020)", n_h_orig))
+
+n_o_new  <- nrow(orchaRd::mod_results(res_or_new$model,  group = "identifierStudyId")$data)
+n_o_orig <- nrow(orchaRd::mod_results(res_or_orig$model, group = "identifierStudyId")$data)
+src_o_comb <- c(rep("New Extraction (Santos)", n_o_new), rep("Original (Jones & DuVal 2019)", n_o_orig))
+```
+
+### Hedges' $g$ (Continuous outcomes)
+
+```{r}
+#| label: correction_comparison_hedges
+#| message: false
+#| warning: false
+#| fig.width: 9
+#| fig.height: 12
+ph_new  <- make_pub_bias_subplot(res_hedges_new,  res_hedges_new_corr,  rob_hedges_new,  "New Extraction (Santos)", "Hedges' g", "New Extraction")
+ph_orig <- make_pub_bias_subplot(res_hedges_orig, res_hedges_orig_corr, rob_hedges_orig, "Original (Davies 2020)",  "Hedges' g", "Original")
+ph_comb <- make_pub_bias_subplot(res_hedges_comb, res_hedges_comb_corr, rob_hedges_comb, src_h_comb,                "Hedges' g", "Combined")
+
+fig_hedges <- (ph_new / ph_orig / ph_comb) +
+    patchwork::plot_annotation(
+        title = "Hedges' g — Uncorrected mean with Bias-Corrected & Bias-Robust overlays",
+        subtitle = "Overlays: blue = Bias-Corrected (Nakagawa 2022), red = Bias-Robust (Yang 2024).",
+        theme = ggplot2::theme(
+            plot.title    = ggplot2::element_text(size = 15, face = "bold", hjust = 0.5),
+            plot.subtitle = ggplot2::element_text(size = 11, face = "italic", hjust = 0.5)
+        )
+    )
+
+print(fig_hedges)
+```
+
+### Odds Ratio (Binary outcomes)
+
+```{r}
+#| label: correction_comparison_or
+#| message: false
+#| warning: false
+#| fig.width: 9
+#| fig.height: 12
+po_new  <- make_pub_bias_subplot(res_or_new,  res_or_new_corr,  rob_or_new,  "New Extraction (Santos)",       "Log Odds Ratio (lnOR)", "New Extraction")
+po_orig <- make_pub_bias_subplot(res_or_orig, res_or_orig_corr, rob_or_orig, "Original (Jones & DuVal 2019)", "Log Odds Ratio (lnOR)", "Original")
+po_comb <- make_pub_bias_subplot(res_or_comb, res_or_comb_corr, rob_or_comb, src_o_comb,                      "Log Odds Ratio (lnOR)", "Combined")
+
+fig_or <- (po_new / po_orig / po_comb) +
+    patchwork::plot_annotation(
+        title = "Log Odds Ratio — Uncorrected mean with Bias-Corrected & Bias-Robust overlays",
+        subtitle = "Overlays: blue = Bias-Corrected (Nakagawa 2022), red = Bias-Robust (Yang 2024).",
+        theme = ggplot2::theme(
+            plot.title    = ggplot2::element_text(size = 15, face = "bold", hjust = 0.5),
+            plot.subtitle = ggplot2::element_text(size = 11, face = "italic", hjust = 0.5)
+        )
+    )
+
+print(fig_or)
+```
 
 ---
 
