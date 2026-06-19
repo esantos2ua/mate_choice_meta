@@ -2050,6 +2050,12 @@ plot_taxon_orchard <- function(res, xlab, title) {
     }
     mr <- orchaRd::mod_results(res$model, mod = "tax_group", group = "identifierStudyId")
     oc <- orchaRd::orchard_plot(mr, xlab = xlab, angle = 0, g = TRUE, k = TRUE)
+    # Replace each group's k-count label with "estimate [95% CI]\nk = K (studies)"
+    # using the same helper as the overall plots. tryCatch guards against any
+    # orchaRd layer-order change so the figure still renders if it fails.
+    oc <- tryCatch(add_ci_labels(oc, mr), error = function(e) {
+        warning("add_ci_labels (taxon) failed: ", conditionMessage(e)); oc
+    })
     oc +
         ggplot2::scale_colour_manual(values = tax_palette, name = "Taxonomic group", aesthetics = c("colour", "fill")) +
         ggplot2::ggtitle(title) +
@@ -2059,8 +2065,25 @@ plot_taxon_orchard <- function(res, xlab, title) {
         )
 }
 
+# Save a figure as a proper deliverable (PNG + PDF) in outputs/.
+save_taxon_fig <- function(plot_obj, basename, width = 10, height = 9) {
+    if (is.null(plot_obj)) {
+        return(invisible())
+    }
+    tryCatch({
+        d <- here::here("outputs", "1_effect_size_calculation_pipeline")
+        dir.create(d, recursive = TRUE, showWarnings = FALSE)
+        ggplot2::ggsave(file.path(d, paste0(basename, ".png")), plot_obj, width = width, height = height, dpi = 300, bg = "white")
+        ggplot2::ggsave(file.path(d, paste0(basename, ".pdf")), plot_obj, width = width, height = height)
+    }, error = function(e) warning("Could not save ", basename, ": ", conditionMessage(e)))
+}
+
 p_tax_h <- plot_taxon_orchard(res_tax_hedges, "Hedges' g", "Hedges' g by taxonomic group")
 p_tax_o <- plot_taxon_orchard(res_tax_or, "Log Odds Ratio (lnOR)", "Log OR by taxonomic group")
+
+# Save the individual panels too, in case they are wanted separately.
+save_taxon_fig(p_tax_h, "taxon_moderator_orchard_hedges", width = 10, height = 5)
+save_taxon_fig(p_tax_o, "taxon_moderator_orchard_or", width = 10, height = 5)
 
 if (!is.null(p_tax_h) && !is.null(p_tax_o)) {
     fig_tax <- (p_tax_h / p_tax_o) +
@@ -2070,6 +2093,8 @@ if (!is.null(p_tax_h) && !is.null(p_tax_o)) {
             theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 15, face = "bold", hjust = 0.5))
         )
     print(fig_tax)
+    # Combined stacked figure = the main deliverable.
+    save_taxon_fig(fig_tax, "taxon_moderator_orchard", width = 10, height = 9)
 } else {
     if (!is.null(p_tax_h)) print(p_tax_h)
     if (!is.null(p_tax_o)) print(p_tax_o)
