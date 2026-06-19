@@ -62,6 +62,65 @@ sigw <- function(p, yes = "statistically significant", no = "non-significant") {
 dirw <- function(b, pos = "positive", neg = "negative") {
     if (length(b) == 0 || is.na(b)) "undetermined" else if (b >= 0) pos else neg
 }
+
+# ---------------------------------------------------------------------------
+# Figure export helpers (manuscript-ready PDFs)
+# ---------------------------------------------------------------------------
+# All saved figures land in outputs/1_effect_size_calculation_pipeline/, the
+# same convention used by overall_effect.qmd's save_taxon_fig().
+fig_out_dir <- here::here("outputs", "1_effect_size_calculation_pipeline")
+dir.create(fig_out_dir, recursive = TRUE, showWarnings = FALSE)
+
+# Draw side-by-side marginal vs. conditional residual funnel plots (base
+# graphics) with (a)/(b) panel tags. Reused for both on-screen display and
+# PDF export so the rendered HTML and the saved file are identical.
+draw_funnels <- function(resid_marg, resid_cond, vi,
+                         xlab_marg = "Meta-analytic residuals (marginal)",
+                         xlab_cond = "Meta-analytic residuals (conditional)") {
+    op <- par(mfrow = c(1, 2))
+    on.exit(par(op))
+
+    metafor::funnel(
+        x = resid_marg, vi = vi,
+        yaxis = "seinv", digits = 2,
+        level = c(0.1, 0.05, 0.01),
+        shade = c("white", "gray55", "gray75"),
+        las = 1, xlab = xlab_marg, legend = FALSE
+    )
+    title("Marginal Residual Funnel Plot", adj = 0.5, line = 2.5)
+    mtext("(a)", side = 3, adj = 0, line = 2.5, font = 2, cex = 1.2)
+
+    metafor::funnel(
+        x = resid_cond, vi = vi,
+        yaxis = "seinv", digits = 2,
+        level = c(0.1, 0.05, 0.01),
+        shade = c("white", "gray55", "gray75"),
+        las = 1, xlab = xlab_cond, legend = FALSE
+    )
+    title("Conditional Residual Funnel Plot", adj = 0.5, line = 2.5)
+    mtext("(b)", side = 3, adj = 0, line = 2.5, font = 2, cex = 1.2)
+}
+
+# Save a base-graphics drawing function to a PDF.
+save_base_pdf <- function(basename, draw_fn, width = 12, height = 6) {
+    tryCatch({
+        grDevices::pdf(file.path(fig_out_dir, paste0(basename, ".pdf")), width = width, height = height)
+        draw_fn()
+        grDevices::dev.off()
+    }, error = function(e) {
+        if (length(grDevices::dev.list())) grDevices::dev.off()
+        warning("Could not save ", basename, ": ", conditionMessage(e))
+    })
+}
+
+# Save a ggplot/patchwork object to PDF (+ PNG for convenience).
+save_gg_pdf <- function(plot_obj, basename, width = 10, height = 12) {
+    if (is.null(plot_obj)) return(invisible())
+    tryCatch({
+        ggplot2::ggsave(file.path(fig_out_dir, paste0(basename, ".pdf")), plot_obj, width = width, height = height)
+        ggplot2::ggsave(file.path(fig_out_dir, paste0(basename, ".png")), plot_obj, width = width, height = height, dpi = 300, bg = "white")
+    }, error = function(e) warning("Could not save ", basename, ": ", conditionMessage(e)))
+}
 ```
 
 ## Introduction & Methodology
@@ -321,28 +380,21 @@ resid_marg <- db_hedges$yi - predict(ma_hedges)[[1]]
 # Conditional residuals: observed - fixed - random intercepts (study, obs, species)
 resid_cond <- db_hedges$yi - (predict(ma_hedges)[[1]] + study_ef + obs_ef + spec_ef)
 
-# Side-by-side funnel plots of marginal vs. conditional residuals
-par(mfrow = c(1, 2))
-metafor::funnel(
-    x = resid_marg, vi = db_hedges$vi,
-    yaxis = "seinv", digits = 2,
-    level = c(0.1, 0.05, 0.01),
-    shade = c("white", "gray55", "gray75"),
-    las = 1, xlab = "Meta-analytic residuals (marginal)",
-    legend = FALSE
+# Side-by-side funnel plots of marginal vs. conditional residuals,
+# with (a)/(b) panel tags. Drawn on-screen and saved to a manuscript PDF.
+draw_funnels(resid_marg, resid_cond, db_hedges$vi)
+save_base_pdf(
+    "funnel_hedges",
+    function() draw_funnels(resid_marg, resid_cond, db_hedges$vi)
 )
-title("Marginal Residual Funnel Plot", adj = 0.5, line = 2.5)
-
-metafor::funnel(
-    x = resid_cond, vi = db_hedges$vi,
-    yaxis = "seinv", digits = 2,
-    level = c(0.1, 0.05, 0.01),
-    shade = c("white", "gray55", "gray75"),
-    las = 1, xlab = "Meta-analytic residuals (conditional)",
-    legend = FALSE
-)
-title("Conditional Residual Funnel Plot", adj = 0.5, line = 2.5)
 ```
+
+::: {.callout-note title="Reading the funnel plots"}
+Both panels plot each effect size against its precision ($1/\text{SE}$), but differ in what is removed before plotting:
+
+* **(a) Marginal residuals** are the deviations of each observed effect from the *fixed-effect (intercept) prediction* — the pooled mean — so they still carry all of the random-effects heterogeneity (between-study, between-effect-size, and between-species). Asymmetry here — a shortage of small, imprecise studies on one side of the funnel — is the classic visual signature of small-study and publication bias. Because genuine heterogeneity can mimic or exaggerate that asymmetry, apparent gaps in (a) should be read cautiously and confirmed against the formal Egger's regression below.
+* **(b) Conditional residuals** additionally subtract the estimated random intercepts (study, effect-size, and species BLUPs), so the heterogeneity captured by the multilevel structure is partialled out. A symmetric, evenly-filled funnel here means that once the nesting is accounted for there is little precision-related asymmetry left — i.e., the asymmetry seen in (a) is largely explained by the modelled random effects rather than by selective reporting. Any asymmetry that *persists* in (b) is the more credible visual indication of true small-study effects.
+:::
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
 
@@ -513,7 +565,7 @@ We combine the Egger regression and publication year time-lag bubble plots into 
 dashboard_hedges <- (p_egger_hedges / p_decline_hedges_relabeled) +
     patchwork::plot_annotation(
         title = "Publication Bias Diagnostic Dashboard — Hedges' g",
-        tag_levels = "A"
+        tag_levels = "a", tag_prefix = "(", tag_suffix = ")"
     ) &
     ggplot2::theme(
         plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
@@ -521,6 +573,7 @@ dashboard_hedges <- (p_egger_hedges / p_decline_hedges_relabeled) +
     )
 
 print(dashboard_hedges)
+save_gg_pdf(dashboard_hedges, "dashboard_eggers_timelag_hedges", width = 10, height = 12)
 ```
 
 ---
@@ -571,28 +624,21 @@ resid_marg <- db_or$yi - predict(ma_or)[[1]]
 # Conditional residuals: observed - fixed - random intercepts (study, obs, species)
 resid_cond <- db_or$yi - (predict(ma_or)[[1]] + study_ef + obs_ef + spec_ef)
 
-# Side-by-side funnel plots of marginal vs. conditional residuals
-par(mfrow = c(1, 2))
-metafor::funnel(
-    x = resid_marg, vi = db_or$vi,
-    yaxis = "seinv", digits = 2,
-    level = c(0.1, 0.05, 0.01),
-    shade = c("white", "gray55", "gray75"),
-    las = 1, xlab = "Meta-analytic residuals (marginal)",
-    legend = FALSE
+# Side-by-side funnel plots of marginal vs. conditional residuals,
+# with (a)/(b) panel tags. Drawn on-screen and saved to a manuscript PDF.
+draw_funnels(resid_marg, resid_cond, db_or$vi)
+save_base_pdf(
+    "funnel_or",
+    function() draw_funnels(resid_marg, resid_cond, db_or$vi)
 )
-title("Marginal Residual Funnel Plot", adj = 0.5, line = 2.5)
-
-metafor::funnel(
-    x = resid_cond, vi = db_or$vi,
-    yaxis = "seinv", digits = 2,
-    level = c(0.1, 0.05, 0.01),
-    shade = c("white", "gray55", "gray75"),
-    las = 1, xlab = "Meta-analytic residuals (conditional)",
-    legend = FALSE
-)
-title("Conditional Residual Funnel Plot", adj = 0.5, line = 2.5)
 ```
+
+::: {.callout-note title="Reading the funnel plots"}
+Both panels plot each $\ln\text{OR}$ effect size against its precision ($1/\text{SE}$), but differ in what is removed before plotting:
+
+* **(a) Marginal residuals** are the deviations of each observed effect from the *fixed-effect (intercept) prediction* — the pooled mean — so they still carry all of the random-effects heterogeneity (between-study, between-effect-size, and between-species). Asymmetry here — a shortage of small, imprecise studies on one side of the funnel — is the classic visual signature of small-study and publication bias. Because genuine heterogeneity can mimic or exaggerate that asymmetry, apparent gaps in (a) should be read cautiously and confirmed against the formal Egger's regression below.
+* **(b) Conditional residuals** additionally subtract the estimated random intercepts (study, effect-size, and species BLUPs), so the heterogeneity captured by the multilevel structure is partialled out. A symmetric, evenly-filled funnel here means that once the nesting is accounted for there is little precision-related asymmetry left — i.e., the asymmetry seen in (a) is largely explained by the modelled random effects rather than by selective reporting. Any asymmetry that *persists* in (b) is the more credible visual indication of true small-study effects.
+:::
 
 #### 2. Egger's Meta-Regression (Small-Study Effects)
 
@@ -763,7 +809,7 @@ We combine the Egger regression and publication year time-lag bubble plots into 
 dashboard_or <- (p_egger_or / p_decline_or_relabeled) +
     patchwork::plot_annotation(
         title = "Publication Bias Diagnostic Dashboard — Log Odds Ratio",
-        tag_levels = "A"
+        tag_levels = "a", tag_prefix = "(", tag_suffix = ")"
     ) &
     ggplot2::theme(
         plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
@@ -771,6 +817,7 @@ dashboard_or <- (p_egger_or / p_decline_or_relabeled) +
     )
 
 print(dashboard_or)
+save_gg_pdf(dashboard_or, "dashboard_eggers_timelag_or", width = 10, height = 12)
 ```
 
 :::
