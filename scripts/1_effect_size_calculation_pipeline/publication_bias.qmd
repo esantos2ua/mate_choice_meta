@@ -564,7 +564,7 @@ We combine the Egger regression and publication year time-lag bubble plots into 
 #| fig.height: 12
 dashboard_hedges <- (p_egger_hedges / p_decline_hedges_relabeled) +
     patchwork::plot_annotation(
-        title = "Publication Bias Diagnostic Dashboard — Hedges' g",
+        title = "Publication Bias Diagnostic — Hedges' g",
         tag_levels = "a", tag_prefix = "(", tag_suffix = ")"
     ) &
     ggplot2::theme(
@@ -808,7 +808,7 @@ We combine the Egger regression and publication year time-lag bubble plots into 
 #| fig.height: 12
 dashboard_or <- (p_egger_or / p_decline_or_relabeled) +
     patchwork::plot_annotation(
-        title = "Publication Bias Diagnostic Dashboard — Log Odds Ratio",
+        title = "Publication Bias Diagnostic — Log Odds Ratio",
         tag_levels = "a", tag_prefix = "(", tag_suffix = ")"
     ) &
     ggplot2::theme(
