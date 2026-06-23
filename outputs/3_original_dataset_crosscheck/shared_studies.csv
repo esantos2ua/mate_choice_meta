@@ -1,0 +1,30 @@
+author_prefix,year,jones_species,davies_species,davies_study,n_jones_es,n_davies_es,n_compared
+APP,2000,perugiae,Limia perugiae,3,2,4,2
+AUL,2009,serrata,Drosophila serrata,5,2,2,2
+BRI,1996,reticulata,Poecilia reticulata,10,2,2,2
+BRO,1996,reticulata,Poecilia reticulata,11,1,2,1
+BRO,1999,reticulata,Poecilia reticulata,12,1,6,1
+DAG,2016,melanogaster,Drosophila melanogaster,15,3,4,3
+DAN,2018,melanogaster,Drosophila melanogaster,16,17,2,2
+DRU,2008,guttata,Taeniopygia guttata,18,1,2,1
+DUG,1992,reticulata,Poecilia reticulata,27,3,2,2
+DUG,1993,reticulata,Poecilia reticulata,20,2,2,2
+DUG,1998,reticulata,Poecilia reticulata,22,7,4,4
+DUG,2003,reticulata,Poecilia reticulata,24,2,4,2
+FOR,1996,minutu,Pomatoschistus minutus,30,2,2,2
+FOW,2015,ocreata,Schizocosa,31,2,1,1
+GER,2016,melanogaster,Drosophila melanogaster,35,4,8,4
+GIE,2018,latipinna,Poecilia latipinna,36,4,2,2
+GOD,2009,reticulata,Poecilia reticulata,37,1,2,1
+GOL,1993,aculeatus,Gasterosteus aculeatus,39,1,1,1
+GRA,1996,latipes,Oryzias latipes,42,2,1,1
+HOW,1998,latipes,Oryzias latipes,46,1,1,1
+LAF,1997,reticulata,Poecilia reticulata,52,1,3,1
+MAT,2013,nitidus,Rhabdoblennius nitidus,55,1,2,1
+MER,2009,melanogaster,Drosophila melanogaster,57,2,3,2
+MIL,2011,mjoebergi,Uca mjoebergi,58,1,1,1
+MUN,2004,nigrofasciata,Limia nigrofasciata,61,2,4,2
+NOB,2018,melanogaster,Drosophila melanogaster,62,2,4,2
+PAT,1998,aculeatus,Gasterosteus aculeatus,67,1,3,1
+SLA,1999,hypoleuca,Ficedula hypoleuca,73,1,1,1
+VUK,2007,reticulata,Poecilia reticulata,76,4,12,4

@@ -1,0 +1,304 @@
+---
+title: "Cross-Dataset Extraction Validation"
+subtitle: "Davies et al. (2020) vs Jones & DuVal (2019) — shared effect sizes"
+author: "Eduardo S. A. Santos & Collaborators"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    theme: cosmo
+    code-fold: true
+    code-summary: "Show R code"
+    self-contained: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+if (is.null(getOption("repos")) || getOption("repos")["CRAN"] %in% c(NA, "@CRAN@")) {
+    options(repos = c(CRAN = "https://cloud.r-project.org"))
+}
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(tidyverse, DT, patchwork, scales, knitr)
+
+# number formatter (mirrors the helper used elsewhere in this project)
+fmt <- function(x, digits = 2) {
+    res <- sprintf(paste0("%.", digits, "f"), x)
+    zero <- paste0("-0.", paste0(rep("0", digits), collapse = ""))
+    res[res == zero] <- paste0("0.", paste0(rep("0", digits), collapse = ""))
+    res
+}
+```
+
+## What this document validates
+
+We are updating a mate-choice-copying meta-analysis built on **two existing
+datasets that overlap in the primary studies they cover but report different
+effect-size metrics**:
+
+* **Davies et al. (2020)** — Hedges' *d*
+* **Jones & DuVal (2019)** — log odds ratio (lnOR)
+
+Before pooling them we need to know: *for the studies both teams extracted, do
+the effect sizes agree once placed on a common scale?* This is a
+**method-comparison** problem (two "instruments" measuring the same underlying
+effects), so — unlike a single-team re-extraction audit — we can apply formal
+agreement statistics (correlation, Bland–Altman limits of agreement) on top of
+the per-study qualitative review.
+
+The matching itself (study-level crosswalk + within-study optimal effect-size
+assignment) is performed by
+[`crosscheck_davies_jones.py`](crosscheck_davies_jones.py); this report reads
+its output and assesses agreement. Key methodological points carried over:
+
+* **Scale conversion.** Jones lnOR is mapped to Hedges' *d* via the
+  logistic-to-normal approximation $d = \text{lnOR}\times\sqrt{3}/\pi$
+  (≈ 0.5513; Borenstein et al. 2009).
+* **Absolute magnitudes.** The two datasets use opposite sign conventions
+  (Davies' non-directional *d* carries the raw mean-difference sign; Jones'
+  lnOR sign encodes copying direction), so agreement is assessed on $|d|$.
+  Sign concordance is reported separately as a diagnostic.
+
+```{r}
+#| label: load
+# Resolve the outputs dir whether rendered standalone (cwd = this file's dir)
+# or as part of the book (cwd = project root, via execute-dir: project).
+out_dir <- "outputs/3_original_dataset_crosscheck"
+if (!dir.exists(out_dir)) out_dir <- file.path("..", "..", out_dir)
+xwalk  <- read_csv(file.path(out_dir, "crosswalk_effect_sizes.csv"), show_col_types = FALSE)
+shared <- read_csv(file.path(out_dir, "shared_studies.csv"), show_col_types = FALSE)
+unmatched <- read_csv(file.path(out_dir, "unmatched_jones_studies.csv"), show_col_types = FALSE)
+
+# study tag + agreement / structural-cause classification
+xwalk <- xwalk %>%
+    mutate(
+        study      = paste0(author_prefix, year),
+        agreement  = if_else(magnitude_match, "agree", "disagree"),
+        es_structure = if_else(n_jones_es == n_davies_es,
+                               "same ES count", "ES count differs"),
+        cause = case_when(
+            magnitude_match                      ~ "agree",
+            n_jones_es != n_davies_es            ~ "ES-count / extraction structure differs",
+            TRUE                                 ~ "same structure, magnitude conflict"
+        )
+    )
+```
+
+## Headline summary
+
+```{r}
+#| label: headline
+n_shared <- nrow(shared)
+n_pairs  <- nrow(xwalk)
+n_match  <- sum(xwalk$magnitude_match)
+n_sign   <- sum(xwalk$sign_agree)
+tibble(
+    Metric = c("Shared studies (in both datasets)",
+               "Jones studies NOT in Davies",
+               "Comparable effect-size pairs",
+               "Pairs matching in magnitude (|Δd| ≤ 0.15 or ≤ 15%)",
+               "Pairs with concordant sign"),
+    Value  = c(n_shared,
+               nrow(unmatched),
+               n_pairs,
+               sprintf("%d (%s%%)", n_match, fmt(100*n_match/n_pairs, 0)),
+               sprintf("%d (%s%%)", n_sign,  fmt(100*n_sign/n_pairs, 0)))
+) %>% kable()
+```
+
+## Method-comparison agreement statistics
+
+```{r}
+#| label: agreement-stats
+pear <- cor.test(xwalk$abs_jones_d, xwalk$abs_davies_d, method = "pearson")
+spear <- suppressWarnings(
+    cor.test(xwalk$abs_jones_d, xwalk$abs_davies_d, method = "spearman"))
+fit  <- lm(abs_davies_d ~ abs_jones_d, data = xwalk)
+
+# same-ES-count subset (like-for-like extractions)
+sub <- filter(xwalk, es_structure == "same ES count")
+pear_sub <- cor.test(sub$abs_jones_d, sub$abs_davies_d)
+
+# Bland-Altman on |d|
+xwalk <- xwalk %>%
+    mutate(ba_mean = (abs_jones_d + abs_davies_d)/2,
+           ba_diff = abs_jones_d - abs_davies_d)
+bias <- mean(xwalk$ba_diff); s <- sd(xwalk$ba_diff)
+loa_lo <- bias - 1.96*s; loa_hi <- bias + 1.96*s
+
+tibble(
+    Statistic = c("Pearson r (all pairs)",
+                  "Spearman ρ (all pairs)",
+                  "Pearson r (same-ES-count studies only)",
+                  "OLS slope (Davies ~ Jones)",
+                  "OLS intercept",
+                  "Bland–Altman mean bias (Jones − Davies, |d|)",
+                  "95% limits of agreement"),
+    Value = c(sprintf("%s (95%% CI %s–%s, %s)", fmt(pear$estimate,3),
+                      fmt(pear$conf.int[1],2), fmt(pear$conf.int[2],2),
+                      ifelse(pear$p.value < 1e-4, "p < 0.0001",
+                             paste0("p = ", fmt(pear$p.value,4)))),
+              fmt(spear$estimate,3),
+              sprintf("%s (n = %d pairs)", fmt(pear_sub$estimate,3), nrow(sub)),
+              fmt(coef(fit)[2],3),
+              fmt(coef(fit)[1],3),
+              sprintf("%s d-units", fmt(bias,3)),
+              sprintf("%s to %s", fmt(loa_lo,2), fmt(loa_hi,2)))
+) %>% kable()
+```
+
+`r if (bias < -0.05 || coef(fit)[2] > 1.1) sprintf("A negative mean bias (%s) and an OLS slope > 1 (%s) both indicate Davies tends to report **larger** magnitudes than the Jones-converted values, increasingly so for larger effects.", fmt(bias,2), fmt(coef(fit)[2],2)) else if (bias > 0.05 || coef(fit)[2] < 0.9) "A positive mean bias indicates Jones-converted values tend to exceed Davies." else "Slope near 1 and bias near 0 indicate no systematic scaling difference."`
+
+### Agreement plots
+
+```{r}
+#| label: fig-agreement
+#| fig-width: 11
+#| fig-height: 5
+#| fig-cap: "Left: Jones-converted vs Davies |d| with the line of identity (dashed). Right: Bland–Altman plot (mean bias solid, 95% limits of agreement dashed). Points are coloured by whether the pair matches in magnitude; studies where the two teams extracted different numbers of effect sizes are ringed."
+lim <- c(0, max(xwalk$abs_jones_d, xwalk$abs_davies_d) * 1.05)
+
+p_scatter <- ggplot(xwalk, aes(abs_jones_d, abs_davies_d)) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50") +
+    geom_point(aes(colour = agreement, shape = es_structure), size = 2.6, alpha = .85) +
+    geom_text(aes(label = study), size = 2.4, vjust = -0.8, check_overlap = TRUE) +
+    scale_colour_manual(values = c(agree = "#2c7fb8", disagree = "#d95f0e")) +
+    coord_equal(xlim = lim, ylim = lim) +
+    labs(x = "Jones & DuVal  |d|  (lnOR × √3/π)", y = "Davies  |Hedges d|",
+         colour = NULL, shape = NULL, title = "Effect-size agreement") +
+    theme_minimal(base_size = 12) + theme(legend.position = "bottom")
+
+p_ba <- ggplot(xwalk, aes(ba_mean, ba_diff)) +
+    geom_hline(yintercept = 0, colour = "grey80") +
+    geom_hline(yintercept = bias, colour = "#2c7fb8") +
+    geom_hline(yintercept = c(loa_lo, loa_hi), linetype = "dashed", colour = "#d95f0e") +
+    geom_point(aes(colour = agreement), size = 2.6, alpha = .85) +
+    geom_text(aes(label = study), size = 2.4, vjust = -0.8, check_overlap = TRUE) +
+    scale_colour_manual(values = c(agree = "#2c7fb8", disagree = "#d95f0e"), guide = "none") +
+    labs(x = "Mean of the two |d|", y = "Jones − Davies  (|d|)",
+         title = "Bland–Altman") +
+    theme_minimal(base_size = 12)
+
+p_scatter + p_ba
+```
+
+## Discrepancy classification
+
+Borrowing the per-study "required action" structure from Sánchez-Tójar et al.'s
+validation codebook, every pair is classified by *why* it does or does not
+agree. The dominant structural cause is whether the two teams extracted the
+**same number of effect sizes** from a paper.
+
+```{r}
+#| label: cause-table
+xwalk %>% count(cause, name = "pairs") %>%
+    mutate(`%` = fmt(100*pairs/sum(pairs), 0)) %>% kable()
+```
+
+```{r}
+#| label: dt-pairs
+xwalk %>%
+    transmute(study, jones_code, jones_behaviour,
+              davies_study, davies_behaviour, davies_n,
+              `Jones |d|` = round(abs_jones_d, 2),
+              `Davies |d|` = round(abs_davies_d, 2),
+              `Δ|d|` = round(abs_diff, 2),
+              sign_agree, cause) %>%
+    datatable(rownames = FALSE, filter = "top",
+              options = list(pageLength = 15, scrollX = TRUE),
+              caption = "Per-pair crosswalk. Note the behaviour columns: a Jones 'reversal/random' contrast paired against a Davies 'Affiliation/Mating' contrast flags a different OUTCOME extracted from the same paper.")
+```
+
+### Studies flagged for manual re-extraction
+
+The clearest validation failures are pairs that **disagree despite both teams
+extracting the same number of effect sizes** (so the disagreement is not merely
+structural), plus any same-paper pair whose outcome construct differs.
+
+```{r}
+#| label: flag-table
+xwalk %>%
+    filter(!magnitude_match) %>%
+    arrange(desc(abs(abs_diff))) %>%
+    transmute(study, jones_behaviour, davies_behaviour,
+              `Jones |d|` = round(abs_jones_d, 2),
+              `Davies |d|` = round(abs_davies_d, 2),
+              `Δ|d|` = round(abs_diff, 2),
+              n_jones_es, n_davies_es, cause) %>%
+    kable()
+```
+
+## Sign-concordance diagnostic
+
+Because the sign conventions differ by construction, low sign agreement is
+*expected* and is not itself a validation failure — but a breakdown helps
+confirm the conventions are simply inverted rather than randomly assigned.
+
+```{r}
+#| label: sign-table
+xwalk %>%
+    summarise(`pairs` = n(),
+              `sign agree` = sum(sign_agree),
+              `% agree` = fmt(100*mean(sign_agree), 0)) %>%
+    kable()
+```
+
+## Effect-size-count reconciliation
+
+How the two teams partitioned each shared paper into effect sizes (a major
+driver of the comparable-pair count, since only `min(nJ, nD)` pairs per study
+can be aligned).
+
+```{r}
+#| label: count-recon
+shared %>%
+    transmute(study = paste0(author_prefix, year),
+              jones_species, davies_species,
+              n_jones_es, n_davies_es,
+              n_compared,
+              `unpaired` = abs(n_jones_es - n_davies_es)) %>%
+    arrange(desc(unpaired)) %>%
+    datatable(rownames = FALSE, options = list(pageLength = 15, scrollX = TRUE))
+```
+
+```{r}
+#| label: count-totals
+shared %>% summarise(
+    `Jones effect sizes (shared studies)` = sum(n_jones_es),
+    `Davies effect sizes (shared studies)` = sum(n_davies_es),
+    `Comparable pairs (Σ min)` = sum(n_compared)) %>%
+    pivot_longer(everything(), names_to = "Metric", values_to = "Count") %>%
+    kable()
+```
+
+## Jones studies absent from Davies
+
+Verified against **all** Davies studies (matching species epithet anywhere,
+author prefix at any year, and year ± 1); none have a Davies counterpart.
+
+```{r}
+#| label: unmatched-table
+unmatched %>%
+    transmute(study = paste0(author_prefix, year), species,
+              n_effect_sizes, reason) %>%
+    kable()
+```
+
+## What to report in the manuscript
+
+* **Overlap.** Of `r nrow(shared) + nrow(unmatched)` Jones & DuVal studies,
+  **`r n_shared` are shared** with Davies; `r nrow(unmatched)` are unique to
+  Jones (`r sum(unmatched$n_effect_sizes)` effect sizes).
+* **Agreement.** Across `r n_pairs` comparable effect-size pairs, Jones-converted
+  and Davies magnitudes correlate at Pearson *r* = `r fmt(pear$estimate,2)`
+  (`r fmt(100*n_match/n_pairs,0)`% within tolerance), rising to
+  *r* = `r fmt(pear_sub$estimate,2)` among studies where both teams extracted
+  the same number of effect sizes.
+* **Direction of disagreement.** Mean Bland–Altman bias =
+  `r fmt(bias,2)` *d*-units, indicating Davies reports
+  `r if (bias < 0) "slightly larger" else "slightly smaller"` magnitudes on
+  average; most large discrepancies trace to **different outcomes extracted**
+  (behaviour-type columns) or **different effect-size partitioning**, not to the
+  metric conversion.
+```
