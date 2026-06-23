@@ -284,8 +284,127 @@ unmatched %>%
     kable()
 ```
 
+## Re-extraction: what happens when we return to the source PDFs
+
+The agreement analysis flags *where* the two datasets disagree, but not *which*
+is correct. To resolve that for the worst cases, we pulled the primary-study
+PDFs for every study whose effect-size pair disagreed by **> 0.5 Hedges-*d*
+units** and re-extracted each effect size from the raw data, recomputing it as a
+2×2 odds ratio under the meta-analysis's own conventions (treatment-vs-control
+where the study used a control group; proportion-vs-chance otherwise). This
+gives a third, independent estimate per effect size — a tie-breaker.
+
+```{r}
+#| label: load-reext
+reext <- read_csv(file.path(out_dir, "reextraction_flagged_7studies.csv"),
+                  show_col_types = FALSE) %>%
+    mutate(
+        study     = gsub("_", " ", sub("^([^_]+_[0-9]+).*", "\\1", identifierStudyId)),
+        label     = paste0(study, " · ", identifierExperimentId),
+        reext_d   = log(effectSizeCalculatedEstimate) * 0.5513,   # ln(OR) -> Hedges d
+        jones_d   = compare_jones_d,
+        davies_d  = compare_davies_hedges_d,
+        reext_abs = abs(reext_d), jones_abs = abs(jones_d), davies_abs = abs(davies_d)
+    )
+mj <- mean(abs(reext$reext_abs - reext$jones_abs))
+md <- mean(abs(reext$reext_abs - reext$davies_abs))
+```
+
+### The three estimates side by side
+
+```{r}
+#| label: reext-table
+reext %>%
+    transmute(Study = label,
+              `2×2 (A/B/C/D)` = paste(effectSizeSampleSizeA, effectSizeSampleSizeB,
+                                      effectSizeSampleSizeC, effectSizeSampleSizeD, sep = "/"),
+              `Re-extracted d` = round(reext_d, 2),
+              `Jones d` = round(jones_d, 2),
+              `Davies d` = round(davies_d, 2),
+              `|re-ext − Jones|` = round(abs(reext_abs - jones_abs), 2),
+              `|re-ext − Davies|` = round(abs(reext_abs - davies_abs), 2)) %>%
+    datatable(rownames = FALSE, options = list(pageLength = 12, dom = "t", scrollX = TRUE),
+              caption = "Re-extracted effect size vs the two prior extractions (Hedges d). Cells A/B = treatment chose-target / not; C/D = control or 50/50 reference.")
+```
+
+Across the `r nrow(reext)` re-extracted effect sizes, the re-extraction sits
+almost exactly on the **Jones** values (mean |Δ*d*| = `r fmt(mj,2)`) and far from
+the **Davies** values (mean |Δ*d*| = `r fmt(md,2)`). Because the 2×2 cell counts
+were read independently from each PDF and *reproduce Jones's lnOR and variance to
+three decimals*, this is genuine confirmation that the Jones (odds-ratio)
+extraction is faithful — and that Davies is the source of the disagreement.
+
+### Visualising the tie-break
+
+```{r}
+#| label: fig-reext
+#| fig-width: 11
+#| fig-height: 5.5
+#| fig-cap: "Left: each flagged effect size on the |Hedges d| axis — re-extracted (independent, from the PDF) vs Jones vs Davies; the re-extracted point sits on Jones in every case, with Davies displaced. Right: absolute deviation of each prior extraction from the re-extracted value."
+ord  <- reext %>% arrange(reext_abs) %>% pull(label)
+long <- reext %>%
+    select(label, Jones = jones_abs, Davies = davies_abs, `Re-extracted` = reext_abs) %>%
+    pivot_longer(-label, names_to = "source", values_to = "absd") %>%
+    mutate(label = factor(label, levels = ord))
+
+p_db <- ggplot(long, aes(absd, label)) +
+    geom_line(aes(group = label), colour = "grey75") +
+    geom_point(aes(colour = source, shape = source), size = 3, alpha = .9) +
+    scale_colour_manual(values = c(`Re-extracted` = "#1a9850", Jones = "#2c7fb8", Davies = "#d95f0e")) +
+    labs(x = "|Hedges d|", y = NULL, colour = NULL, shape = NULL,
+         title = "Re-extracted vs prior extractions") +
+    theme_minimal(base_size = 11) + theme(legend.position = "bottom")
+
+dev <- reext %>%
+    transmute(label = factor(label, levels = ord),
+              `vs Jones`  = abs(reext_abs - jones_abs),
+              `vs Davies` = abs(reext_abs - davies_abs)) %>%
+    pivot_longer(-label, names_to = "comparison", values_to = "dev")
+p_dev <- ggplot(dev, aes(dev, label, fill = comparison)) +
+    geom_col(position = "dodge") +
+    scale_fill_manual(values = c(`vs Jones` = "#2c7fb8", `vs Davies` = "#d95f0e")) +
+    labs(x = "|re-extracted − prior|  (Hedges d)", y = NULL, fill = NULL,
+         title = "Deviation from re-extraction") +
+    theme_minimal(base_size = 11) +
+    theme(legend.position = "bottom", axis.text.y = element_blank())
+p_db + p_dev
+```
+
+### Why Davies diverges — four failure modes
+
+The re-extraction shows the discrepancies are not random noise or conversion
+error; they trace to four identifiable problems, all on the Davies side:
+
+1. **Different outcome construct.** For *Applebaum & Cruz 2000* and *Briggs et al.
+   1996*, Davies extracted a secondary **affiliation-time** measure (often
+   non-significant) rather than the **preference-reversal frequency** the studies
+   analyse; for *Howard et al. 1998* Davies extracted a **male-size preference** —
+   a different question entirely.
+2. **Computational artifacts.** *Dugatkin 1992*'s Davies *d* = 3.732 is exactly
+   **2 + √3**, the signature of a degenerate-2×2 `escalc` input; *Gierszewski et
+   al. 2018*'s *d* = 2.43 is inflated by the structural zero cell at first choice.
+3. **Sign error.** *Howard et al. 1998*: Davies records **+1.14** for a study that
+   found **no copying** (females retained their original preference 15:5); the
+   re-extraction and Jones both give **−0.61**.
+4. **Pool-vs-split, not an error.** *Fowler-Finn et al. 2015* is the one case where
+   neither is wrong: Davies pooled one effect (*d* 0.63) where Jones — and our
+   re-extraction — split it into a copying arm (*d* 1.21) and a no-copying arm
+   (*d* 0.10), matching the study's significant phenotype × age interaction.
+
+A design subtlety surfaced during re-extraction: for *Dugatkin 1992* the copying
+tests are correctly compared against the study's **naïve control group**, not
+against chance. Under that (correct) design Davies's total **N = 40** is right —
+only the *magnitude* (the 2 + √3 artifact) is wrong — while Jones's third recorded
+value for this study (lnOR 2.234) is spurious: it reproduces from no pair of the
+paper's six experiments and should be dropped.
+
 ## What to report in the manuscript
 
+* **Re-extraction (the > 0.5 set).** Returning to the source PDFs for the
+  `r nrow(reext)` effect sizes that disagreed most confirmed the Jones-style
+  odds-ratio extraction (mean |Δ*d*| = `r fmt(mj,2)`) and pinned Davies as the
+  discrepancy source (mean |Δ*d*| = `r fmt(md,2)`) — via different outcome
+  constructs, `escalc` artifacts, a sign error, and one defensible pool-vs-split.
 * **Overlap.** Of `r nrow(shared) + nrow(unmatched)` Jones & DuVal studies,
   **`r n_shared` are shared** with Davies; `r nrow(unmatched)` are unique to
   Jones (`r sum(unmatched$n_effect_sizes)` effect sizes).
