@@ -7,8 +7,12 @@
 /.quarto/
 **/*.quarto_ipynb
 
-# Quarto temporary directories
+# Quarto temporary directories (source-tree render artifacts).
+# Keep the rendered figure folders that live under the published docs/ site,
+# otherwise the GitHub Pages site would have broken images now that chapters
+# are no longer self-contained.
 *_files/
+!/docs/**/*_files/
 
 # Python
 __pycache__/

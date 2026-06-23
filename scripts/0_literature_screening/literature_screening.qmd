@@ -7,7 +7,6 @@ format:
     toc: true
     toc-depth: 3
     theme: cosmo
-    self-contained: true
 execute:
   echo: true
   eval: false
