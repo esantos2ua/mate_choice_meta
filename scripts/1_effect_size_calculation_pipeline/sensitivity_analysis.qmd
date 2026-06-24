@@ -501,12 +501,38 @@ version's raw effect sizes (scaled by precision), the central marker is the pool
 its 95% confidence interval, and the thin whisker is the 95% prediction interval. The
 `Mean [95% CI]` and `k (n)` annotations sit beside each trunk.
 
+Because the seven contentious studies are only a small fraction of the combined data, the
+three bubble clouds look broadly similar — that near-overlap is itself the robustness
+result. To make the edits legible, **bubbles from the seven contentious studies are coloured
+orange and all other effect sizes grey.** You can then see the contentious points present in
+**Main**, *absent* in **Leave-out**, and *repositioned* (and two fewer, after the over-count
+drops) in **Corrected**.
+
 ```{r}
 #| label: orchard_helpers
 #| message: false
 #| warning: false
-ver_levels <- c("Main", "Leave-out", "Corrected")
-ver_cols   <- c("Main" = "#444444", "Leave-out" = "#D55E00", "Corrected" = "#0072B2")
+# Flag, for a fitted model's data, which effect sizes come from the seven contentious
+# studies. For Hedges' g these are the flagged Davies rows plus the re-extracted
+# replacements; for the log OR they are the flagged Jones rows. The flag is computed in
+# the model's own row order, which orchaRd::mod_results preserves.
+contentious_flag <- function(fit, class) {
+    d   <- fit$data
+    id  <- as.character(d$identifierEffectSizeID)
+    src <- as.character(d$Dataset_Source)
+    if (class == "hedges") {
+        is_reext  <- grepl("^reext_", id)
+        davies_no <- suppressWarnings(as.integer(str_extract(id, "^[0-9]+")))
+        is_flag   <- src == "Original (Davies 2020)" & davies_no %in% davies_studies_flagged
+        flag <- is_reext | (is_flag & !is.na(is_flag))
+    } else {
+        prefix <- str_extract(id, "^[A-Za-z]+[0-9]{4}")
+        flag <- src == "Original (Jones & DuVal 2019)" & prefix %in% jones_papers_flagged
+    }
+    ifelse(flag, "Contentious study", "Other studies")
+}
+
+flag_cols <- c("Contentious study" = "#D55E00", "Other studies" = "grey70")
 
 # Build one orchard "trunk" (an orchaRd mod_results object) from a fitted model and
 # relabel it with the version name, mirroring the multi-trunk approach in overall_effect.qmd.
@@ -540,19 +566,32 @@ add_ci_labels <- function(plot_obj, orchard_results) {
     plot_obj
 }
 
-# Assemble a three-trunk orchard plot (Main / Leave-out / Corrected) for one class.
-sensitivity_orchard <- function(fit_main, fit_leave, fit_corr, xlab, title) {
+# Assemble a three-trunk orchard plot (Main / Leave-out / Corrected) for one class, with
+# the raw bubbles recoloured by whether they come from a contentious study.
+sensitivity_orchard <- function(fit_main, fit_leave, fit_corr, class, xlab, title) {
     t_main <- mk_trunk(fit_main,  "Main")
     t_leav <- mk_trunk(fit_leave, "Leave-out")
     t_corr <- mk_trunk(fit_corr,  "Corrected")
     sub <- orchaRd::submerge(t_main, t_leav, t_corr)
 
-    p <- orchaRd::orchard_plot(sub, xlab = xlab, flip = TRUE) +
-        ggplot2::scale_colour_manual(values = ver_cols, name = "Dataset version") +
-        ggplot2::scale_fill_manual(values = ver_cols, name = "Dataset version") +
+    # Attach the contentious flag in submerge order (Main, then Leave-out, then Corrected).
+    sub$data$es_flag <- c(
+        contentious_flag(fit_main,  class),
+        contentious_flag(fit_leave, class),
+        contentious_flag(fit_corr,  class)
+    )
+
+    p <- orchaRd::orchard_plot(sub, xlab = xlab, flip = TRUE)
+    # Recolour the raw-point layer (layer 1) by the contentious flag.
+    p$layers[[1]]$mapping$colour <- ggplot2::aes(colour = es_flag)$colour
+    p$layers[[1]]$mapping$fill   <- ggplot2::aes(fill = es_flag)$fill
+
+    p <- p +
+        ggplot2::scale_colour_manual(values = flag_cols, name = NULL) +
+        ggplot2::scale_fill_manual(values = flag_cols, name = NULL) +
         ggplot2::ggtitle(title) +
         ggplot2::theme(
-            legend.position = "none",
+            legend.position = "bottom",
             plot.title = ggplot2::element_text(face = "bold", hjust = 0.5)
         )
     add_ci_labels(p, sub)
@@ -571,7 +610,8 @@ sensitivity_orchard <- function(fit_main, fit_leave, fit_corr, xlab, title) {
 #| fig-height: 6
 #| fig-cap: "Combined Hedges' g under the Main, Leave-out, and Corrected datasets. Bubbles are raw effect sizes scaled by precision; the central marker is the pooled mean (95% CI), the whisker is the 95% prediction interval. The vertical line marks no effect (g = 0)."
 sensitivity_orchard(fits$hedges_main, fits$hedges_leaveout, fits$hedges_corrected,
-                    xlab = "Hedges' g", title = "Sensitivity of the combined Hedges' g")
+                    class = "hedges", xlab = "Hedges' g",
+                    title = "Sensitivity of the combined Hedges' g")
 ```
 
 #### Odds Ratio (binary outcomes)
@@ -584,7 +624,8 @@ sensitivity_orchard(fits$hedges_main, fits$hedges_leaveout, fits$hedges_correcte
 #| fig-height: 6
 #| fig-cap: "Combined log odds ratio under the Main, Leave-out, and Corrected datasets. Bubbles are raw lnOR effect sizes scaled by precision; the central marker is the pooled mean (95% CI), the whisker is the 95% prediction interval. The vertical line marks no effect (lnOR = 0, i.e. OR = 1)."
 sensitivity_orchard(fits$or_main, fits$or_leaveout, fits$or_corrected,
-                    xlab = "Log Odds Ratio (lnOR)", title = "Sensitivity of the combined log odds ratio")
+                    class = "or", xlab = "Log Odds Ratio (lnOR)",
+                    title = "Sensitivity of the combined log odds ratio")
 ```
 
 :::
