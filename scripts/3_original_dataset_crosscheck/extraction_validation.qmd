@@ -327,12 +327,21 @@ reext %>%
               caption = "Re-extracted effect size vs the two prior extractions (Hedges d). Cells A/B = treatment chose-target / not; C/D = control or 50/50 reference.")
 ```
 
-Across the `r nrow(reext)` re-extracted effect sizes, the re-extraction sits
+Across the `r nrow(reext)` re-extracted effect sizes the **point estimates** sit
 almost exactly on the **Jones** values (mean |Δ*d*| = `r fmt(mj,2)`) and far from
-the **Davies** values (mean |Δ*d*| = `r fmt(md,2)`). Because the 2×2 cell counts
-were read independently from each PDF and *reproduce Jones's lnOR and variance to
-three decimals*, this is genuine confirmation that the Jones (odds-ratio)
-extraction is faithful — and that Davies is the source of the disagreement.
+the **Davies** values (mean |Δ*d*| = `r fmt(md,2)`). Two cautions stop this from
+being read as "the extraction is validated against Jones":
+
+* **Point-estimate agreement is expected, not corroborating.** These outcomes are
+  discrete choice counts read directly from each PDF; any careful extractor
+  building the same 2×2 obtains the same lnOR. Agreement here confirms we *read the
+  papers the same way* — it is not independent evidence that either prior
+  extraction is correct.
+* **The original crosswalk selected the construction that matched Jones.** For each
+  study it chose the 2×2 that reproduced Jones's variance, which makes the variance
+  match circular. The next section removes that circularity: it re-derives every
+  effect size from a rule fixed by the study design **before** any comparison to
+  Jones, and reports count agreement and design agreement separately.
 
 ### Visualising the tie-break
 
@@ -370,6 +379,76 @@ p_dev <- ggplot(dev, aes(dev, label, fill = comparison)) +
 p_db + p_dev
 ```
 
+### Count agreement vs design agreement (and a correction to Jones)
+
+To break the circularity we re-derive each effect size from a rule fixed by the
+study design alone — *before* looking at Jones — and report two things separately:
+**count agreement** (does our lnOR from the raw counts match Jones, i.e. did we
+read the paper the same way) and **design agreement** (does our variance and N
+match, i.e. did we model the design the same way). The rule has two branches:
+
+* **Real control group** — the 2×2 has distinct treatment and control cells (e.g.
+  *Dugatkin 1992*'s naïve non-observer group). A standard 2×2 odds ratio is valid:
+  $\mathrm{Var}=1/A+1/B+1/C+1/D$, $N=A+B+C+D$.
+* **Single group vs 50 % chance** — the "50/50 rule" sets $C=D=n/2$. The
+  design-faithful estimator is the one-sample logit of the observed proportion:
+  $\mathrm{Var}=1/A+1/B$, $N=A+B$. The 50/50 group is a *phantom* control: it
+  invents $n$ observations that were never collected and inflates the variance by
+  **exactly $4/n$** while doubling the reported $N$.
+
+```{r}
+#| label: design-rederivation
+reext2 <- reext %>%
+    mutate(
+        A = effectSizeSampleSizeA, B = effectSizeSampleSizeB,
+        C = effectSizeSampleSizeC, D = effectSizeSampleSizeD,
+        design = if_else(C == D, "single group vs 50% chance", "real control group"),
+        corr_var = if_else(design == "real control group",
+                           1/A + 1/B + 1/C + 1/D, 1/A + 1/B),
+        corr_N   = if_else(design == "real control group", A + B + C + D, A + B),
+        jones_var    = compare_jones_VlnOR,
+        count_agree  = abs(reext_d - jones_d) < 0.02,   # point estimate (lnOR × √3/π)
+        design_agree = abs(corr_var - jones_var) < 0.01
+    )
+
+reext2 %>% summarise(
+    `Effect sizes` = n(),
+    `Count agreement (lnOR matches Jones)`      = sum(count_agree),
+    `Design agreement (variance matches Jones)` = sum(design_agree)
+) %>% pivot_longer(everything(), names_to = "Quantity", values_to = "n") %>%
+    kable()
+```
+
+Count agreement is complete; design agreement holds **only** for the real-control
+studies, where a 2×2 is the correct model. The single-group studies disagree by
+construction — and the disagreement is Jones's $4/n$ phantom-control inflation:
+
+```{r}
+#| label: phantom-control
+reext2 %>%
+    filter(design == "single group vs 50% chance") %>%
+    transmute(Study = label,
+              `our Var (1/A+1/B)` = round(corr_var, 4),
+              `+ 4/n`             = round(4/(A + B), 4),
+              `our Var + 4/n`     = round(corr_var + 4/(A + B), 4),
+              `Jones Var`         = round(jones_var, 4),
+              `our N` = corr_N,
+              Note = if_else(abs(corr_var + 4/(A + B) - jones_var) < 0.01,
+                             "Jones inflated by phantom 50/50 control",
+                             "Jones used a different null")) %>%
+    kable()
+```
+
+For every single-group study except *Howard 1998*, `our Var + 4/n` reproduces
+Jones's variance to the fourth decimal, confirming the inflation is the invented
+control group rather than a different reading. *Howard 1998* is the exception
+(Jones used a different null), and our estimate is preferred there. So on the
+vs-chance studies the design-faithful re-derivation **corrects** Jones — smaller
+variance, halved $N$ — rather than reproducing him: the earlier "matches Jones
+exactly" was, for these studies, matching a 50/50-rule artifact. The corrected
+$N$ also reframes Davies's $N$ errors below: Davies's $N=40$ for *Dugatkin 1993*
+is wrong against the design-faithful $N=20$, not merely against Jones.
+
 ### Why Davies diverges — four failure modes
 
 The re-extraction shows the discrepancies are not random noise or conversion
@@ -401,10 +480,15 @@ paper's six experiments and should be dropped.
 ## What to report in the manuscript
 
 * **Re-extraction (the > 0.5 set).** Returning to the source PDFs for the
-  `r nrow(reext)` effect sizes that disagreed most confirmed the Jones-style
-  odds-ratio extraction (mean |Δ*d*| = `r fmt(mj,2)`) and pinned Davies as the
-  discrepancy source (mean |Δ*d*| = `r fmt(md,2)`) — via different outcome
-  constructs, `escalc` artifacts, a sign error, and one defensible pool-vs-split.
+  `r nrow(reext)` effect sizes that disagreed most, the design-blind re-derivation
+  reproduced the **point estimates** wherever the data are discrete counts (mean
+  |Δ*d*| vs Jones = `r fmt(mj,2)`; vs Davies = `r fmt(md,2)`), **corrected** Jones
+  on the single-group / vs-chance studies (a 4/n phantom-control variance inflation
+  from the 50/50 rule, with halved *N*), and isolated **Davies** as the divergent
+  extraction — via different outcome constructs, `escalc` artifacts, a sign error,
+  and one defensible pool-vs-split. This is an independent re-derivation, **not** a
+  validation against Jones: the point-estimate agreement is expected for discrete
+  counts and the variance was no longer reverse-engineered to match.
 * **Overlap.** Of `r nrow(shared) + nrow(unmatched)` Jones & DuVal studies,
   **`r n_shared` are shared** with Davies; `r nrow(unmatched)` are unique to
   Jones (`r sum(unmatched$n_effect_sizes)` effect sizes).
