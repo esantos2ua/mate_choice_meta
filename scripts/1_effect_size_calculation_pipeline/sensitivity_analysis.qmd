@@ -598,6 +598,32 @@ sensitivity_orchard <- function(fit_main, fit_leave, fit_corr, class, xlab, titl
 }
 ```
 
+```{r}
+#| label: build_save_sensitivity
+#| message: false
+#| warning: false
+# Build the two comparison orchards once and export each as a manuscript deliverable
+# (PNG + PDF) in outputs/, mirroring save_taxon_fig() in the overall-effect chapter.
+sens_plot_hedges <- sensitivity_orchard(
+    fits$hedges_main, fits$hedges_leaveout, fits$hedges_corrected,
+    class = "hedges", xlab = "Hedges' g", title = "Sensitivity of the combined Hedges' g")
+sens_plot_or <- sensitivity_orchard(
+    fits$or_main, fits$or_leaveout, fits$or_corrected,
+    class = "or", xlab = "Log Odds Ratio (lnOR)", title = "Sensitivity of the combined log odds ratio")
+
+save_sens_fig <- function(plot_obj, basename, width = 10, height = 6) {
+    if (is.null(plot_obj)) return(invisible())
+    tryCatch({
+        d <- here::here("outputs", "1_effect_size_calculation_pipeline")
+        dir.create(d, recursive = TRUE, showWarnings = FALSE)
+        ggplot2::ggsave(file.path(d, paste0(basename, ".pdf")), plot_obj, width = width, height = height)
+        ggplot2::ggsave(file.path(d, paste0(basename, ".png")), plot_obj, width = width, height = height, dpi = 300, bg = "white")
+    }, error = function(e) warning("Could not save ", basename, ": ", conditionMessage(e)))
+}
+save_sens_fig(sens_plot_hedges, "sensitivity_contentious_hedges")
+save_sens_fig(sens_plot_or,     "sensitivity_contentious_or")
+```
+
 ::: {.panel-tabset}
 
 #### Hedges' $g$ (continuous outcomes)
@@ -609,9 +635,7 @@ sensitivity_orchard <- function(fit_main, fit_leave, fit_corr, class, xlab, titl
 #| fig-width: 10
 #| fig-height: 6
 #| fig-cap: "Combined Hedges' g under the Main, Leave-out, and Corrected datasets. Bubbles are raw effect sizes scaled by precision; the central marker is the pooled mean (95% CI), the whisker is the 95% prediction interval. The vertical line marks no effect (g = 0)."
-sensitivity_orchard(fits$hedges_main, fits$hedges_leaveout, fits$hedges_corrected,
-                    class = "hedges", xlab = "Hedges' g",
-                    title = "Sensitivity of the combined Hedges' g")
+sens_plot_hedges
 ```
 
 #### Odds Ratio (binary outcomes)
@@ -623,9 +647,7 @@ sensitivity_orchard(fits$hedges_main, fits$hedges_leaveout, fits$hedges_correcte
 #| fig-width: 10
 #| fig-height: 6
 #| fig-cap: "Combined log odds ratio under the Main, Leave-out, and Corrected datasets. Bubbles are raw lnOR effect sizes scaled by precision; the central marker is the pooled mean (95% CI), the whisker is the 95% prediction interval. The vertical line marks no effect (lnOR = 0, i.e. OR = 1)."
-sensitivity_orchard(fits$or_main, fits$or_leaveout, fits$or_corrected,
-                    class = "or", xlab = "Log Odds Ratio (lnOR)",
-                    title = "Sensitivity of the combined log odds ratio")
+sens_plot_or
 ```
 
 :::
