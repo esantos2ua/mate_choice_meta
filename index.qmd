@@ -44,6 +44,7 @@ Use the floating left sidebar or the search bar above to browse the supplement's
 3. **Overall Effect Size Calculation & Synthesis** (`overall_effect.qmd`) — Fits the multi-level models and reports pooled effects for three data subsets (new extraction, original datasets, and the two combined), with side-by-side orchard plots.
 4. **Publication Bias Diagnostics** (`publication_bias.qmd`) — Inspects funnel-plot symmetry, runs Egger's regressions with a two-step precision/variance correction, and tests for a decline in effect size over time.
 5. **Cross-Dataset Extraction Validation** (`extraction_validation.qmd`) — Checks whether the two original datasets (Davies et al. 2020 and Jones & DuVal 2019) agree on the effect sizes of the studies they both cover, and re-extracts the worst disagreements from the source PDFs.
+6. **Sensitivity Analysis** (`sensitivity_analysis.qmd`) — Re-fits the combined overall models with the contentious effect sizes left out, and again with the re-extracted corrected values, to test how robust the headline estimates are to the studies flagged above.
 :::
 
 ::: card

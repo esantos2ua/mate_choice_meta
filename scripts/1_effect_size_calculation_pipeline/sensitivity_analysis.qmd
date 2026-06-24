@@ -1,0 +1,586 @@
+---
+title: "Sensitivity Analysis: Contentious Effect Sizes"
+subtitle: "How robust is the combined overall effect to the studies flagged by the cross-dataset validation?"
+author: "Eduardo S. A. Santos & Collaborators"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    theme: cosmo
+    code-fold: true
+    code-summary: "Show R code"
+bibliography: ../../references.bib
+---
+
+```{r}
+#| label: setup
+#| include: false
+if (is.null(getOption("repos")) || getOption("repos")["CRAN"] %in% c(NA, "@CRAN@")) {
+    options(repos = c(CRAN = "https://cloud.r-project.org"))
+}
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+if (!requireNamespace("orchaRd", quietly = TRUE)) pacman::p_load_gh("daniel1noble/orchaRd")
+pacman::p_load(here, readxl, tidyverse, metafor, orchaRd, patchwork, DT, scales)
+
+# Number formatter (mirrors the helper used in the other chapters)
+fmt <- function(x, digits = 2) {
+    res <- sprintf(paste0("%.", digits, "f"), x)
+    zero <- paste0("-0.", paste0(rep("0", digits), collapse = ""))
+    res[res == zero] <- paste0("0.", paste0(rep("0", digits), collapse = ""))
+    res
+}
+pstr <- function(p) {
+    if (length(p) == 0 || is.na(p)) "p = NA" else if (p < 0.0001) "p < 0.0001" else paste0("p = ", fmt(p, 3))
+}
+```
+
+## Why this chapter exists
+
+The [Cross-Dataset Extraction Validation](../3_original_dataset_crosscheck/extraction_validation.qmd)
+chapter compared the two original datasets that feed our combined synthesis —
+Davies et al. [-@daviesMetaanalysisFactorsInfluencing2020] (continuous, Hedges' *d*)
+and Jones & DuVal [-@jonesMechanismsSocialInfluence2019] (binary, log odds ratio) —
+and returned to the source PDFs for the **seven studies whose effect sizes disagreed
+by more than 0.5 Hedges-*d* units**. That re-extraction reached two conclusions that
+matter for the headline result:
+
+1. On the **continuous (Davies) side**, the disagreements trace to a handful of
+   identifiable extraction problems (a wrong outcome construct, two `escalc`
+   computational artifacts, a sign error, and one defensible pool-vs-split). Several
+   of these inflate the Davies effect size.
+2. On the **binary (Jones) side**, the *point estimates* are sound, but a few rows are
+   over-counted (one spurious value and one duplicated contrast), and the variances of
+   the single-group "vs-chance" studies are inflated by a phantom 50/50 control.
+
+A natural question follows: **does the combined overall effect depend on these
+contentious effect sizes?** This chapter answers it directly. We re-fit the combined
+multilevel models — using the *same* model structure as the
+[Overall Effect](overall_effect.qmd) chapter — under three versions of the data and
+compare the pooled estimates.
+
+* **Main** — the data exactly as analysed in the overall-effect chapter (this should
+  reproduce the headline combined estimate).
+* **Leave-out** — every effect size from the seven contentious studies is removed. This
+  is the conservative bound: it asks what the result would be if we simply did not trust
+  those studies at all.
+* **Corrected** — the contentious effect sizes are replaced with the design-faithful
+  values re-extracted from the source PDFs. This is the best-estimate version: it keeps
+  the studies but fixes the specific problems the validation identified.
+
+::: {.callout-note}
+## Scope
+The seven contentious studies (Applebaum & Cruz 2000, Briggs et al. 1996, Dugatkin 1992,
+Dugatkin & Godin 1993, Fowler-Finn et al. 2015, Gierszewski et al. 2018, Howard et al.
+1998) are all pre-2019 and were **not** independently re-extracted in our new (Santos)
+dataset. They therefore enter the combined data **only** through the Davies (continuous)
+and Jones (binary) datasets, so every edit below acts on legacy rows only — the new
+extraction is untouched.
+:::
+
+---
+
+## Data loading and alignment
+
+We rebuild the two combined datasets (`db_hedges`, `db_or`) with the identical loading,
+species-name reconciliation, and column-alignment logic used in the overall-effect
+chapter, so the **Main** models here are the same models reported there.
+
+```{r}
+#| label: load_and_align_datasets
+#| message: false
+#| warning: false
+# Paths to legacy and new datasets
+path_new    <- here::here("data", "1_effect_size_calculation_pipeline", "Data Extraction Mate Choice Meta Analysis.xlsx")
+path_davies <- here::here("data", "original_meta_analyses_datasets", "Davies_et_al_2020_Final_data.xlsx")
+path_jones  <- here::here("data", "original_meta_analyses_datasets", "Jones_DuVal_2019_data.CSV")
+
+db_new_raw    <- readxl::read_excel(path_new, sheet = "EduardoExtraction")
+db_davies_raw <- readxl::read_excel(path_davies, sheet = "Data")
+db_jones_raw  <- readr::read_csv(path_jones, show_col_types = FALSE)
+
+# Species-name reconciliation (matches build_phylogeny.R / overall_effect.qmd)
+recode_new    <- c("Taeniopygia guttata castanotis" = "Taeniopygia guttata")
+recode_davies <- c("Schizocosa" = "Schizocosa ocreata")
+jones_binomial <- tibble::tribble(
+    ~family,            ~epithet,        ~species_phylo,
+    "Adrianichthyidae", "latipes",       "Oryzias latipes",
+    "Blenniidae",       "nitidus",       "Rhabdoblennius nitidus",
+    "Gasterosteidae",   "aculeatus",     "Gasterosteus aculeatus",
+    "Gobiidae",         "minutu",        "Pomatoschistus minutus",
+    "Percidae",         "olmstedi",      "Etheostoma olmstedi",
+    "Poeciliidae",      "latipinna",     "Poecilia latipinna",
+    "Poeciliidae",      "nigrofasciata", "Limia nigrofasciata",
+    "Poeciliidae",      "perugiae",      "Limia perugiae",
+    "Poeciliidae",      "reticulata",    "Poecilia reticulata",
+    "Pomacentridae",    "leucogaster",   "Amblyglyphidodon leucogaster",
+    "Lycosidae",        "ocreata",       "Schizocosa ocreata",
+    "Estrildidae",      "guttata",       "Taeniopygia guttata",
+    "Icteridae",        "ater",          "Molothrus ater",
+    "Muscicapidae",     "hypoleuca",     "Ficedula hypoleuca",
+    "Drosophilidae",    "melanogaster",  "Drosophila melanogaster",
+    "Drosophilidae",    "serrata",       "Drosophila serrata",
+    "Ocypodidae",       "mjoebergi",     "Uca mjoebergi"
+)
+
+read_phylo <- function(f) {
+    p <- here::here("outputs", "2_phylogeny", f)
+    if (file.exists(p)) readRDS(p) else NULL
+}
+phylo_cor_hedges <- read_phylo("phylo_cor_hedges_model.rds")
+phylo_cor_or     <- read_phylo("phylo_cor_or_model.rds")
+
+# New extraction (drop rows flagged for removal)
+db_new <- db_new_raw %>%
+    filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
+    mutate(
+        effectSizeCalculatedHedgesD = as.numeric(effectSizeCalculatedHedgesD),
+        effectSizeCalculatedHedgesDVariance = as.numeric(effectSizeCalculatedHedgesDVariance),
+        effectSizeCalculatedOddsRatio = as.numeric(effectSizeCalculatedOddsRatio),
+        effectSizeCalculatedOddsRatioVariance = as.numeric(effectSizeCalculatedOddsRatioVariance),
+        logOddsRatio = log(effectSizeCalculatedOddsRatio),
+        logOddsRatioVariance = effectSizeCalculatedOddsRatioVariance
+    )
+
+# --- Hedges' g (continuous) ---------------------------------------------------
+hedges_new <- db_new %>%
+    filter(!is.na(effectSizeCalculatedHedgesD), !is.na(effectSizeCalculatedHedgesDVariance)) %>%
+    transmute(
+        yi = effectSizeCalculatedHedgesD,
+        vi = effectSizeCalculatedHedgesDVariance,
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        species_phylo = dplyr::recode(str_squish(as.character(taxonomySpecies)), !!!recode_new),
+        taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+        Dataset_Source = "New Extraction (Santos)"
+    )
+
+hedges_davies <- db_davies_raw %>%
+    mutate(Hedges_d_directional = as.numeric(Hedges_d_directional), Variance = as.numeric(Variance)) %>%
+    filter(!is.na(Hedges_d_directional), !is.na(Variance), Variance > 0) %>%
+    transmute(
+        yi = Hedges_d_directional,
+        vi = Variance,
+        identifierStudyId = as.character(Author),
+        identifierEffectSizeID = as.character(Effect_size_no),
+        species_phylo = dplyr::recode(str_squish(as.character(Species_latin)), !!!recode_davies),
+        taxonomySpecies = str_to_lower(word(as.character(Species_latin), -1)),
+        Dataset_Source = "Original (Davies 2020)"
+    )
+
+db_hedges <- bind_rows(hedges_new, hedges_davies)
+
+# --- Log odds ratio (binary) --------------------------------------------------
+or_new <- db_new %>%
+    filter(!is.na(logOddsRatio), !is.na(logOddsRatioVariance)) %>%
+    transmute(
+        yi = logOddsRatio,
+        vi = logOddsRatioVariance,
+        identifierStudyId = as.character(identifierStudyId),
+        identifierEffectSizeID = as.character(identifierEffectSizeID),
+        species_phylo = dplyr::recode(str_squish(as.character(taxonomySpecies)), !!!recode_new),
+        taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+        Dataset_Source = "New Extraction (Santos)"
+    )
+
+or_jones <- db_jones_raw %>%
+    filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
+    mutate(family = str_squish(as.character(Family)), epithet = str_squish(as.character(Species))) %>%
+    left_join(jones_binomial, by = c("family", "epithet")) %>%
+    transmute(
+        yi = lnOR,
+        vi = VlnOR,
+        identifierStudyId = as.character(study),
+        identifierEffectSizeID = as.character(study_Exp),
+        species_phylo = species_phylo,
+        taxonomySpecies = str_to_lower(as.character(Species)),
+        Dataset_Source = "Original (Jones & DuVal 2019)"
+    )
+
+db_or <- bind_rows(or_new, or_jones)
+```
+
+---
+
+## Identifying the contentious effect sizes
+
+We read the re-extraction file produced by the validation chapter. Each of its rows is
+one effect size that we returned to the source PDF for, and it carries three things side
+by side: the **re-extracted** value (independent, design-faithful), the **Jones** value,
+and the **Davies** value. From this file alone we can locate every row that needs editing
+in the two combined datasets — by `identifierEffectSizeID`, never by guesswork.
+
+```{r}
+#| label: load_reextraction
+#| message: false
+#| warning: false
+reext_path <- here::here("outputs", "3_original_dataset_crosscheck", "reextraction_flagged_7studies.csv")
+reext <- readr::read_csv(reext_path, show_col_types = FALSE)
+
+# Conversion constant: lnOR -> Hedges' d (logistic-to-normal; Borenstein et al. 2009).
+# Matches the validation chapter; the small-sample (J) correction is ~1 at these
+# sample sizes and is omitted so the numbers agree with that chapter.
+LNOR_TO_D  <- sqrt(3) / pi          # ~ 0.5513
+VAR_LNOR_TO_VAR_D <- 3 / pi^2       # = LNOR_TO_D^2 ~ 0.3040
+
+reext_map <- reext %>%
+    transmute(
+        study          = identifierStudyId,
+        # Jones effect-size code in the dataset has no slash (e.g. "APP2000THE/1" -> "APP2000THE1")
+        jones_es_id    = str_remove(compare_jones_code, "/"),
+        # Davies effect-size number, parsed from e.g. "Davies study 3 (3.1)" -> "3.1"
+        davies_es_id   = str_match(compare_davies_es, "\\(([0-9]+\\.[0-9]+)")[, 2],
+        davies_study_no = str_match(compare_davies_es, "study ([0-9]+)")[, 2],
+        species_phylo  = str_squish(as.character(taxonomySpecies)),
+        # Re-extracted values
+        reext_lnOR     = log(effectSizeCalculatedEstimate),
+        reext_var_lnOR = effectSizeCalculatedVariance,
+        reext_d        = log(effectSizeCalculatedEstimate) * LNOR_TO_D,
+        reext_var_d    = effectSizeCalculatedVariance * VAR_LNOR_TO_VAR_D,
+        # Prior values (for the audit table)
+        jones_lnOR     = compare_jones_lnOR,
+        jones_var      = compare_jones_VlnOR,
+        davies_d       = compare_davies_hedges_d,
+        davies_var     = compare_davies_variance
+    )
+
+# The set of contentious studies, expressed in each dataset's own identifiers.
+davies_studies_flagged <- sort(unique(as.integer(reext_map$davies_study_no)))   # Davies study numbers
+jones_papers_flagged   <- sort(unique(str_extract(reext_map$jones_es_id, "^[A-Za-z]+[0-9]{4}")))  # Jones paper prefixes
+
+# Jones rows the validation identified as over-counts to be dropped entirely:
+#  * DUG1992REV1  — spurious third value (reproduces from no experiment pair)
+#  * GIE2018MAT1/2 — duplicate of the GIE2018USI contrast (over-count)
+jones_drop_overcount <- c("DUG1992REV1", "GIE2018MAT1", "GIE2018MAT2")
+```
+
+### The edit map (auditable)
+
+Every change made in the **Corrected** version is listed below. Continuous edits act on
+Davies rows; binary edits act on Jones rows. Two structural cases are highlighted:
+Fowler-Finn (Davies pooled one effect; the re-extraction splits it into two arms) and
+Applebaum (Davies extracted an affiliation-time construct as several effect sizes; only
+the reversal-frequency effect is retained).
+
+```{r}
+#| label: edit_map_table
+#| echo: false
+audit <- reext_map %>%
+    transmute(
+        Study = gsub("_", " ", study),
+        `Jones ES` = jones_es_id,
+        `Davies ES` = davies_es_id,
+        `Re-ext lnOR` = round(reext_lnOR, 3),
+        `Re-ext Var(lnOR)` = round(reext_var_lnOR, 3),
+        `Jones lnOR` = round(jones_lnOR, 3),
+        `Jones Var` = round(jones_var, 3),
+        `Re-ext d` = round(reext_d, 3),
+        `Davies d` = round(davies_d, 3)
+    )
+DT::datatable(
+    audit, rownames = FALSE,
+    caption = "Re-extracted (design-faithful) values vs the original Jones and Davies values, for every contentious effect size. These are the substitutions applied in the Corrected analysis.",
+    options = list(dom = "tp", pageLength = 12, scrollX = TRUE,
+                   columnDefs = list(list(className = "dt-center", targets = "_all")))
+)
+```
+
+```{r}
+#| label: contentious_summary
+#| echo: false
+tibble(
+    Item = c("Contentious studies (papers)",
+             "Re-extracted effect sizes",
+             "Davies study numbers affected (continuous)",
+             "Jones papers affected (binary)",
+             "Jones over-count rows dropped (binary)"),
+    Value = c(length(unique(reext_map$study)),
+              nrow(reext_map),
+              paste(davies_studies_flagged, collapse = ", "),
+              paste(jones_papers_flagged, collapse = ", "),
+              paste(jones_drop_overcount, collapse = ", "))
+) %>% knitr::kable()
+```
+
+---
+
+## Building the three dataset versions
+
+```{r}
+#| label: build_versions
+#| message: false
+#| warning: false
+# ---------------------------------------------------------------------------
+# Helper: integer (study) part of a Davies effect-size id ("27.1" -> 27)
+# ---------------------------------------------------------------------------
+davies_study_int <- function(es_id) as.integer(str_extract(as.character(es_id), "^[0-9]+"))
+jones_paper      <- function(es_id) str_extract(as.character(es_id), "^[A-Za-z]+[0-9]{4}")
+
+# ===========================================================================
+# CONTINUOUS (Hedges' g) — Davies side
+# ===========================================================================
+is_davies <- db_hedges$Dataset_Source == "Original (Davies 2020)"
+
+# (1) LEAVE-OUT: drop all Davies rows from the contentious studies.
+hedges_leaveout <- db_hedges %>%
+    filter(!(Dataset_Source == "Original (Davies 2020)" &
+             davies_study_int(identifierEffectSizeID) %in% davies_studies_flagged))
+
+# (2) CORRECTED: remove all Davies rows from the contentious studies, then add the
+#     re-extracted replacements (one row per re-extracted effect size). For Fowler-Finn
+#     this turns Davies' single pooled effect into two arm-level effects; for Applebaum
+#     it keeps only the reversal-frequency effect (the 3.2-3.4 affiliation-time rows are
+#     not reinstated). identifierStudyId is set to the re-extraction's paper id.
+hedges_reext_rows <- reext_map %>%
+    transmute(
+        yi = reext_d,
+        vi = reext_var_d,
+        identifierStudyId = study,
+        identifierEffectSizeID = paste0("reext_", jones_es_id),
+        species_phylo = dplyr::recode(species_phylo, !!!recode_davies),
+        taxonomySpecies = str_to_lower(word(species_phylo, -1)),
+        Dataset_Source = "Original (Davies 2020)"
+    )
+
+hedges_corrected <- bind_rows(hedges_leaveout, hedges_reext_rows)
+
+# ===========================================================================
+# BINARY (log OR) — Jones side
+# ===========================================================================
+# (1) LEAVE-OUT: drop all Jones rows from the contentious papers.
+or_leaveout <- db_or %>%
+    filter(!(Dataset_Source == "Original (Jones & DuVal 2019)" &
+             jones_paper(identifierEffectSizeID) %in% jones_papers_flagged))
+
+# (2) CORRECTED: (a) drop the over-count rows; (b) replace lnOR & variance of the
+#     re-extracted codes with the design-faithful values; leave all other Jones rows
+#     (e.g. the legitimate, un-re-extracted APP2000THE2 baseline contrast) untouched.
+or_replacements <- reext_map %>% select(identifierEffectSizeID = jones_es_id, reext_lnOR, reext_var_lnOR)
+
+or_corrected <- db_or %>%
+    filter(!identifierEffectSizeID %in% jones_drop_overcount) %>%
+    left_join(or_replacements, by = "identifierEffectSizeID") %>%
+    mutate(
+        yi = if_else(!is.na(reext_lnOR), reext_lnOR, yi),
+        vi = if_else(!is.na(reext_var_lnOR), reext_var_lnOR, vi)
+    ) %>%
+    select(-reext_lnOR, -reext_var_lnOR)
+
+# Quick integrity report (how many rows each edit touched)
+edit_report <- tibble(
+    Version = c("Hedges' g: Main", "Hedges' g: Leave-out", "Hedges' g: Corrected",
+                "Log OR: Main", "Log OR: Leave-out", "Log OR: Corrected"),
+    `Effect sizes (k)` = c(nrow(db_hedges), nrow(hedges_leaveout), nrow(hedges_corrected),
+                           nrow(db_or), nrow(or_leaveout), nrow(or_corrected))
+)
+```
+
+```{r}
+#| label: edit_report_table
+#| echo: false
+knitr::kable(edit_report, caption = "Number of effect sizes in each dataset version.")
+```
+
+---
+
+## Re-fitting the combined models
+
+We use the **same** multilevel model as the overall-effect chapter: `rma.mv` with a
+variance–covariance matrix (`vcalc`, within-study $\rho = 0.5$), random intercepts for
+study, effect size, and species, and a phylogenetic random effect supplied with the
+species correlation matrix (it falls back to the non-phylogenetic structure if a species
+is not in the matrix).
+
+```{r}
+#| label: fit_function
+#| message: false
+#| warning: false
+fit_overall_mv <- function(dat, cluster_var = "identifierStudyId",
+                           obs_var = "identifierEffectSizeID", rho = 0.5,
+                           phylo_cor = NULL, phylo_var = "species_phylo") {
+    dat2 <- dat %>% filter(!is.na(yi), !is.na(vi), vi > 0)
+    if (nrow(dat2) == 0) return(NULL)
+
+    VCV <- metafor::vcalc(vi = dat2$vi, cluster = dat2[[cluster_var]], obs = dat2[[obs_var]],
+                          rho = rho, data = dat2)
+
+    random_list <- list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies)
+    R_arg <- NULL
+    if (!is.null(phylo_cor) && phylo_var %in% colnames(dat2)) {
+        sp <- unique(as.character(dat2[[phylo_var]]))
+        if (length(setdiff(sp, rownames(phylo_cor))) == 0) {
+            dat2[[phylo_var]] <- factor(as.character(dat2[[phylo_var]]))
+            Csub <- phylo_cor[sp, sp, drop = FALSE]
+            random_list <- c(random_list, list(stats::as.formula(paste0("~ 1 | ", phylo_var))))
+            R_arg <- stats::setNames(list(Csub), phylo_var)
+        }
+    }
+    mod <- metafor::rma.mv(yi = dat2$yi, V = VCV, random = random_list, R = R_arg,
+                           test = "t", method = "REML", sparse = TRUE, data = dat2)
+    list(data = dat2, model = mod)
+}
+
+# Fit all six models
+fits <- list(
+    hedges_main      = fit_overall_mv(db_hedges,        phylo_cor = phylo_cor_hedges),
+    hedges_leaveout  = fit_overall_mv(hedges_leaveout,  phylo_cor = phylo_cor_hedges),
+    hedges_corrected = fit_overall_mv(hedges_corrected, phylo_cor = phylo_cor_hedges),
+    or_main          = fit_overall_mv(db_or,            phylo_cor = phylo_cor_or),
+    or_leaveout      = fit_overall_mv(or_leaveout,      phylo_cor = phylo_cor_or),
+    or_corrected     = fit_overall_mv(or_corrected,     phylo_cor = phylo_cor_or)
+)
+```
+
+```{r}
+#| label: summarise_fits
+#| message: false
+#| warning: false
+# Pull a tidy one-row summary from each fitted model
+summarise_fit <- function(fit, class_lab, version_lab) {
+    if (is.null(fit)) return(NULL)
+    m <- fit$model
+    i2 <- tryCatch(sum(orchaRd::i2_ml(m)["I2_Total"]), error = function(e) NA_real_)
+    tibble(
+        Class = class_lab, Version = version_lab,
+        k = m$k, Studies = length(unique(fit$data$identifierStudyId)),
+        Estimate = as.numeric(m$b[1]), SE = m$se[1],
+        CI_low = m$ci.lb[1], CI_high = m$ci.ub[1],
+        t = m$zval[1], p = m$pval[1], I2 = i2
+    )
+}
+
+res <- bind_rows(
+    summarise_fit(fits$hedges_main,      "Hedges' g",   "Main"),
+    summarise_fit(fits$hedges_leaveout,  "Hedges' g",   "Leave-out"),
+    summarise_fit(fits$hedges_corrected, "Hedges' g",   "Corrected"),
+    summarise_fit(fits$or_main,          "Log OR",      "Main"),
+    summarise_fit(fits$or_leaveout,      "Log OR",      "Leave-out"),
+    summarise_fit(fits$or_corrected,     "Log OR",      "Corrected")
+) %>%
+    mutate(Version = factor(Version, levels = c("Main", "Leave-out", "Corrected")))
+```
+
+---
+
+## Results
+
+### Comparison table
+
+For the log odds ratio, the estimate is also shown back-transformed to the odds-ratio
+scale (`exp`). `k` is the number of effect sizes and `Studies` the number of study
+clusters in each version.
+
+```{r}
+#| label: results_table
+#| echo: false
+res_disp <- res %>%
+    mutate(
+        `Estimate [95% CI]` = sprintf("%s [%s, %s]", fmt(Estimate, 3), fmt(CI_low, 3), fmt(CI_high, 3)),
+        `OR [95% CI]` = if_else(Class == "Log OR",
+                                sprintf("%s [%s, %s]", fmt(exp(Estimate), 2), fmt(exp(CI_low), 2), fmt(exp(CI_high), 2)),
+                                NA_character_),
+        SE = fmt(SE, 3),
+        p = sapply(p, pstr),
+        `I² (%)` = fmt(I2, 1)
+    ) %>%
+    select(Class, Version, k, Studies, `Estimate [95% CI]`, `OR [95% CI]`, SE, p, `I² (%)`)
+
+DT::datatable(
+    res_disp, rownames = FALSE,
+    caption = "Combined overall effect under the three dataset versions, for both effect-size classes.",
+    options = list(dom = "t", pageLength = 6,
+                   columnDefs = list(list(className = "dt-center", targets = "_all")))
+)
+```
+
+### Comparison plot
+
+```{r}
+#| label: fig-sensitivity
+#| message: false
+#| warning: false
+#| fig-width: 11
+#| fig-height: 4.5
+#| fig-cap: "Combined overall effect (point) and 95% confidence interval under the Main, Leave-out, and Corrected datasets. Left: Hedges' g (dashed line at 0). Right: log odds ratio (dashed line at 0, i.e. OR = 1)."
+ver_cols <- c("Main" = "#444444", "Leave-out" = "#D55E00", "Corrected" = "#0072B2")
+
+make_panel <- function(df, title, xlab) {
+    ggplot(df, aes(Estimate, fct_rev(Version), colour = Version)) +
+        geom_vline(xintercept = 0, linetype = "dashed", colour = "grey60") +
+        geom_errorbarh(aes(xmin = CI_low, xmax = CI_high), height = 0.18, linewidth = 0.9) +
+        geom_point(size = 3.2) +
+        geom_text(aes(label = sprintf("%s [%s, %s]  (k=%d)", fmt(Estimate, 2), fmt(CI_low, 2), fmt(CI_high, 2), k)),
+                  vjust = -1.1, size = 3.1, show.legend = FALSE) +
+        scale_colour_manual(values = ver_cols, guide = "none") +
+        labs(x = xlab, y = NULL, title = title) +
+        theme_minimal(base_size = 12) +
+        theme(plot.title = element_text(face = "bold"))
+}
+
+p_h <- make_panel(filter(res, Class == "Hedges' g"), "Hedges' g (continuous)", "Hedges' g")
+p_o <- make_panel(filter(res, Class == "Log OR"),    "Log odds ratio (binary)", "log OR")
+p_h + p_o
+```
+
+---
+
+## Interpretation
+
+```{r}
+#| label: interp_values
+#| echo: false
+getv <- function(cl, ver, col) res[[col]][res$Class == cl & res$Version == ver]
+hm <- getv("Hedges' g", "Main", "Estimate"); hl <- getv("Hedges' g", "Leave-out", "Estimate"); hc <- getv("Hedges' g", "Corrected", "Estimate")
+om <- getv("Log OR", "Main", "Estimate");    ol <- getv("Log OR", "Leave-out", "Estimate");    oc <- getv("Log OR", "Corrected", "Estimate")
+hm_p <- getv("Hedges' g", "Main", "p"); hl_p <- getv("Hedges' g", "Leave-out", "p"); hc_p <- getv("Hedges' g", "Corrected", "p")
+om_p <- getv("Log OR", "Main", "p");    ol_p <- getv("Log OR", "Leave-out", "p");    oc_p <- getv("Log OR", "Corrected", "p")
+sig <- function(p) if (is.na(p)) "indeterminate" else if (p < 0.05) "statistically significant" else "non-significant"
+```
+
+**Continuous (Hedges' *g*).** The combined mean is $`r fmt(hm, 2)`$ in the **Main**
+analysis (`r sig(hm_p)`), $`r fmt(hl, 2)`$ when the contentious studies are **left out**
+(`r sig(hl_p)`), and $`r fmt(hc, 2)`$ when they are **corrected** (`r sig(hc_p)`). Because
+the validation showed the Davies errors mostly *inflate* the effect, the leave-out and
+corrected means are expected to move toward — not away from — zero relative to Main;
+the size of that shift is the practical measure of how much the headline continuous
+estimate leaned on the flagged extractions.
+
+**Binary (log odds ratio).** The combined mean is $`r fmt(om, 2)`$ in **Main**
+(`r sig(om_p)`), $`r fmt(ol, 2)`$ **leaving out** the contentious papers (`r sig(ol_p)`),
+and $`r fmt(oc, 2)`$ when **corrected** (`r sig(oc_p)`). On the binary side the
+corrections act mainly on *variances* (removing the phantom-control inflation) and remove
+two over-counted rows, so the point estimate is expected to move less than the continuous
+one; the main effect there is on precision and weighting rather than on the location of
+the mean.
+
+**Reading the three together.** The **Leave-out** column is the conservative bound (trust
+nothing flagged); the **Corrected** column is the best estimate (keep the studies, fix the
+errors). If both fall close to **Main** and keep the same sign and significance, the
+overall conclusion is robust to the extraction problems the validation uncovered. If
+**Main** sits apart from the other two, the headline estimate depended materially on the
+contentious effect sizes, and the **Corrected** value should be preferred as the
+bias-reduced summary.
+
+::: {.callout-warning}
+## What this analysis does and does not show
+This is a sensitivity analysis of the **combined overall mean** to the seven studies the
+cross-dataset validation flagged. It does **not** re-audit the rest of the literature, and
+it inherits every other modelling choice from the overall-effect chapter (the multilevel
+structure, the within-study $\rho = 0.5$, and the lnOR$\leftrightarrow$*d* scale
+conversion). The "Corrected" edits are exactly those documented in the
+[validation chapter](../3_original_dataset_crosscheck/extraction_validation.qmd) and listed
+in the edit map above; no other values were changed.
+:::
+
+---
+
+## Session info
+
+::: callout-note
+## R session
+```{r}
+#| label: session_info
+#| echo: false
+sessionInfo()
+```
+:::

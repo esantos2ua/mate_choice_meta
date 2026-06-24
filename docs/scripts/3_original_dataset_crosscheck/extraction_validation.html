@@ -69,7 +69,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../../">
-<link href="../../references.html" rel="next">
+<link href="../../scripts/1_effect_size_calculation_pipeline/sensitivity_analysis.html" rel="next">
 <link href="../../scripts/1_effect_size_calculation_pipeline/publication_bias.html" rel="prev">
 <script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -233,6 +233,11 @@ window.Quarto = {
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../scripts/3_original_dataset_crosscheck/extraction_validation.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">Cross-Dataset Extraction Validation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../scripts/1_effect_size_calculation_pipeline/sensitivity_analysis.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Sensitivity Analysis: Contentious Effect Sizes</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -1315,13 +1320,14 @@ Figure&nbsp;5.2: Left: each flagged effect size on the |Hedges d| axis — re-ex
 :::{#quarto-navigation-envelope .hidden}
 [Mate-choice copying in non-human animals: an update of two meta-analyses]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1zaWRlYmFyLXRpdGxl"}
 [Mate-choice copying in non-human animals: an update of two meta-analyses]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1uYXZiYXItdGl0bGU="}
-[References]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1uZXh0"}
+[&lt;span class='chapter-number'&gt;6&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Sensitivity Analysis: Contentious Effect Sizes&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1uZXh0"}
 [&lt;span class='chapter-number'&gt;4&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Publication Bias Diagnostics&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1wcmV2"}
 [&lt;span class='chapter-number'&gt;1&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Mate-choice copying in non-human animals: an update of two meta-analyses.&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1zaWRlYmFyOi9pbmRleC5odG1sPHNwYW4tY2xhc3M9J2NoYXB0ZXItbnVtYmVyJz4xPC9zcGFuPi0tPHNwYW4tY2xhc3M9J2NoYXB0ZXItdGl0bGUnPk1hdGUtY2hvaWNlLWNvcHlpbmctaW4tbm9uLWh1bWFuLWFuaW1hbHM6LWFuLXVwZGF0ZS1vZi10d28tbWV0YS1hbmFseXNlcy48L3NwYW4+"}
 [&lt;span class='chapter-number'&gt;2&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Literature Screening &amp; Processing Pipeline&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1zaWRlYmFyOi9zY3JpcHRzLzBfbGl0ZXJhdHVyZV9zY3JlZW5pbmcvbGl0ZXJhdHVyZV9zY3JlZW5pbmcuaHRtbDxzcGFuLWNsYXNzPSdjaGFwdGVyLW51bWJlcic+Mjwvc3Bhbj4tLTxzcGFuLWNsYXNzPSdjaGFwdGVyLXRpdGxlJz5MaXRlcmF0dXJlLVNjcmVlbmluZy0mLVByb2Nlc3NpbmctUGlwZWxpbmU8L3NwYW4+"}
 [&lt;span class='chapter-number'&gt;3&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Overall Effect Size Calculation &amp; Synthesis&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1zaWRlYmFyOi9zY3JpcHRzLzFfZWZmZWN0X3NpemVfY2FsY3VsYXRpb25fcGlwZWxpbmUvb3ZlcmFsbF9lZmZlY3QuaHRtbDxzcGFuLWNsYXNzPSdjaGFwdGVyLW51bWJlcic+Mzwvc3Bhbj4tLTxzcGFuLWNsYXNzPSdjaGFwdGVyLXRpdGxlJz5PdmVyYWxsLUVmZmVjdC1TaXplLUNhbGN1bGF0aW9uLSYtU3ludGhlc2lzPC9zcGFuPg=="}
 [&lt;span class='chapter-number'&gt;4&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Publication Bias Diagnostics&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1zaWRlYmFyOi9zY3JpcHRzLzFfZWZmZWN0X3NpemVfY2FsY3VsYXRpb25fcGlwZWxpbmUvcHVibGljYXRpb25fYmlhcy5odG1sPHNwYW4tY2xhc3M9J2NoYXB0ZXItbnVtYmVyJz40PC9zcGFuPi0tPHNwYW4tY2xhc3M9J2NoYXB0ZXItdGl0bGUnPlB1YmxpY2F0aW9uLUJpYXMtRGlhZ25vc3RpY3M8L3NwYW4+"}
 [&lt;span class='chapter-number'&gt;5&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Cross-Dataset Extraction Validation&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1zaWRlYmFyOi9zY3JpcHRzLzNfb3JpZ2luYWxfZGF0YXNldF9jcm9zc2NoZWNrL2V4dHJhY3Rpb25fdmFsaWRhdGlvbi5odG1sPHNwYW4tY2xhc3M9J2NoYXB0ZXItbnVtYmVyJz41PC9zcGFuPi0tPHNwYW4tY2xhc3M9J2NoYXB0ZXItdGl0bGUnPkNyb3NzLURhdGFzZXQtRXh0cmFjdGlvbi1WYWxpZGF0aW9uPC9zcGFuPg=="}
+[&lt;span class='chapter-number'&gt;6&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Sensitivity Analysis: Contentious Effect Sizes&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1zaWRlYmFyOi9zY3JpcHRzLzFfZWZmZWN0X3NpemVfY2FsY3VsYXRpb25fcGlwZWxpbmUvc2Vuc2l0aXZpdHlfYW5hbHlzaXMuaHRtbDxzcGFuLWNsYXNzPSdjaGFwdGVyLW51bWJlcic+Njwvc3Bhbj4tLTxzcGFuLWNsYXNzPSdjaGFwdGVyLXRpdGxlJz5TZW5zaXRpdml0eS1BbmFseXNpczotQ29udGVudGlvdXMtRWZmZWN0LVNpemVzPC9zcGFuPg=="}
 [References]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1zaWRlYmFyOi9yZWZlcmVuY2VzLmh0bWxSZWZlcmVuY2Vz"}
 [https://github.com/esantos2ua/mate_choice_meta]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWludC1uYXZiYXI6aHR0cHM6Ly9naXRodWIuY29tL2VzYW50b3MydWEvbWF0ZV9jaG9pY2VfbWV0YQ=="}
 [&lt;span class='chapter-number'&gt;5&lt;/span&gt;&nbsp; &lt;span class='chapter-title'&gt;Cross-Dataset Extraction Validation&lt;/span&gt;]{.hidden .quarto-markdown-envelope-contents render-id="cXVhcnRvLWJyZWFkY3J1bWJzLTxzcGFuLWNsYXNzPSdjaGFwdGVyLW51bWJlcic+NTwvc3Bhbj4tLTxzcGFuLWNsYXNzPSdjaGFwdGVyLXRpdGxlJz5Dcm9zcy1EYXRhc2V0LUV4dHJhY3Rpb24tVmFsaWRhdGlvbjwvc3Bhbj4="}
@@ -2204,8 +2210,8 @@ fmt &lt;- function(x, digits = 2) {
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../../references.html" class="pagination-link" aria-label="References">
-        <span class="nav-page-text">References</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../../scripts/1_effect_size_calculation_pipeline/sensitivity_analysis.html" class="pagination-link" aria-label="Sensitivity Analysis: Contentious Effect Sizes">
+        <span class="nav-page-text"><span class="chapter-title">Sensitivity Analysis: Contentious Effect Sizes</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

@@ -221,6 +221,11 @@ window.Quarto = {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./scripts/1_effect_size_calculation_pipeline/sensitivity_analysis.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Sensitivity Analysis: Contentious Effect Sizes</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./references.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">References</span></a>
   </div>
@@ -297,6 +302,7 @@ window.Quarto = {
 <li><strong>Overall Effect Size Calculation &amp; Synthesis</strong> (<code>overall_effect.qmd</code>) — Fits the multi-level models and reports pooled effects for three data subsets (new extraction, original datasets, and the two combined), with side-by-side orchard plots.</li>
 <li><strong>Publication Bias Diagnostics</strong> (<code>publication_bias.qmd</code>) — Inspects funnel-plot symmetry, runs Egger’s regressions with a two-step precision/variance correction, and tests for a decline in effect size over time.</li>
 <li><strong>Cross-Dataset Extraction Validation</strong> (<code>extraction_validation.qmd</code>) — Checks whether the two original datasets (Davies et al.&nbsp;2020 and Jones &amp; DuVal 2019) agree on the effect sizes of the studies they both cover, and re-extracts the worst disagreements from the source PDFs.</li>
+<li><strong>Sensitivity Analysis</strong> (<code>sensitivity_analysis.qmd</code>) — Re-fits the combined overall models with the contentious effect sizes left out, and again with the re-extracted corrected values, to test how robust the headline estimates are to the studies flagged above.</li>
 </ol>
 </section>
 <section id="reproducibility-environment" class="level2 card">
@@ -827,20 +833,21 @@ window.Quarto = {
 <span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>**Overall Effect Size Calculation &amp; Synthesis** (<span class="in">`overall_effect.qmd`</span>) — Fits the multi-level models and reports pooled effects for three data subsets (new extraction, original datasets, and the two combined), with side-by-side orchard plots.</span>
 <span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>**Publication Bias Diagnostics** (<span class="in">`publication_bias.qmd`</span>) — Inspects funnel-plot symmetry, runs Egger's regressions with a two-step precision/variance correction, and tests for a decline in effect size over time.</span>
 <span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>**Cross-Dataset Extraction Validation** (<span class="in">`extraction_validation.qmd`</span>) — Checks whether the two original datasets (Davies et al. 2020 and Jones &amp; DuVal 2019) agree on the effect sizes of the studies they both cover, and re-extracts the worst disagreements from the source PDFs.</span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>::: card</span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reproducibility &amp; Environment</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>We conducted data preparation steps using R and Python, all statistical analyses are coded in R, and compiled dynamically using **Quarto**. </span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>To ensure stability and smooth local execution:</span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>R dependencies (<span class="in">`metafor`</span>, <span class="in">`orchaRd`</span>, <span class="in">`ggplot2`</span>, <span class="in">`patchwork`</span>, <span class="in">`DT`</span>) are managed dynamically via <span class="in">`pacman::p_load()`</span>.</span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Interactive datatables are rendered with <span class="in">`DT::datatable()`</span> for dynamic search and export capability.</span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Document states are frozen during compilation (<span class="in">`freeze: auto`</span>) to ensure rendering stability.</span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>All code blocks are folded by default but can be toggled using the **"Show Code"** buttons throughout the book chapters.</span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>:::</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="ss">6. </span>**Sensitivity Analysis** (<span class="in">`sensitivity_analysis.qmd`</span>) — Re-fits the combined overall models with the contentious effect sizes left out, and again with the re-extracted corrected values, to test how robust the headline estimates are to the studies flagged above.</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>::: card</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reproducibility &amp; Environment</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>We conducted data preparation steps using R and Python, all statistical analyses are coded in R, and compiled dynamically using **Quarto**. </span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>To ensure stability and smooth local execution:</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>R dependencies (<span class="in">`metafor`</span>, <span class="in">`orchaRd`</span>, <span class="in">`ggplot2`</span>, <span class="in">`patchwork`</span>, <span class="in">`DT`</span>) are managed dynamically via <span class="in">`pacman::p_load()`</span>.</span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Interactive datatables are rendered with <span class="in">`DT::datatable()`</span> for dynamic search and export capability.</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Document states are frozen during compilation (<span class="in">`freeze: auto`</span>) to ensure rendering stability.</span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>All code blocks are folded by default but can be toggled using the **"Show Code"** buttons throughout the book chapters.</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>:::</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 
