@@ -809,8 +809,23 @@ style_loo <- function(loo, xlab, base_size = 11) {
     p$layers[[5]]$aes_params$colour <- "black"
     p$layers[[5]]$aes_params$size   <- 2.6
     p$layers[[5]]$aes_params$stroke <- 0.8
+    # Re-stack so the open left-out rings sit BEHIND the CI/PI whisker and the mean marker.
+    # Original draw order: 1 retained, 2 zero-line, 3 CI, 4 PI, 5 mean, 6 k-labels,
+    # 7 reference-CI lines, 8 left-out -> move 8 up front (behind the summary geoms).
+    p$layers <- p$layers[c(2, 1, 8, 3, 4, 7, 5, 6)]
+    # Move the "k = .. (n)" labels into a clear right margin: left-justify them just past the
+    # widest bubble and expand the axis to make room, so they no longer overlap the points.
+    es     <- loo$data$yi
+    ymax   <- max(c(es, loo$mod_table$upperPR), na.rm = TRUE)
+    ymin   <- min(c(es, loo$mod_table$lowerPR), na.rm = TRUE)
+    span   <- ymax - ymin
+    anchor <- ymax + 0.06 * span
+    lab_i  <- which(vapply(p$layers, function(l) inherits(l$geom, "GeomText"), logical(1)))
+    p$layers[[lab_i]]$data$y           <- anchor
+    p$layers[[lab_i]]$aes_params$hjust <- 0
     p +
         ggplot2::scale_x_discrete(limits = ord) +
+        ggplot2::scale_y_continuous(limits = c(ymin, anchor + 0.34 * span)) +
         ggplot2::scale_colour_manual(values = c("Retained in fit" = "grey60", "Left out" = "#D55E00"),
                                      breaks = lev, name = NULL) +
         ggplot2::guides(colour = ggplot2::guide_legend(
