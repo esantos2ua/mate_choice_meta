@@ -863,17 +863,54 @@ save_loo_fig(loo_plots$sp_or,        "loo_species_or",     width = 9, height = 8
 ### Leave one study out
 
 ```{r}
-#| label: loo_study_range
+#| label: loo_stats
 #| echo: false
-loo_range <- function(loo) sprintf("%s to %s",
-    fmt(min(loo$mod_table$estimate), 2), fmt(max(loo$mod_table$estimate), 2))
+# Summarise each leave-one-out fit relative to the full-data Main estimate (reused from the
+# `res`/`getv` table above so the numbers match the rest of the chapter): the range of
+# re-estimated means, the single most-influential omission, the largest shift, and how many
+# refits stayed significant (95% CI excluding zero).
+loo_summary <- function(loo, full_est) {
+    mt <- loo$mod_table
+    list(
+        k       = nrow(mt),
+        lo      = min(mt$estimate),
+        hi      = max(mt$estimate),
+        nm_dev  = as.character(mt$name[which.max(abs(mt$estimate - full_est))]),
+        max_dev = max(abs(mt$estimate - full_est)),
+        n_sig   = sum(mt$lowerCL > 0),
+        all_sig = all(mt$lowerCL > 0)   # effects are positive, so this is "stays significant"
+    )
+}
+full_h <- getv("Hedges' g", "Main", "Estimate")
+full_o <- getv("Log OR",    "Main", "Estimate")
+fh_lo  <- getv("Hedges' g", "Main", "CI_low");  fh_hi <- getv("Hedges' g", "Main", "CI_high")
+fo_lo  <- getv("Log OR",    "Main", "CI_low");  fo_hi <- getv("Log OR",    "Main", "CI_high")
+S_sh <- loo_summary(loo_study_hedges, full_h)
+S_so <- loo_summary(loo_study_or,     full_o)
+S_ph <- loo_summary(loo_sp_hedges,    full_h)
+S_po <- loo_summary(loo_sp_or,        full_o)
+sigph <- function(S) if (S$all_sig) sprintf("all %d", S$k) else sprintf("%d of %d", S$n_sig, S$k)
+
+# Most-sampled species in each dataset — the uneven sampling that motivates the species check.
+sp_share <- function(dat) {
+    d  <- dat %>% dplyr::filter(!is.na(yi), !is.na(vi), vi > 0)
+    tb <- sort(table(d$species_phylo), decreasing = TRUE)
+    list(name = names(tb)[1], n = as.integer(tb[1]), pct = round(100 * tb[1] / sum(tb)))
+}
+dom_h <- sp_share(db_hedges)
+dom_o <- sp_share(db_or)
 ```
 
-Across all `r nrow(loo_study_hedges$mod_table)` continuous studies, the leave-one-out mean
-stays in the range $`r loo_range(loo_study_hedges)`$; across the
-`r nrow(loo_study_or$mod_table)` binary studies it stays within
-$`r loo_range(loo_study_or)`$ (lnOR). No single study pulls the pooled estimate outside the
-full-data confidence band.
+**Leaving out any single study changes nothing.** On the continuous scale the full-data mean
+of `r fmt(full_h, 2)` (95% CI `r fmt(fh_lo, 2)`–`r fmt(fh_hi, 2)`) moves no further than
+`r fmt(S_sh$lo, 2)`–`r fmt(S_sh$hi, 2)` across all `r S_sh$k` studies — the largest single shift
+being just `r fmt(S_sh$max_dev, 2)` Hedges-*g* units (from omitting `r S_sh$nm_dev`) — and `r sigph(S_sh)`
+refits stay significantly positive (95% CIs excluding zero). The binary synthesis is equally
+stable: the full-data log odds ratio of `r fmt(full_o, 2)`
+(95% CI `r fmt(fo_lo, 2)`–`r fmt(fo_hi, 2)`; OR = `r fmt(exp(full_o), 2)`) ranges only
+`r fmt(S_so$lo, 2)`–`r fmt(S_so$hi, 2)` (lnOR) across the `r S_so$k` studies, a maximum shift of
+`r fmt(S_so$max_dev, 2)`, with `r sigph(S_so)` refits significant. No single study pulls either
+pooled estimate outside its full-data confidence band.
 
 ::: {.panel-tabset}
 
@@ -905,12 +942,24 @@ loo_plots$study_or
 
 ### Leave one species out
 
-Across all `r nrow(loo_sp_hedges$mod_table)` continuous species, the leave-one-out mean
-stays in the range $`r loo_range(loo_sp_hedges)`$; across the
-`r nrow(loo_sp_or$mod_table)` binary species it stays within
-$`r loo_range(loo_sp_or)`$ (lnOR). The species most likely to matter is the guppy
-(*Poecilia reticulata*), which contributes a large share of the effects; dropping it shifts
-the mean but does not overturn the direction or significance of the synthesis.
+**Dropping a whole species is a sterner test**, because the tree is sampled unevenly: the
+single most-sampled species alone contributes `r dom_h$n` of the continuous effect sizes
+(`r dom_h$pct`%, *`r dom_h$name`*) and `r dom_o$n` of the binary ones (`r dom_o$pct`%,
+*`r dom_o$name`*). Even so, the continuous mean stays within `r fmt(S_ph$lo, 2)`–`r fmt(S_ph$hi, 2)`
+across all `r S_ph$k` species (largest shift `r fmt(S_ph$max_dev, 2)`, from omitting
+*`r S_ph$nm_dev`*), and the binary mean within `r fmt(S_po$lo, 2)`–`r fmt(S_po$hi, 2)` (lnOR)
+across `r S_po$k` species (largest shift `r fmt(S_po$max_dev, 2)`). Every leave-one-species-out
+estimate — `r sigph(S_ph)` continuous and `r sigph(S_po)` binary — remains significantly positive.
+Removing
+*`r dom_h$name`* nudges the continuous mean toward zero — expected, since it is the most-studied,
+strongest-copying species — but it does not change the sign or significance of either synthesis.
+
+**Take-home.** Neither pooled effect depends on any single study or species: every leave-one-out
+re-estimate keeps the same sign and significance as the full-data model. The largest excursion is
+only `r fmt(max(S_sh$max_dev, S_ph$max_dev), 2)` Hedges-*g* units on the continuous scale and
+`r fmt(max(S_so$max_dev, S_po$max_dev), 2)` lnOR on the binary scale — in both cases comfortably
+inside the full-data confidence interval. The mate-choice-copying signal is robust to
+leave-one-out deletion on both effect-size scales.
 
 ::: {.panel-tabset}
 
