@@ -136,7 +136,7 @@ library(data.table)
 library(stringr)
 library(readr)
 
-# Rayyan estimated 17,812 records have duplicates across the raw exports
+# Load the combined Scopus + Web of Science export (2,083 records before deduplication)
 articles <- fread("data/0_literature_screening/combined_records_final.csv")
 ```
 
@@ -472,18 +472,20 @@ trials exist, where their data live, and whether subjects are independent.
 
 ### Step 4 — Quantitative extraction (multi-agent pipeline)
 
-**Goal:** Extract and cross-validate the actual numbers using a simulated three-agent
-architecture.
+**Goal:** Extract the actual numbers and cross-check them within a single structured
+prompt.
 
-#### Agent architecture
+#### Three-role prompting protocol
 
-We utilize a three-agent quantitative extraction pipeline:
+The extraction prompt instructs the language model to perform three sequential roles on
+each paper, so that every number is pulled, checked, and reconciled before it is written
+out. These are roles played by one model, not three separate programs:
 
-*   **Agent 1 (Extractor):** Pulls raw statistical data (means, variances, counts, and test statistics) directly from the Methods and Results text and tables.
-*   **Agent 2 (Verifier):** Cross-checks calculations, verifies sample independence, identifies any SD vs. SE confusion, and scans the text to ensure no secondary trials were missed.
-*   **Agent 3 (Arbiter):** Resolves any discrepancies between Agent 1 and Agent 2, standardizes reporting, and outputs the final clean data row.
+*   **Role 1 — Extractor:** pulls the raw statistics (means, variances, counts, and test statistics) directly from the Methods and Results text and tables.
+*   **Role 2 — Verifier:** cross-checks the extracted numbers, verifies sample independence, flags any standard-deviation vs. standard-error confusion, and re-reads the text to confirm no secondary trials were missed.
+*   **Role 3 — Arbiter:** resolves any discrepancies between the Extractor and Verifier, standardises the reporting, and outputs the final data row.
 
-**Agent 2 checks explicitly for three systematic extraction errors:**
+**The Verifier role checks explicitly for three systematic extraction errors:**
 
 1. **SD/SE confusion** — a common error in manual extraction that biases heterogeneity
    estimates if uncorrected.

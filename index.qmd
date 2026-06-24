@@ -13,25 +13,25 @@ format:
 ::: card
 # Project Overview
 
-This online supplement provides the complete computational workflow and interactive reports for the systematic review and multi-level meta-analysis of **Mate-Choice Copying (MCC)** update across animal taxa. 
+This online supplement provides the complete computational workflow and interactive reports for an updated systematic review and multi-level meta-analysis of **mate-choice copying (MCC)** across animal taxa.
 
-Mate-choice copying is a form of socially acquired preference where an individual's evaluation of a potential mate is altered after observing the sexual decisions of others. This synthesis aims to:
+Mate-choice copying is a form of socially learned preference: an individual's evaluation of a potential mate changes after it observes the mate choices of others. This synthesis aims to:
 
-- Estimate the updated global effect size of mate-choice copying across species.
-- Model the related structures (e.g., trials nested in papers).
-- Control for evolutionary relationships using phylogenetic covariance.
-- Rigorously diagnose and adjust for potential selective reporting and publication bias.
+- Estimate the updated overall effect size of mate-choice copying across species.
+- Account for the nested structure of the data (multiple effect sizes within each study).
+- Account for shared evolutionary history among species using a phylogenetic covariance matrix.
+- Diagnose and adjust for publication bias and selective reporting.
 :::
 
 ::: card
 ## What this Supplement Contains
 
-We provide transparency and reproducibility for every phase of our meta-analysis:
+Each phase of the meta-analysis is documented so that it can be reproduced:
 
-- **Literature Selection Auditing:** Full details of our deduplication passes, quality screening scoring, and randomized screener split lists.
-- **AI-Assisted Extraction Logs:** Documentation of our multi-agent quantitative extraction pipeline utilizing Google NotebookLM, Google Gemini, and Claude Code.
-- **Interactive Multi-Level Syntheses:** Reproducible calculations of continuous Hedges' $g$ and binary Odds Ratios, random effects modeling, and comparative data plots.
-- **Selective Reporting Audits:** Funnel plots, Egger's meta-regression tests, small-study bias corrections using variance adjustments, and time-lag decline analysis.
+- **Literature screening:** how records from the two databases were deduplicated, scored for completeness, randomly shuffled, and split among the screening team.
+- **Data extraction:** how the included papers were processed through an AI-assisted extraction pipeline (Google NotebookLM, with Google Gemini and Claude Code) and how the extracted numbers were verified.
+- **Effect-size synthesis:** how continuous outcomes (Hedges' $g$) and binary outcomes (odds ratios) were calculated, combined in multi-level random-effects models, and visualised.
+- **Publication-bias diagnostics:** funnel plots, Egger's regression tests, small-study-effect corrections, and tests for a decline in effect size over time.
 :::
 
 ::: card
@@ -39,10 +39,11 @@ We provide transparency and reproducibility for every phase of our meta-analysis
 
 Use the floating left sidebar or the search bar above to browse the supplement's chapters:
 
-1. **Home** (`index.qmd`) — This welcome portal with guidepost navigation.
-2. **Literature Screening & Processing Pipeline** (`literature_screening.qmd`) — Details the bibliographic search queries, deduplication, double-screener assignment matrices, AI-assisted data extractions, and the pre-registered analysis protocol.
-3. **Overall Effect Size Calculation & Synthesis** (`overall_effect.qmd`) — Implements overall intercept-only models, computes pooled effects across database splits (New, Legacy, Combined), and renders side-by-side orchard plots.
-4. **Publication Bias Diagnostics** (`publication_bias.qmd`) — Inspects funnel plot symmetry, performs Egger's regressions using the two-step precision/variance correction framework, and tests for time-lag bias.
+1. **Home** (`index.qmd`) — This overview page.
+2. **Literature Screening & Processing Pipeline** (`literature_screening.qmd`) — The bibliographic search, deduplication, assignment of articles to screeners, AI-assisted data extraction, and the planned analyses.
+3. **Overall Effect Size Calculation & Synthesis** (`overall_effect.qmd`) — Fits the multi-level models and reports pooled effects for three data subsets (new extraction, original datasets, and the two combined), with side-by-side orchard plots.
+4. **Publication Bias Diagnostics** (`publication_bias.qmd`) — Inspects funnel-plot symmetry, runs Egger's regressions with a two-step precision/variance correction, and tests for a decline in effect size over time.
+5. **Cross-Dataset Extraction Validation** (`extraction_validation.qmd`) — Checks whether the two original datasets (Davies et al. 2020 and Jones & DuVal 2019) agree on the effect sizes of the studies they both cover, and re-extracts the worst disagreements from the source PDFs.
 :::
 
 ::: card

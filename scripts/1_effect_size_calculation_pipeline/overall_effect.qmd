@@ -60,19 +60,19 @@ sigw <- function(p, yes = "statistically significant", no = "non-significant") {
 
 ## Introduction & Project Update
 
-This protocol implements the overall effect size synthesis for the updated Mate-Choice Copying (MCC) meta-analysis. 
+This chapter calculates the overall effect size for the updated mate-choice copying (MCC) meta-analysis.
 
-Specifically, we integrate:
+We combine three sources of data:
 
-1. **The New Extractions:** Our newly extracted and verified dataset containing recent trials.
-2. **Original Continuous Dataset (@daviesMetaanalysisFactorsInfluencing2020):** Standardised mean differences (Hedges' $d$) analyzing continuous metrics.
-3. **Original Binary Dataset (@jonesMechanismsSocialInfluence2019):** Log Odds Ratio ($\ln\text{OR}$) analyzing binary choices.
+1. **The new extraction:** our newly extracted and verified dataset of recent studies.
+2. **Original continuous dataset (@daviesMetaanalysisFactorsInfluencing2020):** standardised mean differences (Hedges' $d$) for continuous outcomes.
+3. **Original binary dataset (@jonesMechanismsSocialInfluence2019):** log odds ratios ($\ln\text{OR}$) for binary (choice) outcomes.
 
-The R script aligns and synthesizes these three sources into unified datasets, allowing comparison of meta-analytic summaries across three key subsets:
+The R code below puts these sources onto common scales and then reports the meta-analytic summary for three subsets, so the new and original data can be compared:
 
-* **New Extractions Only:** Eduardo's new dataset.
-* **Original Only:** Legacy data from the original publications.
-* **Combined Dataset:** A complete synthesis of old and new trials to estimate the updated global effect sizes.
+* **New extraction only:** the newly extracted dataset on its own.
+* **Original only:** the previously published data on its own.
+* **Combined:** the new and original data pooled together — the basis for the updated overall estimates.
 
 ---
 

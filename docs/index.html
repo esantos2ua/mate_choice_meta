@@ -269,33 +269,34 @@ window.Quarto = {
 
 <section id="project-overview" class="level1 card">
 <h1>Project Overview</h1>
-<p>This online supplement provides the complete computational workflow and interactive reports for the systematic review and multi-level meta-analysis of <strong>Mate-Choice Copying (MCC)</strong> update across animal taxa.</p>
-<p>Mate-choice copying is a form of socially acquired preference where an individual’s evaluation of a potential mate is altered after observing the sexual decisions of others. This synthesis aims to:</p>
+<p>This online supplement provides the complete computational workflow and interactive reports for an updated systematic review and multi-level meta-analysis of <strong>mate-choice copying (MCC)</strong> across animal taxa.</p>
+<p>Mate-choice copying is a form of socially learned preference: an individual’s evaluation of a potential mate changes after it observes the mate choices of others. This synthesis aims to:</p>
 <ul>
-<li>Estimate the updated global effect size of mate-choice copying across species.</li>
-<li>Model the related structures (e.g., trials nested in papers).</li>
-<li>Control for evolutionary relationships using phylogenetic covariance.</li>
-<li>Rigorously diagnose and adjust for potential selective reporting and publication bias.</li>
+<li>Estimate the updated overall effect size of mate-choice copying across species.</li>
+<li>Account for the nested structure of the data (multiple effect sizes within each study).</li>
+<li>Account for shared evolutionary history among species using a phylogenetic covariance matrix.</li>
+<li>Diagnose and adjust for publication bias and selective reporting.</li>
 </ul>
 </section>
 <section id="what-this-supplement-contains" class="level2 card">
 <h2 class="anchored" data-anchor-id="what-this-supplement-contains">What this Supplement Contains</h2>
-<p>We provide transparency and reproducibility for every phase of our meta-analysis:</p>
+<p>Each phase of the meta-analysis is documented so that it can be reproduced:</p>
 <ul>
-<li><strong>Literature Selection Auditing:</strong> Full details of our deduplication passes, quality screening scoring, and randomized screener split lists.</li>
-<li><strong>AI-Assisted Extraction Logs:</strong> Documentation of our multi-agent quantitative extraction pipeline utilizing Google NotebookLM, Google Gemini, and Claude Code.</li>
-<li><strong>Interactive Multi-Level Syntheses:</strong> Reproducible calculations of continuous Hedges’ <span class="math inline">\(g\)</span> and binary Odds Ratios, random effects modeling, and comparative data plots.</li>
-<li><strong>Selective Reporting Audits:</strong> Funnel plots, Egger’s meta-regression tests, small-study bias corrections using variance adjustments, and time-lag decline analysis.</li>
+<li><strong>Literature screening:</strong> how records from the two databases were deduplicated, scored for completeness, randomly shuffled, and split among the screening team.</li>
+<li><strong>Data extraction:</strong> how the included papers were processed through an AI-assisted extraction pipeline (Google NotebookLM, with Google Gemini and Claude Code) and how the extracted numbers were verified.</li>
+<li><strong>Effect-size synthesis:</strong> how continuous outcomes (Hedges’ <span class="math inline">\(g\)</span>) and binary outcomes (odds ratios) were calculated, combined in multi-level random-effects models, and visualised.</li>
+<li><strong>Publication-bias diagnostics:</strong> funnel plots, Egger’s regression tests, small-study-effect corrections, and tests for a decline in effect size over time.</li>
 </ul>
 </section>
 <section id="how-to-navigate" class="level2 card">
 <h2 class="anchored" data-anchor-id="how-to-navigate">How to Navigate</h2>
 <p>Use the floating left sidebar or the search bar above to browse the supplement’s chapters:</p>
 <ol type="1">
-<li><strong>Home</strong> (<code>index.qmd</code>) — This welcome portal with guidepost navigation.</li>
-<li><strong>Literature Screening &amp; Processing Pipeline</strong> (<code>literature_screening.qmd</code>) — Details the bibliographic search queries, deduplication, double-screener assignment matrices, AI-assisted data extractions, and the pre-registered analysis protocol.</li>
-<li><strong>Overall Effect Size Calculation &amp; Synthesis</strong> (<code>overall_effect.qmd</code>) — Implements overall intercept-only models, computes pooled effects across database splits (New, Legacy, Combined), and renders side-by-side orchard plots.</li>
-<li><strong>Publication Bias Diagnostics</strong> (<code>publication_bias.qmd</code>) — Inspects funnel plot symmetry, performs Egger’s regressions using the two-step precision/variance correction framework, and tests for time-lag bias.</li>
+<li><strong>Home</strong> (<code>index.qmd</code>) — This overview page.</li>
+<li><strong>Literature Screening &amp; Processing Pipeline</strong> (<code>literature_screening.qmd</code>) — The bibliographic search, deduplication, assignment of articles to screeners, AI-assisted data extraction, and the planned analyses.</li>
+<li><strong>Overall Effect Size Calculation &amp; Synthesis</strong> (<code>overall_effect.qmd</code>) — Fits the multi-level models and reports pooled effects for three data subsets (new extraction, original datasets, and the two combined), with side-by-side orchard plots.</li>
+<li><strong>Publication Bias Diagnostics</strong> (<code>publication_bias.qmd</code>) — Inspects funnel-plot symmetry, runs Egger’s regressions with a two-step precision/variance correction, and tests for a decline in effect size over time.</li>
+<li><strong>Cross-Dataset Extraction Validation</strong> (<code>extraction_validation.qmd</code>) — Checks whether the two original datasets (Davies et al.&nbsp;2020 and Jones &amp; DuVal 2019) agree on the effect sizes of the studies they both cover, and re-extracts the worst disagreements from the source PDFs.</li>
 </ol>
 </section>
 <section id="reproducibility-environment" class="level2 card">
@@ -795,25 +796,25 @@ window.Quarto = {
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>::: card</span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu"># Project Overview</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>This online supplement provides the complete computational workflow and interactive reports for the systematic review and multi-level meta-analysis of **Mate-Choice Copying (MCC)** update across animal taxa. </span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>This online supplement provides the complete computational workflow and interactive reports for an updated systematic review and multi-level meta-analysis of **mate-choice copying (MCC)** across animal taxa.</span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>Mate-choice copying is a form of socially acquired preference where an individual's evaluation of a potential mate is altered after observing the sexual decisions of others. This synthesis aims to:</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>Mate-choice copying is a form of socially learned preference: an individual's evaluation of a potential mate changes after it observes the mate choices of others. This synthesis aims to:</span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Estimate the updated global effect size of mate-choice copying across species.</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Model the related structures (e.g., trials nested in papers).</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Control for evolutionary relationships using phylogenetic covariance.</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Rigorously diagnose and adjust for potential selective reporting and publication bias.</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Estimate the updated overall effect size of mate-choice copying across species.</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Account for the nested structure of the data (multiple effect sizes within each study).</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Account for shared evolutionary history among species using a phylogenetic covariance matrix.</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Diagnose and adjust for publication bias and selective reporting.</span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>::: card</span>
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="fu">## What this Supplement Contains</span></span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>We provide transparency and reproducibility for every phase of our meta-analysis:</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>Each phase of the meta-analysis is documented so that it can be reproduced:</span>
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Literature Selection Auditing:** Full details of our deduplication passes, quality screening scoring, and randomized screener split lists.</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**AI-Assisted Extraction Logs:** Documentation of our multi-agent quantitative extraction pipeline utilizing Google NotebookLM, Google Gemini, and Claude Code.</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Interactive Multi-Level Syntheses:** Reproducible calculations of continuous Hedges' $g$ and binary Odds Ratios, random effects modeling, and comparative data plots.</span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Selective Reporting Audits:** Funnel plots, Egger's meta-regression tests, small-study bias corrections using variance adjustments, and time-lag decline analysis.</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Literature screening:** how records from the two databases were deduplicated, scored for completeness, randomly shuffled, and split among the screening team.</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Data extraction:** how the included papers were processed through an AI-assisted extraction pipeline (Google NotebookLM, with Google Gemini and Claude Code) and how the extracted numbers were verified.</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Effect-size synthesis:** how continuous outcomes (Hedges' $g$) and binary outcomes (odds ratios) were calculated, combined in multi-level random-effects models, and visualised.</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Publication-bias diagnostics:** funnel plots, Egger's regression tests, small-study-effect corrections, and tests for a decline in effect size over time.</span>
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>::: card</span>
@@ -821,24 +822,25 @@ window.Quarto = {
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>Use the floating left sidebar or the search bar above to browse the supplement's chapters:</span>
 <span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**Home** (<span class="in">`index.qmd`</span>) — This welcome portal with guidepost navigation.</span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**Literature Screening &amp; Processing Pipeline** (<span class="in">`literature_screening.qmd`</span>) — Details the bibliographic search queries, deduplication, double-screener assignment matrices, AI-assisted data extractions, and the pre-registered analysis protocol.</span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>**Overall Effect Size Calculation &amp; Synthesis** (<span class="in">`overall_effect.qmd`</span>) — Implements overall intercept-only models, computes pooled effects across database splits (New, Legacy, Combined), and renders side-by-side orchard plots.</span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>**Publication Bias Diagnostics** (<span class="in">`publication_bias.qmd`</span>) — Inspects funnel plot symmetry, performs Egger's regressions using the two-step precision/variance correction framework, and tests for time-lag bias.</span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>::: card</span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reproducibility &amp; Environment</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>We conducted data preparation steps using R and Python, all statistical analyses are coded in R, and compiled dynamically using **Quarto**. </span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>To ensure stability and smooth local execution:</span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>R dependencies (<span class="in">`metafor`</span>, <span class="in">`orchaRd`</span>, <span class="in">`ggplot2`</span>, <span class="in">`patchwork`</span>, <span class="in">`DT`</span>) are managed dynamically via <span class="in">`pacman::p_load()`</span>.</span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Interactive datatables are rendered with <span class="in">`DT::datatable()`</span> for dynamic search and export capability.</span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Document states are frozen during compilation (<span class="in">`freeze: auto`</span>) to ensure rendering stability.</span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>All code blocks are folded by default but can be toggled using the **"Show Code"** buttons throughout the book chapters.</span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>:::</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**Home** (<span class="in">`index.qmd`</span>) — This overview page.</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**Literature Screening &amp; Processing Pipeline** (<span class="in">`literature_screening.qmd`</span>) — The bibliographic search, deduplication, assignment of articles to screeners, AI-assisted data extraction, and the planned analyses.</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>**Overall Effect Size Calculation &amp; Synthesis** (<span class="in">`overall_effect.qmd`</span>) — Fits the multi-level models and reports pooled effects for three data subsets (new extraction, original datasets, and the two combined), with side-by-side orchard plots.</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>**Publication Bias Diagnostics** (<span class="in">`publication_bias.qmd`</span>) — Inspects funnel-plot symmetry, runs Egger's regressions with a two-step precision/variance correction, and tests for a decline in effect size over time.</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>**Cross-Dataset Extraction Validation** (<span class="in">`extraction_validation.qmd`</span>) — Checks whether the two original datasets (Davies et al. 2020 and Jones &amp; DuVal 2019) agree on the effect sizes of the studies they both cover, and re-extracts the worst disagreements from the source PDFs.</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>::: card</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reproducibility &amp; Environment</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>We conducted data preparation steps using R and Python, all statistical analyses are coded in R, and compiled dynamically using **Quarto**. </span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>To ensure stability and smooth local execution:</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>R dependencies (<span class="in">`metafor`</span>, <span class="in">`orchaRd`</span>, <span class="in">`ggplot2`</span>, <span class="in">`patchwork`</span>, <span class="in">`DT`</span>) are managed dynamically via <span class="in">`pacman::p_load()`</span>.</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Interactive datatables are rendered with <span class="in">`DT::datatable()`</span> for dynamic search and export capability.</span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Document states are frozen during compilation (<span class="in">`freeze: auto`</span>) to ensure rendering stability.</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>All code blocks are folded by default but can be toggled using the **"Show Code"** buttons throughout the book chapters.</span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>:::</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 
