@@ -495,32 +495,99 @@ DT::datatable(
 
 ### Comparison plot
 
+We display each version as its own orchard trunk — the same plot format used elsewhere in
+this book. Each row is one model version (Main, Leave-out, Corrected); the bubbles are that
+version's raw effect sizes (scaled by precision), the central marker is the pooled mean with
+its 95% confidence interval, and the thin whisker is the 95% prediction interval. The
+`Mean [95% CI]` and `k (n)` annotations sit beside each trunk.
+
 ```{r}
-#| label: fig-sensitivity
+#| label: orchard_helpers
 #| message: false
 #| warning: false
-#| fig-width: 11
-#| fig-height: 4.5
-#| fig-cap: "Combined overall effect (point) and 95% confidence interval under the Main, Leave-out, and Corrected datasets. Left: Hedges' g (dashed line at 0). Right: log odds ratio (dashed line at 0, i.e. OR = 1)."
-ver_cols <- c("Main" = "#444444", "Leave-out" = "#D55E00", "Corrected" = "#0072B2")
+ver_levels <- c("Main", "Leave-out", "Corrected")
+ver_cols   <- c("Main" = "#444444", "Leave-out" = "#D55E00", "Corrected" = "#0072B2")
 
-make_panel <- function(df, title, xlab) {
-    ggplot(df, aes(Estimate, fct_rev(Version), colour = Version)) +
-        geom_vline(xintercept = 0, linetype = "dashed", colour = "grey60") +
-        geom_errorbarh(aes(xmin = CI_low, xmax = CI_high), height = 0.18, linewidth = 0.9) +
-        geom_point(size = 3.2) +
-        geom_text(aes(label = sprintf("%s [%s, %s]  (k=%d)", fmt(Estimate, 2), fmt(CI_low, 2), fmt(CI_high, 2), k)),
-                  vjust = -1.1, size = 3.1, show.legend = FALSE) +
-        scale_colour_manual(values = ver_cols, guide = "none") +
-        labs(x = xlab, y = NULL, title = title) +
-        theme_minimal(base_size = 12) +
-        theme(plot.title = element_text(face = "bold"))
+# Build one orchard "trunk" (an orchaRd mod_results object) from a fitted model and
+# relabel it with the version name, mirroring the multi-trunk approach in overall_effect.qmd.
+mk_trunk <- function(fit, name) {
+    r <- orchaRd::mod_results(fit$model, group = "identifierStudyId")
+    class(r) <- "list"
+    r$mod_table$name <- name
+    r$data$moderator <- name
+    class(r) <- c("orchard", "data.frame")
+    r
 }
 
-p_h <- make_panel(filter(res, Class == "Hedges' g"), "Hedges' g (continuous)", "Hedges' g")
-p_o <- make_panel(filter(res, Class == "Log OR"),    "Log odds ratio (binary)", "log OR")
-p_h + p_o
+# Place "Mean [95% CI]" above the existing "k = .. (..)" label on each trunk
+# (identical helper to the overall-effect chapter).
+add_ci_labels <- function(plot_obj, orchard_results) {
+    est  <- sprintf("%.2f", orchard_results$mod_table$estimate)
+    ci_l <- sprintf("%.2f", orchard_results$mod_table$lowerCL)
+    ci_u <- sprintf("%.2f", orchard_results$mod_table$upperCL)
+    orig_labels <- plot_obj$layers[[6]]$aes_params$label
+    new_labels <- character(0)
+    for (i in seq_along(orig_labels)) {
+        nums <- regmatches(orig_labels[i], gregexpr("[0-9]+", orig_labels[i]))[[1]]
+        k_text <- if (length(nums) >= 2) paste0("k = ", nums[1], " (", nums[2], ")") else orig_labels[i]
+        new_labels[i] <- paste0(est[i], " [", ci_l[i], ", ", ci_u[i], "]\n", k_text)
+    }
+    plot_obj$layers[[6]]$aes_params$label <- new_labels
+    plot_obj$layers[[6]]$geom_params$parse <- FALSE
+    plot_obj$layers[[6]]$aes_params$hjust <- "right"
+    plot_obj$layers[[6]]$aes_params$vjust <- 0.5
+    plot_obj$layers[[6]]$aes_params$size <- 3.0
+    plot_obj
+}
+
+# Assemble a three-trunk orchard plot (Main / Leave-out / Corrected) for one class.
+sensitivity_orchard <- function(fit_main, fit_leave, fit_corr, xlab, title) {
+    t_main <- mk_trunk(fit_main,  "Main")
+    t_leav <- mk_trunk(fit_leave, "Leave-out")
+    t_corr <- mk_trunk(fit_corr,  "Corrected")
+    sub <- orchaRd::submerge(t_main, t_leav, t_corr)
+
+    p <- orchaRd::orchard_plot(sub, xlab = xlab, flip = TRUE) +
+        ggplot2::scale_colour_manual(values = ver_cols, name = "Dataset version") +
+        ggplot2::scale_fill_manual(values = ver_cols, name = "Dataset version") +
+        ggplot2::ggtitle(title) +
+        ggplot2::theme(
+            legend.position = "none",
+            plot.title = ggplot2::element_text(face = "bold", hjust = 0.5)
+        )
+    add_ci_labels(p, sub)
+}
 ```
+
+::: {.panel-tabset}
+
+#### Hedges' $g$ (continuous outcomes)
+
+```{r}
+#| label: fig-sensitivity-hedges
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 6
+#| fig-cap: "Combined Hedges' g under the Main, Leave-out, and Corrected datasets. Bubbles are raw effect sizes scaled by precision; the central marker is the pooled mean (95% CI), the whisker is the 95% prediction interval. The vertical line marks no effect (g = 0)."
+sensitivity_orchard(fits$hedges_main, fits$hedges_leaveout, fits$hedges_corrected,
+                    xlab = "Hedges' g", title = "Sensitivity of the combined Hedges' g")
+```
+
+#### Odds Ratio (binary outcomes)
+
+```{r}
+#| label: fig-sensitivity-or
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 6
+#| fig-cap: "Combined log odds ratio under the Main, Leave-out, and Corrected datasets. Bubbles are raw lnOR effect sizes scaled by precision; the central marker is the pooled mean (95% CI), the whisker is the 95% prediction interval. The vertical line marks no effect (lnOR = 0, i.e. OR = 1)."
+sensitivity_orchard(fits$or_main, fits$or_leaveout, fits$or_corrected,
+                    xlab = "Log Odds Ratio (lnOR)", title = "Sensitivity of the combined log odds ratio")
+```
+
+:::
 
 ---
 
