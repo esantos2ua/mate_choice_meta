@@ -15,7 +15,7 @@ book:
     pinned: true
     right:
       - icon: github
-        href: https://github.com/ejlundgren/mate_choice_meta
+        href: https://github.com/esantos2ua/mate_choice_meta
         aria-label: GitHub
         
   sidebar:
