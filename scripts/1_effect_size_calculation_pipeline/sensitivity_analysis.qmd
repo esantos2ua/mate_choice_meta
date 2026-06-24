@@ -66,7 +66,12 @@ compare the pooled estimates.
   those studies at all.
 * **Corrected** — the contentious effect sizes are replaced with the design-faithful
   values re-extracted from the source PDFs. This is the best-estimate version: it keeps
-  the studies but fixes the specific problems the validation identified.
+  every flagged *study* but fixes the specific problems the validation identified. Note
+  that the *effect-size* count changes slightly relative to **Main**, because correction
+  is not a one-to-one value swap: on the binary side three over-counted rows are removed
+  (the spurious DUG1992 value and the duplicated GIE2018 contrast), and on the continuous
+  side Applebaum's affiliation-time effects are not reinstated while Fowler-Finn's pooled
+  effect is split into two arm-level effects (see the edit map below).
 
 ::: {.callout-note}
 ## Scope
@@ -380,6 +385,13 @@ edit_report <- tibble(
 #| echo: false
 knitr::kable(edit_report, caption = "Number of effect sizes in each dataset version.")
 ```
+
+The **Corrected** counts are slightly below **Main** by design, not by accident. On the
+binary side the drop is exactly the three over-counted rows removed above (`172 → 169`).
+On the continuous side the net change (`227 → 225`) is the combined result of dropping
+Applebaum's non-reinstated affiliation-time effects and splitting Fowler-Finn's single
+pooled effect into two arm-level effects. **Leave-out** is lower still because it removes
+all effect sizes from the flagged studies without re-adding any.
 
 ---
 
