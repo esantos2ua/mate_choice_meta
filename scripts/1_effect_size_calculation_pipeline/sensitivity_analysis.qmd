@@ -682,6 +682,174 @@ in the edit map above; no other values were changed.
 
 ---
 
+## Leave-one-out diagnostics
+
+The analysis above asks a *targeted* question — does the headline result lean on the
+seven studies the cross-dataset validation flagged? A complementary, *untargeted* check
+is the classic **leave-one-out** diagnostic: re-fit the combined model many times, each
+time dropping **one** unit of data, and see whether any single unit moves the pooled
+estimate enough to change the story. If the leave-one-out means all stay tight around the
+full-data estimate (and inside its confidence band), no single study or species is driving
+the synthesis. We run it two ways, using the `leave_one_out()` and `orchard_leave1out()`
+tools in the `orchaRd` package [@nakagawaOrchaRd2Visualising2023]:
+
+* **By study** — drop all effect sizes from one study at a time. This is the standard
+  influence check: it flags any individual paper the pooled estimate hinges on.
+* **By species** — drop all effect sizes from one species at a time. Because mate-choice
+  copying is unevenly sampled across the tree (a few species, such as the guppy, contribute
+  many effects), this asks whether the synthesis is really a statement about animals in
+  general or an artefact of one well-studied taxon.
+
+Each leave-one-out fit uses the **same** multilevel structure as the Main models above —
+the variance–covariance matrix is recomputed with `vcalc` (within-study $\rho = 0.5$) on
+each reduced dataset, and the phylogenetic random effect is retained, with the species
+correlation matrix subset to the species that remain. In each plot below, every point is
+one re-fit (labelled by the omitted study or species), the horizontal red lines mark the
+**full-data** 95% confidence interval, and the faint "ghost" points show the effect sizes
+that were removed for that fit. A row sitting on top of the red band means leaving that
+unit out barely changes the pooled mean.
+
+```{r}
+#| label: loo_fit_function
+#| message: false
+#| warning: false
+# A leave-one-out-friendly refit of the Main model. It is identical in structure to
+# fit_overall_mv() above, but is written so that orchaRd::leave_one_out() can rebuild and
+# re-evaluate the model on each reduced dataset: the fitted objects (random-effects list,
+# V matrix, data, and phylogenetic R matrix) are embedded as literals into the stored
+# call, so the refit does not depend on this function's local variables.
+fit_overall_loo <- function(dat, phylo_cor) {
+    d <- dat %>% dplyr::filter(!is.na(yi), !is.na(vi), vi > 0)
+    d$identifierStudyId      <- as.character(d$identifierStudyId)
+    d$identifierEffectSizeID <- as.character(d$identifierEffectSizeID)
+    d$taxonomySpecies        <- as.character(d$taxonomySpecies)
+    d$species_phylo          <- factor(as.character(d$species_phylo))
+    sp <- levels(d$species_phylo)
+    use_phylo <- !is.null(phylo_cor) && length(setdiff(sp, rownames(phylo_cor))) == 0
+
+    VCV  <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID,
+                           rho = 0.5, data = d)
+    rand <- list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies)
+    Rarg <- NULL
+    if (use_phylo) {
+        rand <- c(rand, list(~ 1 | species_phylo))
+        Rarg <- list(species_phylo = phylo_cor[sp, sp, drop = FALSE])
+    }
+    mod <- metafor::rma.mv(yi = yi, V = VCV, random = rand, R = Rarg,
+                           test = "t", method = "REML", sparse = TRUE, data = d)
+    # Embed objects as literals so leave_one_out() can re-evaluate the call on each subset.
+    mod$call$random <- rand
+    mod$call$V      <- VCV
+    mod$call$data   <- d
+    if (use_phylo) mod$call$R <- Rarg
+    mod
+}
+
+# Refit each Main model in leave-one-out-ready form, then run the two diagnostics.
+loo_mod_hedges <- fit_overall_loo(db_hedges, phylo_cor_hedges)
+loo_mod_or     <- fit_overall_loo(db_or,     phylo_cor_or)
+
+vcalc_loo <- list(vi = "vi", cluster = "identifierStudyId",
+                  obs = "identifierEffectSizeID", rho = 0.5)
+
+loo_study_hedges <- orchaRd::leave_one_out(loo_mod_hedges, group = "identifierStudyId", vcalc_args = vcalc_loo)
+loo_study_or     <- orchaRd::leave_one_out(loo_mod_or,     group = "identifierStudyId", vcalc_args = vcalc_loo)
+loo_sp_hedges    <- orchaRd::leave_one_out(loo_mod_hedges, group = "species_phylo",     vcalc_args = vcalc_loo)
+loo_sp_or        <- orchaRd::leave_one_out(loo_mod_or,     group = "species_phylo",     vcalc_args = vcalc_loo)
+```
+
+### Leave one study out
+
+```{r}
+#| label: loo_study_range
+#| echo: false
+loo_range <- function(loo) sprintf("%s to %s",
+    fmt(min(loo$mod_table$estimate), 2), fmt(max(loo$mod_table$estimate), 2))
+```
+
+Across all `r nrow(loo_study_hedges$mod_table)` continuous studies, the leave-one-out mean
+stays in the range $`r loo_range(loo_study_hedges)`$; across the
+`r nrow(loo_study_or$mod_table)` binary studies it stays within
+$`r loo_range(loo_study_or)`$ (lnOR). No single study pulls the pooled estimate outside the
+full-data confidence band.
+
+::: {.panel-tabset}
+
+#### Hedges' $g$ (continuous outcomes)
+
+```{r}
+#| label: fig-loo-study-hedges
+#| message: false
+#| warning: false
+#| fig-width: 9
+#| fig-height: 16
+#| fig-cap: "Leave-one-study-out for the combined Hedges' g. Each row drops one study; the red lines are the full-data 95% CI."
+orchaRd::orchard_leave1out(loo_study_hedges, xlab = "Hedges' g", angle = 0)
+```
+
+#### Odds Ratio (binary outcomes)
+
+```{r}
+#| label: fig-loo-study-or
+#| message: false
+#| warning: false
+#| fig-width: 9
+#| fig-height: 10
+#| fig-cap: "Leave-one-study-out for the combined log odds ratio. Each row drops one study; the red lines are the full-data 95% CI."
+orchaRd::orchard_leave1out(loo_study_or, xlab = "Log Odds Ratio (lnOR)", angle = 0)
+```
+
+:::
+
+### Leave one species out
+
+Across all `r nrow(loo_sp_hedges$mod_table)` continuous species, the leave-one-out mean
+stays in the range $`r loo_range(loo_sp_hedges)`$; across the
+`r nrow(loo_sp_or$mod_table)` binary species it stays within
+$`r loo_range(loo_sp_or)`$ (lnOR). The species most likely to matter is the guppy
+(*Poecilia reticulata*), which contributes a large share of the effects; dropping it shifts
+the mean but does not overturn the direction or significance of the synthesis.
+
+::: {.panel-tabset}
+
+#### Hedges' $g$ (continuous outcomes)
+
+```{r}
+#| label: fig-loo-species-hedges
+#| message: false
+#| warning: false
+#| fig-width: 9
+#| fig-height: 9
+#| fig-cap: "Leave-one-species-out for the combined Hedges' g. Each row drops one species; the red lines are the full-data 95% CI."
+orchaRd::orchard_leave1out(loo_sp_hedges, xlab = "Hedges' g", angle = 0)
+```
+
+#### Odds Ratio (binary outcomes)
+
+```{r}
+#| label: fig-loo-species-or
+#| message: false
+#| warning: false
+#| fig-width: 9
+#| fig-height: 8
+#| fig-cap: "Leave-one-species-out for the combined log odds ratio. Each row drops one species; the red lines are the full-data 95% CI."
+orchaRd::orchard_leave1out(loo_sp_or, xlab = "Log Odds Ratio (lnOR)", angle = 0)
+```
+
+:::
+
+::: {.callout-note}
+## How this differs from the contentious-studies analysis above
+The leave-one-out diagnostic is **untargeted** — it drops *every* study (and *every*
+species) in turn, not just the seven the validation flagged — and it removes whole units
+rather than correcting individual values. The two analyses answer different questions: the
+contentious-studies comparison asks whether the *specific extraction problems* matter, while
+leave-one-out asks whether *any single unit* of the data is disproportionately influential.
+Read together, they bound the result's robustness from both directions.
+:::
+
+---
+
 ## Session info
 
 ::: callout-note
