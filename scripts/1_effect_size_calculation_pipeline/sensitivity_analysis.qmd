@@ -703,11 +703,17 @@ tools in the `orchaRd` package [@nakagawaOrchaRd2Visualising2023]:
 Each leave-one-out fit uses the **same** multilevel structure as the Main models above —
 the variance–covariance matrix is recomputed with `vcalc` (within-study $\rho = 0.5$) on
 each reduced dataset, and the phylogenetic random effect is retained, with the species
-correlation matrix subset to the species that remain. In each plot below, every point is
-one re-fit (labelled by the omitted study or species), the horizontal red lines mark the
-**full-data** 95% confidence interval, and the faint "ghost" points show the effect sizes
-that were removed for that fit. A row sitting on top of the red band means leaving that
-unit out barely changes the pooled mean.
+correlation matrix subset to the species that remain. In each plot below, each row is one
+re-fit (labelled by the omitted study or species): the muted bubbles are that fit's raw
+effect sizes scaled by precision, the **white marker is the re-estimated pooled mean with
+its 95% confidence interval**, and the faint "ghost" points show the effect sizes that
+were removed for that fit. The two horizontal **red lines mark the full-data 95% confidence
+interval**, so a mean sitting between them means leaving that unit out barely changes the
+synthesis. **Rows are ordered by the leave-one-out mean** (smallest at the bottom, largest
+at the top), which turns each panel into an influence ranking — the most consequential
+omissions sit at the extremes. (By default `orchard_leave1out()` instead orders rows by
+their order of appearance in the data and colours every element on a dark viridis scale;
+the helper below re-orders by estimate and recolours for legibility.)
 
 ```{r}
 #| label: loo_fit_function
@@ -756,6 +762,34 @@ loo_study_hedges <- orchaRd::leave_one_out(loo_mod_hedges, group = "identifierSt
 loo_study_or     <- orchaRd::leave_one_out(loo_mod_or,     group = "identifierStudyId", vcalc_args = vcalc_loo)
 loo_sp_hedges    <- orchaRd::leave_one_out(loo_mod_hedges, group = "species_phylo",     vcalc_args = vcalc_loo)
 loo_sp_or        <- orchaRd::leave_one_out(loo_mod_or,     group = "species_phylo",     vcalc_args = vcalc_loo)
+
+# Plot helper. orchaRd::orchard_leave1out() defaults to (a) data order for the rows,
+# (b) a viridis_d palette for >20 groups that renders both the bubbles and the per-row
+# mean marker in dark hues, and (c) an inside legend that collides with the bottom row.
+# This wrapper re-orders the rows by the leave-one-out estimate (so the plot reads as an
+# influence ranking), mutes the raw/ghost bubbles, draws each mean as a white-filled black
+# marker so it stands out against the cloud, and moves the precision legend out of the panel.
+# (Layer indices are fixed by orchaRd 2.2.0: 1 = raw bubbles, 3 = CI, 5 = mean, 8 = ghosts.)
+style_loo <- function(loo, xlab, base_size = 11) {
+    p   <- orchaRd::orchard_leave1out(loo, xlab = xlab, angle = 0)
+    ord <- as.character(loo$mod_table$name)[order(loo$mod_table$estimate)]
+    p$layers[[1]]$aes_params$alpha     <- 0.18   # raw effect-size bubbles
+    p$layers[[8]]$aes_params$alpha     <- 0.12   # ghost (omitted) points
+    p$layers[[3]]$aes_params$linewidth <- 1.1    # 95% CI bar
+    p$layers[[3]]$aes_params$colour    <- "black"
+    p$layers[[5]]$mapping$fill         <- NULL    # mean marker: drop viridis fill mapping
+    p$layers[[5]]$aes_params$fill      <- "white"
+    p$layers[[5]]$aes_params$colour    <- "black"
+    p$layers[[5]]$aes_params$size      <- 2.6
+    p$layers[[5]]$aes_params$stroke    <- 0.8
+    p +
+        ggplot2::scale_x_discrete(limits = ord) +
+        ggplot2::scale_colour_viridis_d(begin = 0.35, end = 0.95, guide = "none") +
+        ggplot2::scale_fill_viridis_d(begin = 0.35, end = 0.95, guide = "none") +
+        ggplot2::theme_bw(base_size = base_size) +
+        ggplot2::theme(legend.position = "right",
+                       panel.grid.minor = ggplot2::element_blank())
+}
 ```
 
 ### Leave one study out
@@ -783,8 +817,8 @@ full-data confidence band.
 #| warning: false
 #| fig-width: 9
 #| fig-height: 16
-#| fig-cap: "Leave-one-study-out for the combined Hedges' g. Each row drops one study; the red lines are the full-data 95% CI."
-orchaRd::orchard_leave1out(loo_study_hedges, xlab = "Hedges' g", angle = 0)
+#| fig-cap: "Leave-one-study-out for the combined Hedges' g. Each row drops one study (rows ordered by the leave-one-out mean); the white marker is the re-estimated pooled mean with its 95% CI, and the red lines are the full-data 95% CI."
+style_loo(loo_study_hedges, xlab = "Hedges' g")
 ```
 
 #### Odds Ratio (binary outcomes)
@@ -795,8 +829,8 @@ orchaRd::orchard_leave1out(loo_study_hedges, xlab = "Hedges' g", angle = 0)
 #| warning: false
 #| fig-width: 9
 #| fig-height: 10
-#| fig-cap: "Leave-one-study-out for the combined log odds ratio. Each row drops one study; the red lines are the full-data 95% CI."
-orchaRd::orchard_leave1out(loo_study_or, xlab = "Log Odds Ratio (lnOR)", angle = 0)
+#| fig-cap: "Leave-one-study-out for the combined log odds ratio. Each row drops one study (rows ordered by the leave-one-out mean); the white marker is the re-estimated pooled mean with its 95% CI, and the red lines are the full-data 95% CI."
+style_loo(loo_study_or, xlab = "Log Odds Ratio (lnOR)")
 ```
 
 :::
@@ -820,8 +854,8 @@ the mean but does not overturn the direction or significance of the synthesis.
 #| warning: false
 #| fig-width: 9
 #| fig-height: 9
-#| fig-cap: "Leave-one-species-out for the combined Hedges' g. Each row drops one species; the red lines are the full-data 95% CI."
-orchaRd::orchard_leave1out(loo_sp_hedges, xlab = "Hedges' g", angle = 0)
+#| fig-cap: "Leave-one-species-out for the combined Hedges' g. Each row drops one species (rows ordered by the leave-one-out mean); the white marker is the re-estimated pooled mean with its 95% CI, and the red lines are the full-data 95% CI."
+style_loo(loo_sp_hedges, xlab = "Hedges' g")
 ```
 
 #### Odds Ratio (binary outcomes)
@@ -832,8 +866,8 @@ orchaRd::orchard_leave1out(loo_sp_hedges, xlab = "Hedges' g", angle = 0)
 #| warning: false
 #| fig-width: 9
 #| fig-height: 8
-#| fig-cap: "Leave-one-species-out for the combined log odds ratio. Each row drops one species; the red lines are the full-data 95% CI."
-orchaRd::orchard_leave1out(loo_sp_or, xlab = "Log Odds Ratio (lnOR)", angle = 0)
+#| fig-cap: "Leave-one-species-out for the combined log odds ratio. Each row drops one species (rows ordered by the leave-one-out mean); the white marker is the re-estimated pooled mean with its 95% CI, and the red lines are the full-data 95% CI."
+style_loo(loo_sp_or, xlab = "Log Odds Ratio (lnOR)")
 ```
 
 :::
