@@ -39,6 +39,10 @@ effect-size metrics**:
 * **Davies et al. (2020)** — Hedges' *d*
 * **Jones & DuVal (2019)** — log odds ratio (lnOR)
 
+Both are *standardized effect sizes*: different numerical scales for the same
+underlying quantity — how strongly an observer's mate preference shifts toward
+the male it saw being chosen — and one scale can be converted into the other.
+
 Before pooling them we need to know: *for the studies both teams extracted, do
 the effect sizes agree once placed on a common scale?* This is a
 **method-comparison** problem (two "instruments" measuring the same underlying
@@ -58,6 +62,18 @@ its output and assesses agreement. Key methodological points carried over:
   (Davies' non-directional *d* carries the raw mean-difference sign; Jones'
   lnOR sign encodes copying direction), so agreement is assessed on $|d|$.
   Sign concordance is reported separately as a diagnostic.
+
+**How this document is organised.** The analysis runs in five steps: (1) *match
+studies* — find the studies both datasets extracted and pair up their individual
+effect sizes; (2) *measure agreement* — quantify how closely the paired values
+agree once on a common scale; (3) *classify disagreements* — for pairs that do
+not agree, label *why*; (4) *re-extract the worst cases* — return to the original
+PDFs and recompute the effect size from the raw data; and (5) *conclude*.
+Throughout, "Jones" and "Davies" name the two source **datasets**, not the
+primary studies they drew from. A *pair* is a single Jones effect size lined up
+with the one Davies effect size that most plausibly measures the same thing in
+the same study (the pairing is done automatically, choosing the alignment that
+minimises the magnitude difference within each study).
 
 ```{r}
 #| label: load
@@ -106,7 +122,28 @@ tibble(
 ) %>% kable()
 ```
 
+**How to read this.** The two datasets share `r n_shared` primary studies, with a
+further `r nrow(unmatched)` studies appearing only in Jones. Within the shared
+studies their effect sizes line up into `r n_pairs` comparable pairs, of which
+`r fmt(100*n_match/n_pairs,0)`% agree in magnitude (tolerance: 0.15 *d*-units or
+15%). Sign agreement looks low (`r fmt(100*n_sign/n_pairs,0)`%), but that is
+*expected* — the two datasets encode copying direction with opposite signs, so we
+compare absolute magnitudes here and revisit sign separately later. The sections
+that follow ask how serious the magnitude disagreements are, and what causes them.
+
 ## Method-comparison agreement statistics
+
+With the effect sizes paired, we ask how well the two datasets agree *as
+measurements of the same thing* — the classic question of whether two instruments
+give the same reading. Three complementary tools answer it:
+
+* **Correlation** (Pearson *r*, Spearman *ρ*) — do the two rise and fall together?
+  (1 = perfectly in step.)
+* **Regression slope** of Davies on Jones — is one dataset systematically larger
+  than the other? (a slope of 1 = no scaling difference.)
+* **Bland–Altman** — for each pair, the *difference* between the two values plotted
+  against their *average*; the mean difference is the typical bias, and the 95%
+  "limits of agreement" bound how far apart the two datasets usually fall.
 
 ```{r}
 #| label: agreement-stats
@@ -151,6 +188,13 @@ tibble(
 
 ### Agreement plots
 
+In the **left** panel, perfect agreement would place every point on the dashed
+diagonal; points above it are studies where Davies reports the larger magnitude.
+In the **right** (Bland–Altman) panel, points scattered evenly around zero would
+mean no systematic difference — a shift away from zero is bias, and points beyond
+the dashed limits are the outlying disagreements that the rest of this document
+investigates.
+
 ```{r}
 #| label: fig-agreement
 #| fig-width: 11
@@ -194,6 +238,16 @@ agree. The dominant structural cause is whether the two teams extracted the
 xwalk %>% count(cause, name = "pairs") %>%
     mutate(`%` = fmt(100*pairs/sum(pairs), 0)) %>% kable()
 ```
+
+The three causes mean very different things. *Agree* needs no action.
+*ES-count / extraction structure differs* means the two teams split a study into
+different numbers of effect sizes, so a clean one-to-one comparison is impossible
+— a bookkeeping difference, not necessarily an error. *Same structure, magnitude
+conflict* is the category that matters: the teams extracted the same number of
+effect sizes yet still disagree, which signals a genuine extraction difference.
+In the per-pair table below, the `behaviour` columns are the key tell — when a
+Jones "reversal/random" contrast is paired against a Davies "affiliation/mating"
+one, the two teams measured a *different outcome* from the same paper.
 
 ```{r}
 #| label: dt-pairs
@@ -290,9 +344,12 @@ The agreement analysis flags *where* the two datasets disagree, but not *which*
 is correct. To resolve that for the worst cases, we pulled the primary-study
 PDFs for every study whose effect-size pair disagreed by **> 0.5 Hedges-*d*
 units** and re-extracted each effect size from the raw data, recomputing it as a
-2×2 odds ratio under the meta-analysis's own conventions (treatment-vs-control
-where the study used a control group; proportion-vs-chance otherwise). This
-gives a third, independent estimate per effect size — a tie-breaker.
+2×2 odds ratio — tabulating how many observers chose the demonstrated male
+versus the alternative, in the treatment and (where one exists) in the control,
+and taking the odds of one over the other — under the meta-analysis's own
+conventions (treatment-vs-control where the study used a control group; the
+observed proportion against 50% chance otherwise). This gives a third,
+independent estimate per effect size — a tie-breaker.
 
 ```{r}
 #| label: load-reext
