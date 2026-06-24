@@ -704,16 +704,26 @@ Each leave-one-out fit uses the **same** multilevel structure as the Main models
 the variance–covariance matrix is recomputed with `vcalc` (within-study $\rho = 0.5$) on
 each reduced dataset, and the phylogenetic random effect is retained, with the species
 correlation matrix subset to the species that remain. In each plot below, each row is one
-re-fit (labelled by the omitted study or species): the muted bubbles are that fit's raw
-effect sizes scaled by precision, the **white marker is the re-estimated pooled mean with
-its 95% confidence interval**, and the faint "ghost" points show the effect sizes that
-were removed for that fit. The two horizontal **red lines mark the full-data 95% confidence
-interval**, so a mean sitting between them means leaving that unit out barely changes the
-synthesis. **Rows are ordered by the leave-one-out mean** (smallest at the bottom, largest
-at the top), which turns each panel into an influence ranking — the most consequential
-omissions sit at the extremes. (By default `orchard_leave1out()` instead orders rows by
-their order of appearance in the data and colours every element on a dark viridis scale;
-the helper below re-orders by estimate and recolours for legibility.)
+re-fit (labelled by the omitted study or species): **grey filled dots are the effect sizes
+retained** in that fit (scaled by precision), **open orange rings are the effect sizes left
+out**, and the **white marker is the re-estimated pooled mean with its 95% confidence
+interval**. The two horizontal **red lines mark the full-data 95% confidence interval**, so
+a mean sitting between them means leaving that unit out barely changes the synthesis.
+**Rows are ordered by the leave-one-out mean** (smallest at the bottom, largest at the top),
+which turns each panel into an influence ranking — the most consequential omissions sit at
+the extremes.
+
+::: {.callout-tip}
+## Plot styling
+By default `orchard_leave1out()` orders rows by their order of appearance in the data and
+colours every bubble by *which* unit was left out — a purely decorative mapping (each row is
+already labelled) that, on the dark viridis scale used for >20 groups, hides both the pooled
+mean and the open-vs-filled distinction between retained and omitted effects. The `style_loo()`
+helper below strips that mapping, re-orders rows by estimate, and uses the grey-filled /
+open-orange encoding instead. Each panel is also written to `outputs/1_effect_size_calculation_pipeline/`
+as both PNG and **PDF** (`loo_study_hedges`, `loo_study_or`, `loo_species_hedges`,
+`loo_species_or`) for use as manuscript figures.
+:::
 
 ```{r}
 #| label: loo_fit_function
@@ -764,32 +774,75 @@ loo_sp_hedges    <- orchaRd::leave_one_out(loo_mod_hedges, group = "species_phyl
 loo_sp_or        <- orchaRd::leave_one_out(loo_mod_or,     group = "species_phylo",     vcalc_args = vcalc_loo)
 
 # Plot helper. orchaRd::orchard_leave1out() defaults to (a) data order for the rows,
-# (b) a viridis_d palette for >20 groups that renders both the bubbles and the per-row
-# mean marker in dark hues, and (c) an inside legend that collides with the bottom row.
-# This wrapper re-orders the rows by the leave-one-out estimate (so the plot reads as an
-# influence ranking), mutes the raw/ghost bubbles, draws each mean as a white-filled black
-# marker so it stands out against the cloud, and moves the precision legend out of the panel.
-# (Layer indices are fixed by orchaRd 2.2.0: 1 = raw bubbles, 3 = CI, 5 = mean, 8 = ghosts.)
+# (b) a viridis_d palette (for >20 groups) that colours every bubble by *which* unit was
+# left out — a decorative mapping, since each row is already labelled — and renders both
+# the bubbles and the per-row mean in dark hues, and (c) an inside legend that collides with
+# the bottom row. It also draws the retained and omitted ("ghost") effect sizes as the same
+# filled circle, differing only in opacity, so they are hard to tell apart.
+#
+# This wrapper instead: re-orders the rows by the leave-one-out estimate (so the panel reads
+# as an influence ranking); drops the decorative viridis mapping and shows the *retained*
+# effect sizes as solid grey dots and the *left-out* effect sizes as open orange rings, with
+# a legend that names them; draws each pooled mean as a white-filled black marker that stands
+# out against the cloud; and moves the legends out of the panel.
+# (Layer indices are fixed by orchaRd 2.2.0: 1 = retained bubbles, 3 = CI, 5 = mean, 8 = left-out.)
 style_loo <- function(loo, xlab, base_size = 11) {
     p   <- orchaRd::orchard_leave1out(loo, xlab = xlab, angle = 0)
     ord <- as.character(loo$mod_table$name)[order(loo$mod_table$estimate)]
-    p$layers[[1]]$aes_params$alpha     <- 0.18   # raw effect-size bubbles
-    p$layers[[8]]$aes_params$alpha     <- 0.12   # ghost (omitted) points
-    p$layers[[3]]$aes_params$linewidth <- 1.1    # 95% CI bar
+    lev <- c("Retained in fit", "Left out")
+    # Retained effect sizes: solid grey, filled. Map colour to a constant so it gets a legend
+    # key; drop the decorative viridis colour/fill mapping.
+    p$layers[[1]]$mapping$fill   <- NULL
+    p$layers[[1]]$mapping$colour <- ggplot2::aes(colour = "Retained in fit")$colour
+    p$layers[[1]]$aes_params$shape <- 16
+    p$layers[[1]]$aes_params$alpha <- 0.40
+    # Left-out effect sizes: open rings, more opaque, distinct colour.
+    p$layers[[8]]$mapping$colour <- ggplot2::aes(colour = "Left out")$colour
+    p$layers[[8]]$aes_params$shape  <- 1
+    p$layers[[8]]$aes_params$alpha  <- 0.85
+    p$layers[[8]]$aes_params$stroke <- 0.6
+    # CI bar and pooled-mean marker.
+    p$layers[[3]]$aes_params$linewidth <- 1.1
     p$layers[[3]]$aes_params$colour    <- "black"
-    p$layers[[5]]$mapping$fill         <- NULL    # mean marker: drop viridis fill mapping
-    p$layers[[5]]$aes_params$fill      <- "white"
-    p$layers[[5]]$aes_params$colour    <- "black"
-    p$layers[[5]]$aes_params$size      <- 2.6
-    p$layers[[5]]$aes_params$stroke    <- 0.8
+    p$layers[[5]]$mapping$fill   <- NULL
+    p$layers[[5]]$aes_params$fill   <- "white"
+    p$layers[[5]]$aes_params$colour <- "black"
+    p$layers[[5]]$aes_params$size   <- 2.6
+    p$layers[[5]]$aes_params$stroke <- 0.8
     p +
         ggplot2::scale_x_discrete(limits = ord) +
-        ggplot2::scale_colour_viridis_d(begin = 0.35, end = 0.95, guide = "none") +
-        ggplot2::scale_fill_viridis_d(begin = 0.35, end = 0.95, guide = "none") +
+        ggplot2::scale_colour_manual(values = c("Retained in fit" = "grey60", "Left out" = "#D55E00"),
+                                     breaks = lev, name = NULL) +
+        ggplot2::guides(colour = ggplot2::guide_legend(
+            override.aes = list(shape = c(16, 1), alpha = 1, size = 3, stroke = 0.8))) +
         ggplot2::theme_bw(base_size = base_size) +
         ggplot2::theme(legend.position = "right",
                        panel.grid.minor = ggplot2::element_blank())
 }
+
+# Build the four styled plots once, and save each as a manuscript deliverable (PNG + PDF)
+# in outputs/, mirroring save_taxon_fig() in the overall-effect chapter.
+loo_plots <- list(
+    study_hedges = style_loo(loo_study_hedges, "Hedges' g"),
+    study_or     = style_loo(loo_study_or,     "Log Odds Ratio (lnOR)"),
+    sp_hedges    = style_loo(loo_sp_hedges,     "Hedges' g"),
+    sp_or        = style_loo(loo_sp_or,         "Log Odds Ratio (lnOR)")
+)
+
+save_loo_fig <- function(plot_obj, basename, width, height) {
+    if (is.null(plot_obj)) return(invisible())
+    tryCatch({
+        d <- here::here("outputs", "1_effect_size_calculation_pipeline")
+        dir.create(d, recursive = TRUE, showWarnings = FALSE)
+        ggplot2::ggsave(file.path(d, paste0(basename, ".pdf")), plot_obj, width = width, height = height)
+        ggplot2::ggsave(file.path(d, paste0(basename, ".png")), plot_obj, width = width, height = height, dpi = 300, bg = "white")
+    }, error = function(e) warning("Could not save ", basename, ": ", conditionMessage(e)))
+}
+
+save_loo_fig(loo_plots$study_hedges, "loo_study_hedges",   width = 9, height = 16)
+save_loo_fig(loo_plots$study_or,     "loo_study_or",       width = 9, height = 10)
+save_loo_fig(loo_plots$sp_hedges,    "loo_species_hedges", width = 9, height = 9)
+save_loo_fig(loo_plots$sp_or,        "loo_species_or",     width = 9, height = 8)
 ```
 
 ### Leave one study out
@@ -818,7 +871,7 @@ full-data confidence band.
 #| fig-width: 9
 #| fig-height: 16
 #| fig-cap: "Leave-one-study-out for the combined Hedges' g. Each row drops one study (rows ordered by the leave-one-out mean); the white marker is the re-estimated pooled mean with its 95% CI, and the red lines are the full-data 95% CI."
-style_loo(loo_study_hedges, xlab = "Hedges' g")
+loo_plots$study_hedges
 ```
 
 #### Odds Ratio (binary outcomes)
@@ -830,7 +883,7 @@ style_loo(loo_study_hedges, xlab = "Hedges' g")
 #| fig-width: 9
 #| fig-height: 10
 #| fig-cap: "Leave-one-study-out for the combined log odds ratio. Each row drops one study (rows ordered by the leave-one-out mean); the white marker is the re-estimated pooled mean with its 95% CI, and the red lines are the full-data 95% CI."
-style_loo(loo_study_or, xlab = "Log Odds Ratio (lnOR)")
+loo_plots$study_or
 ```
 
 :::
@@ -855,7 +908,7 @@ the mean but does not overturn the direction or significance of the synthesis.
 #| fig-width: 9
 #| fig-height: 9
 #| fig-cap: "Leave-one-species-out for the combined Hedges' g. Each row drops one species (rows ordered by the leave-one-out mean); the white marker is the re-estimated pooled mean with its 95% CI, and the red lines are the full-data 95% CI."
-style_loo(loo_sp_hedges, xlab = "Hedges' g")
+loo_plots$sp_hedges
 ```
 
 #### Odds Ratio (binary outcomes)
@@ -867,7 +920,7 @@ style_loo(loo_sp_hedges, xlab = "Hedges' g")
 #| fig-width: 9
 #| fig-height: 8
 #| fig-cap: "Leave-one-species-out for the combined log odds ratio. Each row drops one species (rows ordered by the leave-one-out mean); the white marker is the re-estimated pooled mean with its 95% CI, and the red lines are the full-data 95% CI."
-style_loo(loo_sp_or, xlab = "Log Odds Ratio (lnOR)")
+loo_plots$sp_or
 ```
 
 :::
