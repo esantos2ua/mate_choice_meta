@@ -14,10 +14,14 @@
 *_files/
 !/docs/**/*_files/
 
-# Duplicate-file artifacts ("filename 2.ext", "dir 2") created during bulk
-# writes (e.g. a full `quarto render`). Source unconfirmed, but never commit them.
-* 2
-* 2.*
+# Duplicate-file artifacts ("filename 2.ext", "dir 3", "name 4.map") created
+# during bulk writes (e.g. a full `quarto render`) or cloud-sync conflicts.
+# Source unconfirmed, but never commit them. Covers any " <n>" / " <nn>" suffix,
+# with or without an extension.
+* [0-9]
+* [0-9].*
+* [0-9][0-9]
+* [0-9][0-9].*
 
 # Python
 __pycache__/
