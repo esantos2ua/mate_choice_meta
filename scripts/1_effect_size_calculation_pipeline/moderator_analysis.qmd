@@ -1,0 +1,826 @@
+---
+title: "Moderator Analysis: Explaining the Heterogeneity"
+subtitle: "Meta-Analytic Update of Mate-Choice Copying (MCC)"
+author: "Eduardo S. A. Santos & Collaborators"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    theme: cosmo
+---
+
+```{r}
+#| label: setup
+#| include: false
+# Ensure a CRAN mirror is set so package installation works in non-interactive renders
+if (is.null(getOption("repos")) || getOption("repos")["CRAN"] %in% c(NA, "@CRAN@")) {
+    options(repos = c(CRAN = "https://cloud.r-project.org"))
+}
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+if (!requireNamespace("orchaRd", quietly = TRUE)) {
+    pacman::p_load_gh("daniel1noble/orchaRd")
+}
+pacman::p_load(
+    readxl,
+    tidyverse,
+    metafor,
+    orchaRd,
+    patchwork,
+    DT,
+    scales,
+    emmeans
+)
+
+# Number formatter (cleans negative zeros), matching overall_effect.qmd
+fmt <- function(x, digits = 2) {
+    res <- sprintf(paste0("%.", digits, "f"), x)
+    zero_pattern <- paste0("-0.", paste0(rep("0", digits), collapse = ""))
+    res[res == zero_pattern] <- paste0("0.", paste0(rep("0", digits), collapse = ""))
+    res
+}
+
+# Inline p-value formatter
+pstr <- function(p) {
+    if (length(p) == 0 || is.na(p)) "p = NA" else if (p < 0.0001) "p < 0.0001" else paste0("p = ", fmt(p, 3))
+}
+
+# Significance-word helper
+sigw <- function(p, yes = "statistically significant", no = "non-significant") {
+    if (length(p) == 0 || is.na(p)) "indeterminate" else if (p < 0.05) yes else no
+}
+
+# Helper (identical to overall_effect.qmd) that rewrites orchard k-labels to
+# "estimate [CI lower, CI upper]\nk = K (studies)". Wrapped in tryCatch by callers.
+add_ci_labels <- function(plot_obj, orchard_results) {
+    est <- sprintf("%.2f", orchard_results$mod_table$estimate)
+    ci_l <- sprintf("%.2f", orchard_results$mod_table$lowerCL)
+    ci_u <- sprintf("%.2f", orchard_results$mod_table$upperCL)
+
+    orig_labels <- plot_obj$layers[[6]]$aes_params$label
+    new_labels <- c()
+    for (i in seq_along(orig_labels)) {
+        nums <- regmatches(orig_labels[i], gregexpr("[0-9]+", orig_labels[i]))[[1]]
+        if (length(nums) >= 2) {
+            k_text <- paste0("k = ", nums[1], " (", nums[2], ")")
+        } else {
+            k_text <- orig_labels[i]
+        }
+        new_labels[i] <- paste0(est[i], " [", ci_l[i], ", ", ci_u[i], "]\n", k_text)
+    }
+    plot_obj$layers[[6]]$aes_params$label <- new_labels
+    plot_obj$layers[[6]]$geom_params$parse <- FALSE
+    plot_obj$layers[[6]]$aes_params$hjust <- "right"
+    plot_obj$layers[[6]]$aes_params$vjust <- 0.5
+    plot_obj$layers[[6]]$aes_params$size <- 3.0
+    plot_obj
+}
+
+# Save a figure as a deliverable (PNG + PDF) in outputs/ (matches overall_effect.qmd).
+save_mod_fig <- function(plot_obj, basename, width = 10, height = 5) {
+    if (is.null(plot_obj)) return(invisible())
+    tryCatch({
+        d <- here::here("outputs", "1_effect_size_calculation_pipeline")
+        dir.create(d, recursive = TRUE, showWarnings = FALSE)
+        ggplot2::ggsave(file.path(d, paste0(basename, ".png")), plot_obj, width = width, height = height, dpi = 300, bg = "white")
+        ggplot2::ggsave(file.path(d, paste0(basename, ".pdf")), plot_obj, width = width, height = height)
+    }, error = function(e) warning("Could not save ", basename, ": ", conditionMessage(e)))
+}
+```
+
+## Why a Moderator Analysis? {#sec-motivation}
+
+The overall synthesis ([Heterogeneity Decomposition](overall_effect.qmd#sec-heterogeneity)) showed that the updated evidence base is dominated by **persistent, largely unexplained heterogeneity**. Total $I^2$ was high across every model, yet very little of that variance sat at the *study* or *phylogenetic* level. Instead it accumulated at the **within-study (observation)** and **non-phylogenetic species** levels — exactly where experimental and ecological distinctions among individual trials live. The disagreement among mate-choice copying estimates is therefore not mainly a matter of some laboratories producing systematically larger effects, nor of copying being concentrated in particular lineages; it points to **genuine biological and methodological moderators** that the intercept-only models could not capture.
+
+During extraction we collected several candidate moderators that are plausible sources of this within-study/within-species variation:
+
+* **Copying mechanism** — *generalized* (copying a *type* of male) versus *individual* (copying a *specific* demonstrated male);
+* **Modality of the social cue** — the sensory channel of the demonstration (visual, chemical, or acoustic);
+* **Virginity of the observer** — whether the choosing individual was sexually naïve;
+* **Relative age of the demonstrator** — the age of the demonstrator relative to the observer.
+
+This chapter does two things, in order:
+
+1. **Diagnostics (Part 1).** Before fitting anything, we audit each candidate moderator *in the new extraction* — how its levels are populated, how much is missing, and how many studies/species back each level — and we check whether the coding can be reconciled with the original meta-analyses. This determines **which** moderators are analysable and **on which dataset** (new-only versus combined).
+2. **Uni-moderator models (Part 2).** For the moderators that pass the diagnostic, we fit single-moderator multilevel models using the same `rma.mv` machinery, omnibus $Q_M$ test, and partial-$I^2$ heterogeneity decomposition used elsewhere in this workflow, and report whether each moderator explains a meaningful share of the heterogeneity.
+
+> These analyses are **exploratory**. With the dataset at its current size, several moderator levels are thin, and we have not pre-registered these tests. We report them to map the most promising directions for future, ideally pre-registered, syntheses — not as confirmatory claims.
+
+---
+
+## Data Loading & Moderator Construction {#sec-data}
+
+We load the new extraction and derive the four candidate moderators from the extraction columns. We *also* load the moderator columns from the two original datasets (Davies et al. 2020 for Hedges' $g$; Jones & DuVal 2019 for the log odds ratio) so we can later test whether any moderator can be harmonised into a **combined** analysis. Each effect size in the new extraction carries **both** a Hedges' $d$ and an odds ratio, so the new-extraction moderator coverage is identical across the two effect-size scales.
+
+```{r}
+#| label: load_data
+#| message: false
+#| warning: false
+path_new    <- here::here("data", "1_effect_size_calculation_pipeline", "Data Extraction Mate Choice Meta Analysis.xlsx")
+path_davies <- here::here("data", "original_meta_analyses_datasets", "Davies_et_al_2020_Final_data.xlsx")
+path_jones  <- here::here("data", "original_meta_analyses_datasets", "Jones_DuVal_2019_data.CSV")
+
+db_new_raw <- readxl::read_excel(path_new, sheet = "EduardoExtraction")
+db_davies  <- readxl::read_excel(path_davies, sheet = "Data")
+db_jones   <- readr::read_csv(path_jones, show_col_types = FALSE)
+
+# ---------------------------------------------------------------------------
+# New extraction: filter excluded rows, coerce effect sizes, derive moderators.
+# ---------------------------------------------------------------------------
+# Modality recode: the extraction column `experimentalTypeStimulus` records the
+# *type of demonstration*, which maps onto a sensory channel as follows —
+#   Copulation / Association / Presence of eggs in nest -> Visual
+#   Odour stimuli                                        -> Chemical
+#   Acoustic stimuli                                     -> Acoustic
+# `demo_type` keeps the two well-populated *visual* sub-types (Copulation vs
+# Association) for a focused, better-powered sensitivity contrast.
+db_new <- db_new_raw %>%
+    filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
+    mutate(
+        across(c(
+            effectSizeCalculatedHedgesD, effectSizeCalculatedHedgesDVariance,
+            effectSizeCalculatedOddsRatio, effectSizeCalculatedOddsRatioVariance
+        ), as.numeric),
+        logOddsRatio = log(effectSizeCalculatedOddsRatio),
+        logOddsRatioVariance = effectSizeCalculatedOddsRatioVariance,
+        stim_raw = str_squish(experimentalTypeStimulus),
+        mech = factor(str_squish(experimentalTypeCopyingMechanism), levels = c("Generalized", "Individual")),
+        modality = factor(dplyr::case_when(
+            stim_raw %in% c("Copulation", "Association", "Presence of eggs in nest") ~ "Visual",
+            stim_raw %in% c("Odour stimuli")    ~ "Chemical",
+            stim_raw %in% c("Acoustic stimuli") ~ "Acoustic",
+            TRUE ~ NA_character_
+        ), levels = c("Visual", "Chemical", "Acoustic")),
+        demo_type = factor(dplyr::case_when(
+            stim_raw == "Copulation"  ~ "Copulation",
+            stim_raw == "Association" ~ "Association",
+            TRUE ~ NA_character_
+        ), levels = c("Association", "Copulation")),
+        virgin = factor(str_squish(experimentalTypeVirgin), levels = c("No", "Yes")),
+        demo_age = factor(dplyr::na_if(str_squish(experimentalModelAge), "NA"))
+    )
+
+# Tidy per-scale new-extraction frames (yi, vi, IDs, species epithet, moderators)
+make_new <- function(yi_col, vi_col) {
+    db_new %>%
+        filter(!is.na(.data[[yi_col]]), !is.na(.data[[vi_col]]), .data[[vi_col]] > 0) %>%
+        transmute(
+            yi = .data[[yi_col]],
+            vi = .data[[vi_col]],
+            identifierStudyId = as.character(identifierStudyId),
+            identifierEffectSizeID = as.character(identifierEffectSizeID),
+            taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
+            mech, modality, demo_type, virgin, demo_age,
+            Dataset_Source = "New Extraction (Santos)"
+        )
+}
+new_hedges <- make_new("effectSizeCalculatedHedgesD", "effectSizeCalculatedHedgesDVariance")
+new_or     <- make_new("logOddsRatio", "logOddsRatioVariance")
+
+# ---------------------------------------------------------------------------
+# Original datasets: extract ONLY the moderator columns we may be able to
+# harmonise, with their native codings, for the diagnostic + combined models.
+#   * Davies (Hedges' g): `Generalised_or_individual`  -> copying mechanism
+#   * Jones  (log OR)    : `Virgin` (Y/N)              -> observer virginity
+# ---------------------------------------------------------------------------
+davies_hedges <- db_davies %>%
+    mutate(yi = as.numeric(Hedges_d_directional), vi = as.numeric(Variance)) %>%
+    filter(!is.na(yi), !is.na(vi), vi > 0) %>%
+    transmute(
+        yi, vi,
+        identifierStudyId = as.character(Author),
+        identifierEffectSizeID = as.character(Effect_size_no),
+        taxonomySpecies = str_to_lower(word(as.character(Species_latin), -1)),
+        mech = dplyr::recode(str_squish(Generalised_or_individual), "Generalised" = "Generalized"),
+        Dataset_Source = "Original (Davies 2020)"
+    ) %>%
+    mutate(mech = factor(mech, levels = c("Generalized", "Individual")))
+
+jones_or <- db_jones %>%
+    filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
+    transmute(
+        yi = lnOR, vi = VlnOR,
+        identifierStudyId = as.character(study),
+        identifierEffectSizeID = as.character(study_Exp),
+        taxonomySpecies = str_to_lower(as.character(Species)),
+        virgin = dplyr::recode(str_squish(Virgin), "Y" = "Yes", "N" = "No"),
+        Dataset_Source = "Original (Jones & DuVal 2019)"
+    ) %>%
+    mutate(virgin = factor(virgin, levels = c("No", "Yes")))
+
+# Combined frames for the two harmonisable moderators
+comb_hedges_mech <- bind_rows(
+    new_hedges %>% select(yi, vi, identifierStudyId, identifierEffectSizeID, taxonomySpecies, mech, Dataset_Source),
+    davies_hedges %>% select(yi, vi, identifierStudyId, identifierEffectSizeID, taxonomySpecies, mech, Dataset_Source)
+)
+comb_or_virgin <- bind_rows(
+    new_or %>% select(yi, vi, identifierStudyId, identifierEffectSizeID, taxonomySpecies, virgin, Dataset_Source),
+    jones_or %>% select(yi, vi, identifierStudyId, identifierEffectSizeID, taxonomySpecies, virgin, Dataset_Source)
+)
+```
+
+---
+
+## Part 1 — Moderator Diagnostics {#sec-diagnostics}
+
+### Candidate moderators and their extraction columns
+
+```{r}
+#| label: moderator_dictionary
+#| echo: false
+mod_dict <- tibble::tribble(
+    ~Moderator,                  ~`Extraction column`,                  ~`Levels (as analysed)`,
+    "Copying mechanism",         "experimentalTypeCopyingMechanism",    "Generalized / Individual",
+    "Social-cue modality",       "experimentalTypeStimulus (recoded)",  "Visual / Chemical / Acoustic",
+    "Observer virginity",        "experimentalTypeVirgin",              "No / Yes",
+    "Demonstrator relative age", "experimentalModelAge",                "Same-age / (other)"
+)
+DT::datatable(
+    mod_dict,
+    caption = "The four candidate moderators flagged in the discussion and the new-extraction columns they come from.",
+    options = list(dom = "t", columnDefs = list(list(className = "dt-left", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+### Coverage in the new extraction {#sec-coverage}
+
+For each candidate moderator we tabulate, per level, the number of effect sizes (`k`), the number of distinct studies and species backing that level, and the percentage of effect sizes with a missing value. A moderator is only worth modelling if it **varies**, if **each level is backed by more than one study** (so the moderator is not perfectly confounded with a single study), and if **missingness is low**.
+
+```{r}
+#| label: coverage_table
+#| echo: false
+# Coverage is computed on the new-extraction Hedges' frame; because every new
+# effect size has both a Hedges' d and an OR, the OR frame is identical.
+coverage_one <- function(dat, var, label) {
+    total <- nrow(dat)
+    dat %>%
+        mutate(.lvl = .data[[var]]) %>%
+        mutate(.lvl = forcats::fct_na_value_to_level(factor(.lvl), level = "(missing)")) %>%
+        group_by(Level = .lvl) %>%
+        summarise(
+            k_es = dplyr::n(),
+            studies = dplyr::n_distinct(identifierStudyId),
+            species = dplyr::n_distinct(taxonomySpecies),
+            .groups = "drop"
+        ) %>%
+        mutate(Moderator = label, `% of ES` = round(100 * k_es / total, 1)) %>%
+        select(Moderator, Level, k_es, studies, species, `% of ES`)
+}
+
+coverage_tbl <- dplyr::bind_rows(
+    coverage_one(new_hedges, "mech", "Copying mechanism"),
+    coverage_one(new_hedges, "modality", "Social-cue modality"),
+    coverage_one(new_hedges, "demo_type", "Demonstration sub-type (visual)"),
+    coverage_one(new_hedges, "virgin", "Observer virginity"),
+    coverage_one(new_hedges, "demo_age", "Demonstrator relative age")
+) %>%
+    rename(`k (effect sizes)` = k_es, Studies = studies, Species = species)
+
+DT::datatable(
+    coverage_tbl,
+    caption = "New-extraction coverage of each candidate moderator: effect sizes, backing studies and species, and percentage of effect sizes per level. Identical across the Hedges' g and log OR scales (every new effect size carries both).",
+    options = list(dom = "t", pageLength = 20, columnDefs = list(list(className = "dt-center", targets = c(2, 3, 4, 5)))),
+    rownames = FALSE
+)
+```
+
+```{r}
+#| label: coverage_inline
+#| include: false
+# Pull a few numbers for the narrative
+get_cov <- function(modlabel, level, col) {
+    v <- coverage_tbl[[col]][coverage_tbl$Moderator == modlabel & coverage_tbl$Level == level]
+    if (length(v) == 0) NA else v[1]
+}
+n_age_levels <- dplyr::n_distinct(na.omit(new_hedges$demo_age))
+```
+
+### The social-cue modality recode {#sec-modality-recode}
+
+The extraction column `experimentalTypeStimulus` records the *form of the demonstration* rather than a sensory label directly, so we map it onto a modality:
+
+| `experimentalTypeStimulus` | Sensory modality |
+|---|---|
+| Copulation, Association, Presence of eggs in nest | **Visual** |
+| Odour stimuli | **Chemical** |
+| Acoustic stimuli | **Acoustic** |
+
+The coverage table makes the central limitation plain: the new extraction is **overwhelmingly visual**, with the *Chemical* and *Acoustic* levels each resting on a handful of effect sizes from very few studies. A three-level modality model can be fitted, but its non-visual contrasts are effectively confounded with one or two studies/species and must be read with extreme caution. We therefore also define `demo_type` — *Copulation* versus *Association*, the two well-populated visual sub-types — as a better-powered sensitivity contrast within the dominant modality.
+
+### Harmonisation with the original meta-analyses {#sec-harmonisation}
+
+The four moderators were coded under a single protocol in the **new extraction**, but the original datasets recorded only some of them, and not always on a compatible scale. The table below records, for each moderator, whether a compatible variable exists in Davies et al. 2020 (Hedges' $g$) and Jones & DuVal 2019 (log OR), and the resulting verdict.
+
+```{r}
+#| label: harmonisation_table
+#| echo: false
+harmon <- tibble::tribble(
+    ~Moderator,                  ~`New extraction`,        ~`Davies 2020 (Hedges' g)`,                         ~`Jones & DuVal 2019 (log OR)`,                       ~Verdict,
+    "Copying mechanism",         "Generalized / Individual","Generalised_or_individual — same dichotomy",        "not recorded",                                        "Combinable on the Hedges' g scale (new + Davies)",
+    "Social-cue modality",       "Visual / Chemical / Acoustic","Demonstration_type — a behavioural-context code, not a sensory modality", "not recorded",                  "New-only (constructs do not match)",
+    "Observer virginity",        "No / Yes",               "not recorded",                                      "Virgin (Y/N) — same construct",                       "Combinable on the log OR scale (new + Jones)",
+    "Demonstrator relative age", "Same-age / (other)",     "not recorded",                                      "not recorded",                                        "Not analysable (no variation; see below)"
+)
+DT::datatable(
+    harmon,
+    caption = "Cross-dataset availability and coding of each candidate moderator, with the harmonisation verdict.",
+    options = list(dom = "t", columnDefs = list(list(className = "dt-left", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+### Diagnostic verdict {#sec-verdict}
+
+Putting the coverage and harmonisation evidence together:
+
+* **Copying mechanism (Generalized vs Individual)** — well balanced in the new extraction (`r get_cov("Copying mechanism", "Generalized", "k (effect sizes)")` vs `r get_cov("Copying mechanism", "Individual", "k (effect sizes)")` effect sizes, each from many studies) and coded identically by Davies. **Analysable new-only on both scales, and combinable on the Hedges' $g$ scale.**
+* **Observer virginity (No vs Yes)** — both levels well populated (`r get_cov("Observer virginity", "No", "k (effect sizes)")` vs `r get_cov("Observer virginity", "Yes", "k (effect sizes)")`) and coded identically by Jones & DuVal. **Analysable new-only on both scales, and combinable on the log OR scale.**
+* **Social-cue modality (Visual/Chemical/Acoustic)** — analysable **new-only**, but the non-visual levels are sparse and study-confounded; treated as exploratory, with the Copulation-vs-Association visual contrast as a sensitivity check. The original "demonstration type" codes a different construct and cannot be merged.
+* **Demonstrator relative age** — **dropped**: the new extraction records `r n_age_levels` non-missing level(s) ("Same-age"), i.e. essentially **no variation**, so it cannot enter a model. The original datasets carry no compatible variable.
+
+**Bottom line.** Three moderators (mechanism, modality, virginity) can be tested on the **new dataset** for both effect-size scales. Two of them can additionally be tested on a **combined dataset** where the construct harmonises cleanly — mechanism on Hedges' $g$ (new + Davies) and virginity on log OR (new + Jones). Demonstrator age is not analysable. Part 2 implements exactly these models.
+
+---
+
+## Part 2 — Uni-Moderator Models {#sec-models}
+
+### Modelling approach
+
+Each model is a single-moderator multilevel meta-analysis fitted with `metafor::rma.mv()`, mirroring the [taxonomic-moderator model](overall_effect.qmd#sec-taxonomic-moderator):
+
+* **Dependency.** A variance–covariance matrix from `vcalc()` ($\rho = 0.5$) handles multiple effect sizes within a study.
+* **Random effects.** Study (`identifierStudyId`), residual effect-size (`identifierEffectSizeID`), and a non-phylogenetic species intercept (`taxonomySpecies`). The phylogenetic term is **omitted**: the heterogeneity decomposition showed it carries negligible variance, and dropping it keeps these smaller moderator models identifiable (the same choice made for the taxonomic model).
+* **Heteroscedasticity with a fallback cascade.** We first attempt a heteroscedastic structure that lets the **residual (within-study) variance differ by moderator level** (`~ moderator | effect-size`, `struct = "HCS"`, `rho = 0`), trying several optimisers; if it errors we fall back to a homoscedastic structure. This is the `orchaRd` 2.0 recommendation for meta-regression with heterogeneous variances [@nakagawaOrchaRd2Visualising2023].
+* **Inference.** The moderator is intercept-coded (`mods = ~ moderator`); per-level means, CIs, and prediction intervals come from `orchaRd::mod_results()` (marginalised means via `emmeans`), and the among-level test is the model's omnibus $Q_M$. Heterogeneity is decomposed with partial $I^2$ from `orchaRd::i2_ml()`.
+
+```{r}
+#| label: fit_function
+#| message: false
+#| warning: false
+# Generalised heteroscedastic single-moderator fitter (adapted from
+# fit_taxon_hetero_mv in overall_effect.qmd). Returns the chosen model plus a
+# cascade log so the reader can see which structure was actually used.
+fit_mod_hetero <- function(dat, group_var, group_levels, yi = "yi", vi = "vi",
+                           cluster_var = "identifierStudyId",
+                           obs_var = "identifierEffectSizeID", rho = 0.5) {
+    dat2 <- dat %>%
+        filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0, !is.na(.data[[group_var]]))
+    if (nrow(dat2) == 0) return(NULL)
+    dat2[[group_var]] <- droplevels(factor(dat2[[group_var]], levels = group_levels))
+
+    VCV <- metafor::vcalc(vi = dat2[[vi]], cluster = dat2[[cluster_var]], obs = dat2[[obs_var]], rho = rho, data = dat2)
+    mods_f <- stats::as.formula(paste0("~ ", group_var))
+    obs_f  <- stats::as.formula(paste0("~ ", group_var, " | ", obs_var))
+
+    opt_grid <- list(
+        "nlminb"            = list(optimizer = "nlminb", iter.max = 10000, eval.max = 10000),
+        "optim/BFGS"        = list(optimizer = "optim", optmethod = "BFGS", maxit = 10000),
+        "optim/L-BFGS-B"    = list(optimizer = "optim", optmethod = "L-BFGS-B", maxit = 10000),
+        "optim/Nelder-Mead" = list(optimizer = "optim", optmethod = "Nelder-Mead", maxit = 50000, reltol = 1e-9)
+    )
+    build <- function(cand, ctrl) {
+        args <- c(
+            list(yi = dat2[[yi]], V = VCV, mods = mods_f, random = cand$random,
+                 test = "t", dfs = "contain", method = "REML", sparse = TRUE, data = dat2),
+            cand$args
+        )
+        if (!is.null(cand$struct)) args$struct <- cand$struct
+        if (!is.null(ctrl)) args$control <- ctrl
+        do.call(metafor::rma.mv, args)
+    }
+    candidates <- list(
+        list(spec = "Heteroscedastic (residual only, per level; HCS, rho = 0)",
+             random = list(~ 1 | identifierStudyId, obs_f, ~ 1 | taxonomySpecies),
+             struct = "HCS", args = list(rho = 0), het = TRUE),
+        list(spec = "Homoscedastic (single variance per component)",
+             random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+             struct = NULL, args = list(), het = FALSE)
+    )
+    fit_once <- function(cand, ctrl) {
+        warns <- character(0); t0 <- Sys.time()
+        mod <- tryCatch(
+            withCallingHandlers(build(cand, ctrl),
+                warning = function(w) { warns[[length(warns) + 1L]] <<- conditionMessage(w); invokeRestart("muffleWarning") }),
+            error = function(e) structure(list(msg = conditionMessage(e)), class = "mod_fit_error")
+        )
+        list(mod = mod, warns = warns, secs = as.numeric(difftime(Sys.time(), t0, units = "secs")))
+    }
+    attempt <- function(cand) {
+        if (!isTRUE(cand$het)) {
+            r <- fit_once(cand, NULL); failed <- inherits(r$mod, "mod_fit_error")
+            return(list(model = if (failed) NULL else r$mod, failed = failed,
+                        error = if (failed) r$mod$msg else NA_character_, warnings = r$warns,
+                        secs = r$secs, optimizer = "default (nlminb)"))
+        }
+        msgs <- character(0); total <- 0
+        for (onm in names(opt_grid)) {
+            r <- fit_once(cand, opt_grid[[onm]]); total <- total + r$secs
+            if (!inherits(r$mod, "mod_fit_error")) {
+                return(list(model = r$mod, failed = FALSE, error = NA_character_,
+                            warnings = r$warns, secs = total, optimizer = onm))
+            }
+            msgs <- c(msgs, paste0(onm, ": ", r$mod$msg))
+        }
+        list(model = NULL, failed = TRUE, error = paste(msgs, collapse = " || "),
+             warnings = character(0), secs = total, optimizer = NA_character_)
+    }
+    diag_rows <- list(); chosen <- NULL; chosen_spec <- NA_character_
+    for (i in seq_along(candidates)) {
+        cand <- candidates[[i]]
+        if (!is.null(chosen)) {
+            diag_rows[[i]] <- tibble::tibble(stage = i, structure = cand$spec, status = "not attempted",
+                optimizer = NA_character_, seconds = NA_real_, n_warnings = NA_integer_,
+                detail = "an earlier structure succeeded")
+            next
+        }
+        a <- attempt(cand)
+        status <- if (a$failed) "ERROR" else if (length(a$warnings) > 0) "OK (with warnings)" else "OK"
+        detail <- if (a$failed) a$error else if (length(a$warnings) > 0) paste(a$warnings, collapse = " || ") else "clean fit"
+        diag_rows[[i]] <- tibble::tibble(stage = i, structure = cand$spec, status = status,
+            optimizer = a$optimizer, seconds = round(a$secs, 2), n_warnings = length(a$warnings), detail = detail)
+        if (!a$failed) { chosen <- a$model; chosen_spec <- cand$spec }
+    }
+    diagnostics <- dplyr::bind_rows(diag_rows)
+    if (is.null(chosen)) {
+        warning("All structures failed for moderator '", group_var, "'.")
+        return(list(data = dat2, VCV = VCV, model = NULL, spec = "ALL FAILED",
+                    diagnostics = diagnostics, group_var = group_var))
+    }
+    list(data = dat2, VCV = VCV, model = chosen, spec = chosen_spec,
+         diagnostics = diagnostics, group_var = group_var)
+}
+
+# Omnibus among-level test (QM tests all non-intercept coefficients jointly).
+among_test <- function(res) {
+    if (is.null(res) || is.null(res$model)) return(NULL)
+    list(QM = res$model$QM, QMp = res$model$QMp, QMdf = res$model$QMdf)
+}
+```
+
+```{r}
+#| label: fit_all_models
+#| message: false
+#| warning: false
+# Moderator registry: each entry is fitted on both new-extraction scales.
+mod_specs <- list(
+    mech      = list(var = "mech",      levels = c("Generalized", "Individual"),
+                     label = "Copying mechanism",
+                     palette = c("Generalized" = "#E69F00", "Individual" = "#56B4E9")),
+    modality  = list(var = "modality",  levels = c("Visual", "Chemical", "Acoustic"),
+                     label = "Social-cue modality",
+                     palette = c("Visual" = "#009E73", "Chemical" = "#CC79A7", "Acoustic" = "#D55E00")),
+    demo_type = list(var = "demo_type", levels = c("Association", "Copulation"),
+                     label = "Demonstration sub-type (visual)",
+                     palette = c("Association" = "#0072B2", "Copulation" = "#E69F00")),
+    virgin    = list(var = "virgin",    levels = c("No", "Yes"),
+                     label = "Observer virginity",
+                     palette = c("No" = "#0072B2", "Yes" = "#D55E00"))
+)
+
+# Fit every moderator on the new-extraction Hedges' g and log OR frames.
+fits_new <- list()
+for (key in names(mod_specs)) {
+    s <- mod_specs[[key]]
+    fits_new[[key]] <- list(
+        hedges = fit_mod_hetero(new_hedges, s$var, s$levels),
+        or     = fit_mod_hetero(new_or,     s$var, s$levels)
+    )
+}
+
+# Combined-dataset extensions (harmonisable moderators only).
+fit_comb_mech_hedges  <- fit_mod_hetero(comb_hedges_mech, "mech",   c("Generalized", "Individual"))
+fit_comb_virgin_or    <- fit_mod_hetero(comb_or_virgin,   "virgin", c("No", "Yes"))
+
+# Persist all fits so they can be inspected without re-rendering.
+tryCatch({
+    d <- here::here("outputs", "1_effect_size_calculation_pipeline")
+    dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    saveRDS(list(new = fits_new, comb_mech_hedges = fit_comb_mech_hedges,
+                 comb_virgin_or = fit_comb_virgin_or, saved_at = Sys.time()),
+            file.path(d, "moderator_model_fits.rds"))
+}, error = function(e) warning("Could not save moderator_model_fits.rds: ", conditionMessage(e)))
+```
+
+### Reporting helpers
+
+```{r}
+#| label: report_helpers
+#| message: false
+#| warning: false
+# Partial I^2 (long form) for a fitted moderator model.
+comp_labels <- c(
+    Total                  = "Total",
+    identifierStudyId      = "Study",
+    identifierEffectSizeID = "Effect size (residual)",
+    taxonomySpecies        = "Species (non-phylogenetic)"
+)
+# orchaRd::i2_ml() does not support the heteroscedastic (HCS) structure that the
+# cascade prefers, so for the partial-I² *decomposition* we compute i2_ml on a
+# homoscedastic refit of the same data (one variance per random effect). This is
+# exactly how the overall synthesis reports partial I² (from the homoscedastic
+# intercept models); the heteroscedastic model is retained for the means/Q_M.
+i2_homosc_refit <- function(res) {
+    if (is.null(res) || is.null(res$model) || is.null(res$data)) return(NULL)
+    d <- res$data
+    m <- tryCatch(
+        metafor::rma.mv(
+            yi = d$yi, V = res$VCV,
+            mods = stats::as.formula(paste0("~ ", res$group_var)),
+            random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+            test = "t", method = "REML", sparse = TRUE, data = d
+        ),
+        error = function(e) NULL
+    )
+    if (is.null(m)) return(NULL)
+    tryCatch(orchaRd::i2_ml(m), error = function(e) NULL)
+}
+
+get_i2_long <- function(res, analysis) {
+    if (is.null(res) || is.null(res$model)) return(NULL)
+    v <- tryCatch(orchaRd::i2_ml(res$model), error = function(e) NULL)
+    if (is.null(v)) v <- i2_homosc_refit(res)
+    if (is.null(v)) return(NULL)
+    tibble::tibble(Analysis = analysis, Component = sub("^I2_", "", names(v)), I2 = round(as.numeric(v), 1)) %>%
+        mutate(Component = dplyr::recode(Component, !!!comp_labels))
+}
+
+# Total I^2: orchaRd on the fitted model, else on the homoscedastic refit (i2_ml
+# does not support the HCS structure), else a Higgins typical-variance fallback.
+total_i2 <- function(res) {
+    if (is.null(res) || is.null(res$model)) return(NA_real_)
+    i2 <- tryCatch(orchaRd::i2_ml(res$model), error = function(e) NULL)
+    if (is.null(i2)) i2 <- i2_homosc_refit(res)
+    if (!is.null(i2) && any(grepl("Total", names(i2)))) return(as.numeric(i2[grep("Total", names(i2))[1]]))
+    m <- res$model; vi <- res$data$vi; wi <- 1 / vi; k <- length(vi)
+    s2 <- (k - 1) * sum(wi) / (sum(wi)^2 - sum(wi^2))
+    vc <- sum(c(m$sigma2, m$tau2, m$gamma2), na.rm = TRUE)
+    100 * vc / (vc + s2)
+}
+
+# Per-level marginalised means table.
+level_means <- function(res, analysis) {
+    if (is.null(res) || is.null(res$model)) return(NULL)
+    mr <- orchaRd::mod_results(res$model, mod = res$group_var, group = "identifierStudyId")
+    mr$mod_table %>%
+        transmute(Analysis = analysis, Level = name,
+                  Estimate = round(estimate, 3),
+                  `CI lower` = round(lowerCL, 3), `CI upper` = round(upperCL, 3),
+                  `PI lower` = round(lowerPR, 3), `PI upper` = round(upperPR, 3))
+}
+
+# Orchard plot for a fitted moderator model.
+plot_mod_orchard <- function(res, palette, xlab, title) {
+    if (is.null(res) || is.null(res$model)) return(NULL)
+    mr <- orchaRd::mod_results(res$model, mod = res$group_var, group = "identifierStudyId")
+    oc <- orchaRd::orchard_plot(mr, xlab = xlab, angle = 0, g = TRUE, k = TRUE)
+    oc <- tryCatch(add_ci_labels(oc, mr), error = function(e) { warning("add_ci_labels failed: ", conditionMessage(e)); oc })
+    oc +
+        ggplot2::scale_colour_manual(values = palette, name = NULL, aesthetics = c("colour", "fill")) +
+        ggplot2::ggtitle(title) +
+        ggplot2::theme(plot.title = ggplot2::element_text(face = "bold", hjust = 0.5), legend.position = "none")
+}
+
+# Compact omnibus + I2 one-liner for a model.
+qm_line <- function(res, scale_label) {
+    a <- among_test(res); i2 <- total_i2(res)
+    if (is.null(a)) return(paste0("*", scale_label, ":* model did not fit."))
+    paste0("*", scale_label, ":* total $I^2$ = ", fmt(i2, 1), "%; omnibus $Q_M$ = ",
+           fmt(a$QM, 2), " (", pstr(a$QMp), "), a **", sigw(a$QMp), "** difference among levels.")
+}
+```
+
+### New-extraction models {#sec-new-models}
+
+Each tab below presents one moderator, with the Hedges' $g$ and log odds ratio models side by side: the omnibus test and total heterogeneity, the per-level means, the partial-$I^2$ decomposition, the fit-cascade log, and the orchard plots.
+
+::: {.panel-tabset}
+
+```{r}
+#| label: new_model_panels
+#| echo: false
+#| results: asis
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 9
+for (key in names(mod_specs)) {
+    s <- mod_specs[[key]]
+    rh <- fits_new[[key]]$hedges
+    ro <- fits_new[[key]]$or
+
+    cat("\n\n#### ", s$label, "\n\n")
+    cat(qm_line(rh, "Hedges' g"), "\n\n")
+    cat(qm_line(ro, "Log odds ratio"), "\n\n")
+
+    # Per-level means
+    means_tbl <- dplyr::bind_rows(level_means(rh, "Hedges' g"), level_means(ro, "Log OR"))
+    if (!is.null(means_tbl) && nrow(means_tbl) > 0) {
+        print(htmltools::tagList(DT::datatable(
+            means_tbl,
+            caption = paste0("Marginalised mean effect per level — ", s$label, " (new extraction)."),
+            options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = "_all"))),
+            rownames = FALSE
+        )))
+    }
+
+    # Partial I2
+    i2_tbl <- dplyr::bind_rows(get_i2_long(rh, "Hedges' g"), get_i2_long(ro, "Log OR"))
+    if (!is.null(i2_tbl) && nrow(i2_tbl) > 0 && "Component" %in% names(i2_tbl)) {
+        i2_tbl <- tidyr::pivot_wider(i2_tbl, names_from = Component, values_from = I2)
+    }
+    if (!is.null(i2_tbl) && nrow(i2_tbl) > 0) {
+        print(htmltools::tagList(DT::datatable(
+            i2_tbl,
+            caption = paste0("Partial I² (%) by random effect — ", s$label, " (new extraction; decomposition from a homoscedastic refit, since i2_ml does not support the HCS structure)."),
+            options = list(dom = "t", columnDefs = list(list(className = "dt-center", targets = "_all"))),
+            rownames = FALSE
+        )))
+    }
+
+    # Fit cascade log
+    diag_tbl <- dplyr::bind_rows(
+        if (!is.null(rh)) dplyr::mutate(rh$diagnostics, Analysis = "Hedges' g"),
+        if (!is.null(ro)) dplyr::mutate(ro$diagnostics, Analysis = "Log OR")
+    )
+    if (!is.null(diag_tbl) && nrow(diag_tbl) > 0) {
+        diag_tbl <- diag_tbl %>% dplyr::select(Analysis, structure, status, optimizer, seconds, n_warnings)
+        print(htmltools::tagList(DT::datatable(
+            diag_tbl,
+            caption = paste0("Fit-cascade log — ", s$label, ". The first OK row per analysis is the structure used."),
+            options = list(dom = "t", columnDefs = list(list(className = "dt-left", targets = "_all"))),
+            rownames = FALSE
+        )))
+    }
+
+    # Orchard plots (stacked)
+    ph <- plot_mod_orchard(rh, s$palette, "Hedges' g", paste0(s$label, " — Hedges' g"))
+    po <- plot_mod_orchard(ro, s$palette, "Log Odds Ratio (lnOR)", paste0(s$label, " — log OR"))
+    save_mod_fig(ph, paste0("moderator_orchard_", key, "_hedges"))
+    save_mod_fig(po, paste0("moderator_orchard_", key, "_or"))
+    if (!is.null(ph) && !is.null(po)) {
+        fig <- (ph / po) + patchwork::plot_annotation(
+            tag_levels = "a", tag_prefix = "(", tag_suffix = ")",
+            title = paste0("Mate-choice copying by ", tolower(s$label), " (new extraction)"),
+            theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)))
+        save_mod_fig(fig, paste0("moderator_orchard_", key), width = 10, height = 9)
+        print(fig)
+    } else {
+        if (!is.null(ph)) print(ph)
+        if (!is.null(po)) print(po)
+    }
+    cat("\n\n")
+}
+```
+
+:::
+
+### Combined-dataset extensions {#sec-combined-models}
+
+Where the construct harmonises cleanly with an original dataset, we re-fit the moderator on the **combined** data. This roughly triples the sample and lets us ask whether the (null) new-extraction patterns hold once the legacy effect sizes are folded in.
+
+* **Copying mechanism — Hedges' $g$ (new + Davies 2020):** `r nrow(comb_hedges_mech)` effect sizes.
+* **Observer virginity — log OR (new + Jones & DuVal 2019):** `r nrow(comb_or_virgin)` effect sizes.
+
+```{r}
+#| label: combined_models_report
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 5
+# Means + I2 tables
+comb_means <- dplyr::bind_rows(
+    level_means(fit_comb_mech_hedges, "Mechanism — Hedges' g (new + Davies)"),
+    level_means(fit_comb_virgin_or,   "Virginity — log OR (new + Jones)")
+)
+DT::datatable(
+    comb_means,
+    caption = "Combined-dataset moderator models: marginalised mean effect per level.",
+    options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+```{r}
+#| label: combined_models_i2
+#| echo: false
+#| message: false
+#| warning: false
+comb_i2 <- dplyr::bind_rows(
+    get_i2_long(fit_comb_mech_hedges, "Mechanism — Hedges' g (new + Davies)"),
+    get_i2_long(fit_comb_virgin_or,   "Virginity — log OR (new + Jones)")
+)
+if (nrow(comb_i2) > 0 && "Component" %in% names(comb_i2)) {
+    comb_i2 <- tidyr::pivot_wider(comb_i2, names_from = Component, values_from = I2)
+}
+DT::datatable(
+    comb_i2,
+    caption = "Combined-dataset moderator models: partial I² (%) by random effect (decomposition from a homoscedastic refit).",
+    options = list(dom = "t", columnDefs = list(list(className = "dt-center", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+```{r}
+#| label: combined_models_orchards
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 9
+p_comb_mech <- plot_mod_orchard(fit_comb_mech_hedges, mod_specs$mech$palette,
+                                "Hedges' g", "Copying mechanism — Hedges' g (new + Davies 2020)")
+p_comb_virg <- plot_mod_orchard(fit_comb_virgin_or, mod_specs$virgin$palette,
+                                "Log Odds Ratio (lnOR)", "Observer virginity — log OR (new + Jones & DuVal 2019)")
+save_mod_fig(p_comb_mech, "moderator_orchard_combined_mech_hedges")
+save_mod_fig(p_comb_virg, "moderator_orchard_combined_virgin_or")
+if (!is.null(p_comb_mech) && !is.null(p_comb_virg)) {
+    fig_comb <- (p_comb_mech / p_comb_virg) + patchwork::plot_annotation(
+        tag_levels = "a", tag_prefix = "(", tag_suffix = ")",
+        title = "Combined-dataset moderator models",
+        theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5)))
+    save_mod_fig(fig_comb, "moderator_orchard_combined", width = 10, height = 9)
+    print(fig_comb)
+}
+```
+
+```{r}
+#| label: combined_inline
+#| include: false
+qm_mech <- among_test(fit_comb_mech_hedges)
+qm_virg <- among_test(fit_comb_virgin_or)
+i2_mech <- total_i2(fit_comb_mech_hedges)
+i2_virg <- total_i2(fit_comb_virgin_or)
+qmp <- function(a) if (is.null(a) || is.null(a$QMp)) NA_real_ else as.numeric(a$QMp)
+qms <- function(a) if (is.null(a) || is.null(a$QM)) NA_real_ else as.numeric(a$QM)
+```
+
+In the combined data the conclusions are unchanged. For **copying mechanism** (Hedges' $g$), total heterogeneity is `r fmt(i2_mech, 1)`% and the among-level test is `r pstr(qmp(qm_mech))` ($Q_M$ = `r fmt(qms(qm_mech), 2)`) — a **`r sigw(qmp(qm_mech))`** difference between generalized and individual copying. For **observer virginity** (log OR), total heterogeneity is `r fmt(i2_virg, 1)`% and the among-level test is `r pstr(qmp(qm_virg))` ($Q_M$ = `r fmt(qms(qm_virg), 2)`), again a **`r sigw(qmp(qm_virg))`** difference between virgin and non-virgin observers.
+
+---
+
+## Heterogeneity After Moderators {#sec-heterogeneity-after}
+
+The point of this exercise was to see whether any single moderator could absorb a meaningful share of the heterogeneity that the intercept models left unexplained. The table below collects the total $I^2$ and omnibus $Q_M$ for every model fitted in this chapter.
+
+```{r}
+#| label: heterogeneity_summary_table
+#| echo: false
+summarise_fit <- function(res, analysis) {
+    if (is.null(res) || is.null(res$model)) {
+        return(tibble::tibble(Analysis = analysis, k = NA_integer_, `Total I² (%)` = NA_real_,
+                              `Q_M` = NA_real_, `Q_M p` = NA_real_, Structure = "did not fit"))
+    }
+    a <- among_test(res)
+    tibble::tibble(
+        Analysis = analysis,
+        k = res$model$k,
+        `Total I² (%)` = round(total_i2(res), 1),
+        `Q_M` = round(a$QM, 2),
+        `Q_M p` = signif(a$QMp, 3),
+        Structure = res$spec
+    )
+}
+
+het_summary <- dplyr::bind_rows(
+    summarise_fit(fits_new$mech$hedges,      "Mechanism — Hedges' g (new)"),
+    summarise_fit(fits_new$mech$or,          "Mechanism — log OR (new)"),
+    summarise_fit(fits_new$modality$hedges,  "Modality — Hedges' g (new)"),
+    summarise_fit(fits_new$modality$or,      "Modality — log OR (new)"),
+    summarise_fit(fits_new$demo_type$hedges, "Demonstration sub-type — Hedges' g (new)"),
+    summarise_fit(fits_new$demo_type$or,     "Demonstration sub-type — log OR (new)"),
+    summarise_fit(fits_new$virgin$hedges,    "Virginity — Hedges' g (new)"),
+    summarise_fit(fits_new$virgin$or,        "Virginity — log OR (new)"),
+    summarise_fit(fit_comb_mech_hedges,      "Mechanism — Hedges' g (new + Davies)"),
+    summarise_fit(fit_comb_virgin_or,        "Virginity — log OR (new + Jones)")
+)
+
+DT::datatable(
+    het_summary,
+    caption = "Total heterogeneity and omnibus moderator test for every uni-moderator model in this chapter. High total I² alongside a non-significant Q_M means the moderator does not explain the heterogeneity.",
+    options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = c(1, 2, 3, 4)))),
+    rownames = FALSE
+) %>%
+    DT::formatStyle("Q_M p", fontWeight = DT::styleInterval(0.05, c("bold", "normal")))
+```
+
+### Interpretation {#sec-interpretation}
+
+Across every model, the pattern is the same: **total heterogeneity remains high and no single moderator's omnibus test is significant.** None of copying mechanism, social-cue modality, demonstration sub-type, or observer virginity reduces the heterogeneity to a degree that the among-level test can detect, on either effect-size scale, and the two combined-dataset extensions confirm this once the legacy data are added. The marginalised level means overlap substantially, and partial $I^2$ stays concentrated at the residual effect-size and species levels — precisely the components the overall synthesis flagged as carrying the bulk of the variance.
+
+This is a genuinely informative null. It tells us that the heterogeneity is **not** explained by the most obvious experimental and ecological axes available in the current data, and it sharpens the case made in the discussion: the moderators that matter are likely finer-grained (specific paradigms, demonstrator quality, ecological context) or interactive, and the dataset is not yet large or balanced enough — particularly for the non-visual modalities and for any moderator absent from the legacy datasets — to resolve them. We therefore present these as **hypothesis-generating** results and echo the discussion's recommendation that future, ideally pre-registered, syntheses test these moderators explicitly as the evidence base grows.
+
+::: {.callout-note}
+## Caveats
+These models are exploratory and were not pre-registered. Several levels (Chemical and Acoustic modality in particular) rest on very few studies and are confounded with individual species, so their estimates are unstable. Absence of a significant $Q_M$ is *not* evidence that a moderator has no effect — only that the current data cannot resolve one.
+:::
+
+---
+
+## Session Info
+
+```{r}
+#| label: session_info
+sessionInfo()
+```

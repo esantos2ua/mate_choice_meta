@@ -37,6 +37,7 @@ book:
     - scripts/1_effect_size_calculation_pipeline/publication_bias.qmd
     - scripts/3_original_dataset_crosscheck/extraction_validation.qmd
     - scripts/1_effect_size_calculation_pipeline/sensitivity_analysis.qmd
+    - scripts/1_effect_size_calculation_pipeline/moderator_analysis.qmd
     - references.qmd
 
 number-sections: false
