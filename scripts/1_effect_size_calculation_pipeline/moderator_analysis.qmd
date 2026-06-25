@@ -102,7 +102,7 @@ During extraction we collected several candidate moderators that are plausible s
 This chapter does two things, in order:
 
 1. **Diagnostics (Part 1).** Before fitting anything, we audit each candidate moderator *in the new extraction* — how its levels are populated, how much is missing, and how many studies/species back each level — and we check whether the coding can be reconciled with the original meta-analyses. This determines **which** moderators are analysable and **on which dataset** (new-only versus combined).
-2. **Uni-moderator models (Part 2).** For the moderators that pass the diagnostic, we fit single-moderator multilevel models using the same `rma.mv` machinery, omnibus $Q_M$ test, and partial-$I^2$ heterogeneity decomposition used elsewhere in this workflow, and report whether each moderator explains a meaningful share of the heterogeneity.
+2. **Uni-moderator models (Part 2).** For the moderators that pass the diagnostic, we fit single-moderator multilevel models using the same `rma.mv` machinery, omnibus $Q_M$ test, and partial-$I^2$ heterogeneity decomposition used elsewhere in this workflow. We report two things for each: (i) whether the moderator explains a meaningful share of the *heterogeneity* (the $Q_M$ / $I^2$ question), and (ii) the **direction and magnitude of the differences between levels** ([§Biologically Meaningful Level Differences](#sec-biological)) — because even when a contrast is not statistically distinct, its sign can speak to specific hypotheses raised in the main text (most notably whether virgin observers copy more, as the original synthesis reported).
 
 > These analyses are **exploratory**. With the dataset at its current size, several moderator levels are thin, and we have not pre-registered these tests. We report them to map the most promising directions for future, ideally pre-registered, syntheses — not as confirmatory claims.
 
@@ -569,6 +569,34 @@ level_means <- function(res, analysis) {
                   `PI lower` = round(lowerPR, 3), `PI upper` = round(upperPR, 3))
 }
 
+# Between-level contrasts: each non-intercept model coefficient is the
+# difference between that level and the reference level, on the effect-size
+# scale. A statistically "distinct" difference would have a CI excluding zero;
+# a biologically suggestive one is read from the sign and magnitude even when the
+# CI overlaps zero. For log OR models we also report the multiplicative odds
+# ratio (exp(difference)) so the contrast is interpretable on the OR scale.
+level_contrasts <- function(res, analysis, is_or = FALSE) {
+    if (is.null(res) || is.null(res$model)) return(NULL)
+    m <- res$model
+    nm <- rownames(m$b)
+    keep <- !grepl("intrcpt|intercept", nm, ignore.case = TRUE)
+    if (!any(keep)) return(NULL)
+    ref <- levels(droplevels(factor(res$data[[res$group_var]], levels = levels(res$data[[res$group_var]]))))[1]
+    out <- tibble::tibble(
+        Analysis = analysis,
+        Contrast = paste0(sub(res$group_var, "", nm[keep]), " − ", ref),
+        Difference = round(as.numeric(m$b)[keep], 3),
+        `CI lower` = round(m$ci.lb[keep], 3),
+        `CI upper` = round(m$ci.ub[keep], 3),
+        p = round(m$pval[keep], 3)
+    )
+    if (is_or) {
+        out$`Odds ratio` <- round(exp(out$Difference), 2)
+        out <- dplyr::relocate(out, `Odds ratio`, .after = Difference)
+    }
+    out
+}
+
 # Orchard plot for a fitted moderator model.
 plot_mod_orchard <- function(res, palette, xlab, title) {
     if (is.null(res) || is.null(res$model)) return(NULL)
@@ -619,6 +647,20 @@ for (key in names(mod_specs)) {
         print(htmltools::tagList(DT::datatable(
             means_tbl,
             caption = paste0("Marginalised mean effect per level — ", s$label, " (new extraction)."),
+            options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = "_all"))),
+            rownames = FALSE
+        )))
+    }
+
+    # Between-level contrasts (difference vs reference level, with CI)
+    contr_tbl <- dplyr::bind_rows(
+        level_contrasts(rh, "Hedges' g", is_or = FALSE),
+        level_contrasts(ro, "Log OR", is_or = TRUE)
+    )
+    if (!is.null(contr_tbl) && nrow(contr_tbl) > 0) {
+        print(htmltools::tagList(DT::datatable(
+            contr_tbl,
+            caption = paste0("Between-level contrasts (difference from the reference level, on the effect-size scale) — ", s$label, " (new extraction). A CI excluding zero would indicate a statistically distinct difference."),
             options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = "_all"))),
             rownames = FALSE
         )))
@@ -703,6 +745,23 @@ DT::datatable(
 ```
 
 ```{r}
+#| label: combined_models_contrasts
+#| echo: false
+#| message: false
+#| warning: false
+comb_contr <- dplyr::bind_rows(
+    level_contrasts(fit_comb_mech_hedges, "Mechanism — Hedges' g (new + Davies)", is_or = FALSE),
+    level_contrasts(fit_comb_virgin_or,   "Virginity — log OR (new + Jones)",     is_or = TRUE)
+)
+DT::datatable(
+    comb_contr,
+    caption = "Combined-dataset moderator models: between-level contrast (difference from the reference level, with CI).",
+    options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+```{r}
 #| label: combined_models_i2
 #| echo: false
 #| message: false
@@ -760,6 +819,55 @@ In the combined data the conclusions are unchanged. For **copying mechanism** (H
 
 ---
 
+## Biologically Meaningful Level Differences {#sec-biological}
+
+A non-significant $Q_M$ tells us a moderator does not *explain the heterogeneity*, but it does not tell us whether the **direction and magnitude** of the level differences are biologically interesting. Because the point estimates speak to specific hypotheses raised in the main text, we read them here as well — keeping firmly in mind that every contrast CI below overlaps zero, so these are **directional signals, not demonstrated effects**.
+
+```{r}
+#| label: biological_inline
+#| include: false
+mean_of <- function(res, lvl) {
+    if (is.null(res) || is.null(res$model)) return(NA_real_)
+    mr <- orchaRd::mod_results(res$model, mod = res$group_var, group = "identifierStudyId")
+    v <- mr$mod_table$estimate[mr$mod_table$name == lvl]
+    if (length(v) == 0) NA_real_ else v[1]
+}
+# Virginity — new extraction (both scales) and combined OR
+vh_no  <- mean_of(fits_new$virgin$hedges, "No");  vh_yes <- mean_of(fits_new$virgin$hedges, "Yes")
+vo_no  <- mean_of(fits_new$virgin$or, "No");      vo_yes <- mean_of(fits_new$virgin$or, "Yes")
+vc_no  <- mean_of(fit_comb_virgin_or, "No");      vc_yes <- mean_of(fit_comb_virgin_or, "Yes")
+# Demonstration sub-type (visual): copulation vs association
+dt_assoc <- mean_of(fits_new$demo_type$hedges, "Association")
+dt_cop   <- mean_of(fits_new$demo_type$hedges, "Copulation")
+# Mechanism — combined
+mc_gen <- mean_of(fit_comb_mech_hedges, "Generalized")
+mc_ind <- mean_of(fit_comb_mech_hedges, "Individual")
+# Modality — new
+mo_vis <- mean_of(fits_new$modality$hedges, "Visual")
+mo_che <- mean_of(fits_new$modality$hedges, "Chemical")
+mo_aco <- mean_of(fits_new$modality$hedges, "Acoustic")
+```
+
+### Observer virginity — a signal that runs *against* the original meta-analysis {#sec-bio-virginity}
+
+This is the most noteworthy contrast. Jones & DuVal [@jonesMechanismsSocialInfluence2019] reported — and the present manuscript's discussion repeats as support for the "copy when inexperienced" social-learning strategy — that **virgin (sexually naïve) observers copy more strongly**. Our new extraction shows the **opposite ordering**: virgin observers copied *less* than non-virgins (Hedges' $g$ = `r fmt(vh_yes, 2)` for virgins vs `r fmt(vh_no, 2)` for non-virgins; log OR = `r fmt(vo_yes, 2)` vs `r fmt(vo_no, 2)`). The difference is not statistically distinct (CIs overlap zero), but the *sign* is reversed relative to the classic result. When the new data are pooled with the original Jones & DuVal binary data, the contrast all but disappears (non-virgin OR = `r fmt(exp(vc_no), 2)` vs virgin OR = `r fmt(exp(vc_yes), 2)`).
+
+The takeaway is not that the original finding is wrong, but that the **updated, broader evidence base no longer reproduces the virgin-copies-more pattern**, and the new studies, if anything, point the other way. This is precisely the kind of context-dependence the discussion invokes, and it argues for treating the virginity-conditionality claim with more caution than the original synthesis implied.
+
+### Demonstration cue: copulation versus mere association {#sec-bio-cue}
+
+Within the dominant *visual* modality, restricting to the two well-populated cue types shows copying trends **stronger when the social cue is a copulation than mere association** (Hedges' $g$ = `r fmt(dt_cop, 2)` vs `r fmt(dt_assoc, 2)`). This is the biologically expected direction — a completed copulation is a less ambiguous, higher-value social signal than spatial proximity alone — and it offers a concrete, testable prediction for future work, even though the contrast is not significant here.
+
+### Copying mechanism: generalized copying is not the weaker form {#sec-bio-mechanism}
+
+The introduction motivates *generalized* copying (forming a preference for a phenotype rather than an individual) as the route by which mate-choice copying could drive the cultural transmission of preferences and shape sexual selection. Reassuringly for that argument, generalized copying is **no weaker than individual copying** in the combined data (Hedges' $g$ = `r fmt(mc_gen, 2)` generalized vs `r fmt(mc_ind, 2)` individual) — the evolutionarily consequential form of the behaviour is at least as strong as the individual-recognition form.
+
+### Social-cue modality: a sampling gap, not a result {#sec-bio-modality}
+
+The modality comparison (visual $g$ = `r fmt(mo_vis, 2)`, chemical = `r fmt(mo_che, 2)`, acoustic = `r fmt(mo_aco, 2)`) cannot be read biologically: the chemical and acoustic levels rest on a handful of effect sizes from one to three studies and are confounded with particular species. Its real value is as a **map of where the evidence is missing** — the mate-choice-copying literature is overwhelmingly visual, even though the field's own inclusion criteria explicitly admit chemical and acoustic cues. Broadening sensory sampling is a clear opportunity.
+
+---
+
 ## Heterogeneity After Moderators {#sec-heterogeneity-after}
 
 The point of this exercise was to see whether any single moderator could absorb a meaningful share of the heterogeneity that the intercept models left unexplained. The table below collects the total $I^2$ and omnibus $Q_M$ for every model fitted in this chapter.
@@ -810,6 +918,8 @@ DT::datatable(
 Across every model, the pattern is the same: **total heterogeneity remains high and no single moderator's omnibus test is significant.** None of copying mechanism, social-cue modality, demonstration sub-type, or observer virginity reduces the heterogeneity to a degree that the among-level test can detect, on either effect-size scale, and the two combined-dataset extensions confirm this once the legacy data are added. The marginalised level means overlap substantially, and partial $I^2$ stays concentrated at the residual effect-size and species levels — precisely the components the overall synthesis flagged as carrying the bulk of the variance.
 
 This is a genuinely informative null. It tells us that the heterogeneity is **not** explained by the most obvious experimental and ecological axes available in the current data, and it sharpens the case made in the discussion: the moderators that matter are likely finer-grained (specific paradigms, demonstrator quality, ecological context) or interactive, and the dataset is not yet large or balanced enough — particularly for the non-visual modalities and for any moderator absent from the legacy datasets — to resolve them. We therefore present these as **hypothesis-generating** results and echo the discussion's recommendation that future, ideally pre-registered, syntheses test these moderators explicitly as the evidence base grows.
+
+That said, the null heterogeneity result and the [directional level differences](#sec-biological) are two different readings of the same models, and the second is where the biological interest lies. The standout is **observer virginity**: the updated data do not reproduce — and trend against — the virgin-copies-more pattern of the original synthesis, a nuance worth carrying into the discussion even though the contrast is not statistically distinct.
 
 ::: {.callout-note}
 ## Caveats
