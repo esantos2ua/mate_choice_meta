@@ -25,3 +25,7 @@ __pycache__/
 
 # Local-only Claude Code guidance
 CLAUDE.md
+
+# Local-only manuscript notes & draft snippets (suggestions for the main
+# manuscript). Kept on disk for the author but never synced to GitHub.
+manuscript_notes/
