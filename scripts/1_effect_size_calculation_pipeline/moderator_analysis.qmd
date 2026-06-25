@@ -923,7 +923,7 @@ That said, the null heterogeneity result and the [directional level differences]
 
 ::: {.callout-note}
 ## Caveats
-These models are exploratory and were not pre-registered. Several levels (Chemical and Acoustic modality in particular) rest on very few studies and are confounded with individual species, so their estimates are unstable. Absence of a significant $Q_M$ is *not* evidence that a moderator has no effect — only that the current data cannot resolve one.
+These models are exploratory and were not pre-registered. Several levels (Chemical and Acoustic modality in particular) rest on very few studies and are confounded with individual species, so their estimates are unstable. Absence of a significant $Q_M$ is *not* evidence that a moderator has no effect — only that the current data cannot resolve one. Finally, where the heteroscedastic (`HCS`) structure was used, `orchaRd`/`metafor` flag that **prediction intervals** for random-slope structures are approximate (the point estimates, confidence intervals, and $Q_M$ are unaffected); the PI columns in the per-level tables should therefore be read as indicative only.
 :::
 
 ---
