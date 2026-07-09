@@ -236,8 +236,8 @@
           <polygon fill="#ffffff" stroke="#000000" points="878.5,-383.6006 626.5,-383.6006 626.5,-246.3994 878.5,-246.3994 878.5,-383.6006"/>
           <text text-anchor="middle" x="752.5" y="-369" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">Reports excluded:</text>
           <text text-anchor="middle" x="752.5" y="-354.6" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">Studies excluded (n = 19)</text>
-          <text text-anchor="middle" x="752.5" y="-340.2" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">Not the study design necessary (n = 10)</text>
-          <text text-anchor="middle" x="752.5" y="-325.8" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">Not the type of study necessary (n = 3)</text>
+          <text text-anchor="middle" x="752.5" y="-340.2" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">Wrong study design (n = 10)</text>
+          <text text-anchor="middle" x="752.5" y="-325.8" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">Wrong study type (n = 3)</text>
           <text text-anchor="middle" x="752.5" y="-311.4" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">Study on humans (n = 2)</text>
           <text text-anchor="middle" x="752.5" y="-297" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">Does not contain data to calculate</text>
           <text text-anchor="middle" x="752.5" y="-282.6" font-family="Helvetica,sans-Serif" font-size="12.00" fill="#000000">effect sizes (n = 2)</text>

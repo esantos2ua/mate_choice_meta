@@ -393,7 +393,7 @@ plot_tree_with_counts <- function(tree, es_named, st_named, title, file, sil = N
     text(x = x_name, y = yy, labels = tree$tip.label, cex = 0.8,  font = 3, adj = 0)
     text(x = x_es,   y = yy, labels = es[tree$tip.label], cex = 0.85, font = 2, col = "#B22222", adj = 1)
     text(x = x_st,   y = yy, labels = st[tree$tip.label], cex = 0.85, font = 2, col = "#1F5C8B", adj = 1)
-    text(x = x_es,   y = n + 1.2, labels = "k",       cex = 0.9, font = 4, col = "#B22222", adj = 1)
+    text(x = x_es,   y = n + 1.2, labels = "effect sizes", cex = 0.9, font = 4, col = "#B22222", adj = 1)
     text(x = x_st,   y = n + 1.2, labels = "studies", cex = 0.9, font = 4, col = "#1F5C8B", adj = 1)
     title(main = title, cex.main = 1.0)
     par(op)
@@ -418,7 +418,7 @@ es_new  <- setNames(counts_new$n_effect_sizes, counts_new$species)
 st_new  <- setNames(counts_new$n_studies,      counts_new$species)
 sil_new <- fetch_silhouettes(tree_new$tip.label)
 plot_tree_with_counts(tree_new, es_new, st_new,
-                 title = "MCC phylogeny - New extraction (Santos)",
+                 title = "MCC phylogeny - New extraction (Santos et al.)",
                  file  = file.path(dir_out, "phylogeny_new_extraction.pdf"),
                  sil   = sil_new)
 
