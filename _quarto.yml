@@ -12,6 +12,7 @@ project:
     - outputs/**/*.png
     - outputs/**/*.rds
     - outputs/**/*.tre
+    - supplement_summary/assets/**/*.png
 
 book:
   title: "Mate-choice copying in non-human animals: an update of two meta-analyses"
@@ -20,6 +21,9 @@ book:
   
   navbar:
     pinned: true
+    left:
+      - text: "Summary"
+        href: summary.qmd
     right:
       - icon: github
         href: https://github.com/esantos2ua/mate_choice_meta
@@ -32,6 +36,7 @@ book:
     
   chapters:
     - index.qmd
+    - summary.qmd
     - scripts/0_literature_screening/literature_screening.qmd
     - scripts/1_effect_size_calculation_pipeline/overall_effect.qmd
     - scripts/1_effect_size_calculation_pipeline/publication_bias.qmd
