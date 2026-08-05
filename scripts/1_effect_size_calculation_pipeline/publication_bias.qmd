@@ -155,6 +155,67 @@ db_new_raw <- readxl::read_excel(path_new, sheet = "EduardoExtraction")
 db_davies_raw <- readxl::read_excel(path_davies, sheet = "Data")
 db_jones_raw <- readr::read_csv(path_jones)
 
+# A2. Species-name reconciliation + phylogenetic correlation matrices.
+# Ported verbatim from overall_effect.qmd so that every multilevel model in the
+# project shares one random-effects structure. The correlation matrices are
+# indexed by FULL species binomials; these maps reproduce the reconciliation in
+# scripts/2_phylogeny/build_phylogeny.R.
+recode_new    <- c("Taeniopygia guttata castanotis" = "Taeniopygia guttata")
+recode_davies <- c("Schizocosa" = "Schizocosa ocreata")
+
+jones_binomial <- tibble::tribble(
+    ~family,            ~epithet,        ~species_phylo,
+    "Adrianichthyidae", "latipes",       "Oryzias latipes",
+    "Blenniidae",       "nitidus",       "Rhabdoblennius nitidus",
+    "Gasterosteidae",   "aculeatus",     "Gasterosteus aculeatus",
+    "Gobiidae",         "minutu",        "Pomatoschistus minutus",
+    "Percidae",         "olmstedi",      "Etheostoma olmstedi",
+    "Poeciliidae",      "latipinna",     "Poecilia latipinna",
+    "Poeciliidae",      "nigrofasciata", "Limia nigrofasciata",
+    "Poeciliidae",      "perugiae",      "Limia perugiae",
+    "Poeciliidae",      "reticulata",    "Poecilia reticulata",
+    "Pomacentridae",    "leucogaster",   "Amblyglyphidodon leucogaster",
+    "Lycosidae",        "ocreata",       "Schizocosa ocreata",
+    "Estrildidae",      "guttata",       "Taeniopygia guttata",
+    "Icteridae",        "ater",          "Molothrus ater",
+    "Muscicapidae",     "hypoleuca",     "Ficedula hypoleuca",
+    "Drosophilidae",    "melanogaster",  "Drosophila melanogaster",
+    "Drosophilidae",    "serrata",       "Drosophila serrata",
+    "Ocypodidae",       "mjoebergi",     "Uca mjoebergi"
+)
+
+read_phylo <- function(f) {
+    pth <- here::here("outputs", "2_phylogeny", f)
+    if (file.exists(pth)) readRDS(pth) else NULL
+}
+phylo_cor_hedges <- read_phylo("phylo_cor_hedges_model.rds")
+phylo_cor_or     <- read_phylo("phylo_cor_or_model.rds")
+
+# Helper: return the random-effects list, the R argument and a levels-cleaned
+# copy of the data, adding the phylogenetic term only when every species level
+# is present in the correlation matrix. Falls back with a warning otherwise, so
+# a missing phylogeny degrades the fit rather than breaking the render.
+phylo_terms <- function(dat, phylo_cor, phylo_var = "species_phylo") {
+    base <- list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies)
+    if (is.null(phylo_cor) || !phylo_var %in% colnames(dat)) {
+        return(list(data = dat, random = base, R = NULL, used_phylo = FALSE))
+    }
+    sp <- unique(as.character(dat[[phylo_var]]))
+    missing_sp <- setdiff(sp, rownames(phylo_cor))
+    if (length(missing_sp) > 0) {
+        warning("Phylogenetic random effect skipped (species absent from correlation matrix): ",
+                paste(missing_sp, collapse = ", "))
+        return(list(data = dat, random = base, R = NULL, used_phylo = FALSE))
+    }
+    dat[[phylo_var]] <- factor(as.character(dat[[phylo_var]]))
+    list(
+        data       = dat,
+        random     = c(base, list(stats::as.formula(paste0("~ 1 | ", phylo_var)))),
+        R          = stats::setNames(list(phylo_cor[sp, sp, drop = FALSE]), phylo_var),
+        used_phylo = TRUE
+    )
+}
+
 # B. Clean new extractions
 db_new <- db_new_raw %>%
     filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
@@ -190,6 +251,7 @@ hedges_new <- db_new %>%
     mutate(
         identifierStudyId = as.character(identifierStudyId),
         identifierEffectSizeID = as.character(identifierEffectSizeID),
+        species_phylo = dplyr::recode(str_squish(as.character(taxonomySpecies)), !!!recode_new),
         taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
         Dataset_Source = "New Extraction (Santos)"
     )
@@ -218,12 +280,13 @@ hedges_davies <- db_davies_raw %>%
     mutate(
         identifierStudyId = as.character(identifierStudyId),
         identifierEffectSizeID = as.character(identifierEffectSizeID),
+        species_phylo = dplyr::recode(str_squish(as.character(taxonomySpecies)), !!!recode_davies),
         taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
         Dataset_Source = "Original (Davies 2020)"
     )
 
 db_hedges <- bind_rows(hedges_new, hedges_davies) %>%
-    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+    mutate(across(c(identifierStudyId, taxonomySpecies, species_phylo, Dataset_Source), as.factor))
 
 # ---------------------------------------------------------------------------
 # 2. Log Odds Ratio Dataset Alignment (Binary)
@@ -241,18 +304,26 @@ or_new <- db_new %>%
     mutate(
         identifierStudyId = as.character(identifierStudyId),
         identifierEffectSizeID = as.character(identifierEffectSizeID),
+        species_phylo = dplyr::recode(str_squish(as.character(taxonomySpecies)), !!!recode_new),
         taxonomySpecies = str_to_lower(word(as.character(taxonomySpecies), -1)),
         Dataset_Source = "New Extraction (Santos)"
     )
 
 or_jones <- db_jones_raw %>%
     filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
+    mutate(
+        family  = str_squish(as.character(Family)),
+        epithet = str_squish(as.character(Species))
+    ) %>%
+    # Rebuild the full binomial (species_phylo) from Family + epithet
+    left_join(jones_binomial, by = c("family", "epithet")) %>%
     select(
         yi = lnOR,
         vi = VlnOR,
         identifierStudyId = study,
         identifierEffectSizeID = study_Exp,
         taxonomySpecies = Species,
+        species_phylo,
         Year = year
     ) %>%
     mutate(
@@ -262,8 +333,16 @@ or_jones <- db_jones_raw %>%
         Dataset_Source = "Original (Jones & DuVal 2019)"
     )
 
+# Sanity check: every Jones epithet should map to a full binomial
+if (any(is.na(or_jones$species_phylo))) {
+    warning(
+        "Unmapped Jones epithets (phylogeny): ",
+        paste(unique(or_jones$taxonomySpecies[is.na(or_jones$species_phylo)]), collapse = ", ")
+    )
+}
+
 db_or <- bind_rows(or_new, or_jones) %>%
-    mutate(across(c(identifierStudyId, taxonomySpecies, Dataset_Source), as.factor))
+    mutate(across(c(identifierStudyId, taxonomySpecies, species_phylo, Dataset_Source), as.factor))
 ```
 
 ---
@@ -350,14 +429,19 @@ We run the intercept-only model to establish the global mean effect size and plo
 # Intercept-only model
 VCV_hedges <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges)
 
+# Phylogenetic random effect (see phylo_terms() in the data-prep chunk).
+pt_db_hedges <- phylo_terms(db_hedges, phylo_cor_hedges)
+
 ma_hedges <- metafor::rma.mv(
     yi = yi,
     V = VCV_hedges,
-    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    random = pt_db_hedges$random,
+    R = pt_db_hedges$R,
     test = "t",
+    dfs = "contain",
     method = "REML",
     sparse = TRUE,
-    data = db_hedges
+    data = pt_db_hedges$data
 )
 
 summary(ma_hedges)
@@ -413,16 +497,21 @@ db_hedges_egger <- db_hedges %>%
 # Re-estimate VCV on this subset
 VCV_hedges_egger <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_egger)
 
+# Phylogenetic random effect (see phylo_terms() in the data-prep chunk).
+pt_db_hedges_egger <- phylo_terms(db_hedges_egger, phylo_cor_hedges)
+
 # Step 1: Egger regression model with standard error as moderator
 egger_hedges <- metafor::rma.mv(
     yi = yi,
     V = VCV_hedges_egger,
     mods = ~ 1 + se,
-    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    random = pt_db_hedges_egger$random,
+    R = pt_db_hedges_egger$R,
     test = "t",
+    dfs = "contain",
     method = "REML",
     sparse = TRUE,
-    data = db_hedges_egger
+    data = pt_db_hedges_egger$data
 )
 
 summary(egger_hedges)
@@ -432,11 +521,13 @@ egger_hedges_v <- metafor::rma.mv(
     yi = yi,
     V = VCV_hedges_egger,
     mods = ~ 1 + vi,
-    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    random = pt_db_hedges_egger$random,
+    R = pt_db_hedges_egger$R,
     test = "t",
+    dfs = "contain",
     method = "REML",
     sparse = TRUE,
-    data = db_hedges_egger
+    data = pt_db_hedges_egger$data
 )
 
 summary(egger_hedges_v)
@@ -492,16 +583,21 @@ db_hedges_decline <- db_hedges_egger %>%
 # VCV for decline subset
 VCV_hedges_decline <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_hedges_decline)
 
+# Phylogenetic random effect (see phylo_terms() in the data-prep chunk).
+pt_db_hedges_decline <- phylo_terms(db_hedges_decline, phylo_cor_hedges)
+
 # Time-lag decline model controlling for sampling variance (vi)
 decline_hedges <- metafor::rma.mv(
     yi = yi,
     V = VCV_hedges_decline,
     mods = ~ 1 + Year_c + vi,
-    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    random = pt_db_hedges_decline$random,
+    R = pt_db_hedges_decline$R,
     test = "t",
+    dfs = "contain",
     method = "REML",
     sparse = TRUE,
-    data = db_hedges_decline
+    data = pt_db_hedges_decline$data
 )
 
 summary(decline_hedges)
@@ -594,14 +690,19 @@ We run the intercept-only model for Odds Ratio and inspect the funnel plot repre
 # Intercept-only model
 VCV_or <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or)
 
+# Phylogenetic random effect (see phylo_terms() in the data-prep chunk).
+pt_db_or <- phylo_terms(db_or, phylo_cor_or)
+
 ma_or <- metafor::rma.mv(
     yi = yi,
     V = VCV_or,
-    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    random = pt_db_or$random,
+    R = pt_db_or$R,
     test = "t",
+    dfs = "contain",
     method = "REML",
     sparse = TRUE,
-    data = db_or
+    data = pt_db_or$data
 )
 
 summary(ma_or)
@@ -657,16 +758,21 @@ db_or_egger <- db_or %>%
 # Re-estimate VCV on this subset
 VCV_or_egger <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or_egger)
 
+# Phylogenetic random effect (see phylo_terms() in the data-prep chunk).
+pt_db_or_egger <- phylo_terms(db_or_egger, phylo_cor_or)
+
 # Step 1: Egger regression model with standard error as moderator
 egger_or <- metafor::rma.mv(
     yi = yi,
     V = VCV_or_egger,
     mods = ~ 1 + se,
-    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    random = pt_db_or_egger$random,
+    R = pt_db_or_egger$R,
     test = "t",
+    dfs = "contain",
     method = "REML",
     sparse = TRUE,
-    data = db_or_egger
+    data = pt_db_or_egger$data
 )
 
 summary(egger_or)
@@ -676,11 +782,13 @@ egger_or_v <- metafor::rma.mv(
     yi = yi,
     V = VCV_or_egger,
     mods = ~ 1 + vi,
-    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    random = pt_db_or_egger$random,
+    R = pt_db_or_egger$R,
     test = "t",
+    dfs = "contain",
     method = "REML",
     sparse = TRUE,
-    data = db_or_egger
+    data = pt_db_or_egger$data
 )
 
 summary(egger_or_v)
@@ -736,16 +844,21 @@ db_or_decline <- db_or_egger %>%
 # VCV for decline subset
 VCV_or_decline <- metafor::vcalc(vi = vi, cluster = identifierStudyId, obs = identifierEffectSizeID, rho = 0.5, data = db_or_decline)
 
+# Phylogenetic random effect (see phylo_terms() in the data-prep chunk).
+pt_db_or_decline <- phylo_terms(db_or_decline, phylo_cor_or)
+
 # Time-lag decline model controlling for sampling variance (vi)
 decline_or <- metafor::rma.mv(
     yi = yi,
     V = VCV_or_decline,
     mods = ~ 1 + Year_c + vi,
-    random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
+    random = pt_db_or_decline$random,
+    R = pt_db_or_decline$R,
     test = "t",
+    dfs = "contain",
     method = "REML",
     sparse = TRUE,
-    data = db_or_decline
+    data = pt_db_or_decline$data
 )
 
 summary(decline_or)
@@ -828,7 +941,7 @@ save_gg_pdf(dashboard_or, "dashboard_eggers_timelag_or", width = 10, height = 12
 The diagnostics above *detect* small-study and time-lag bias. Here we turn to *correcting* the pooled mean, and we directly compare two correction philosophies on the same data.
 
 * **Current method — Nakagawa et al. [-@nakagawaMethodsTestingPublication2022] regression correction.** We re-use the multilevel meta-regression that includes the sampling variance ($v_i$) as a moderator (the Step-2 models `egger_hedges_v` / `egger_or_v` fitted above). Its **intercept** estimates the meta-analytic mean extrapolated to $v_i = 0$ — i.e., the effect a hypothetical infinitely-precise (infinite-$n$) study would report, with the small-study component removed. This is the *"bias-corrected estimate"* in @yangRobustPointVariance2024's terminology and in `orchaRd`.
-* **New method — Yang et al. [-@yangRobustPointVariance2024] bias-robust estimation.** A two-step procedure: (1) fit a **fixed-/common-effect** model, whose precision-based GLS weighting is far less inflated by selectively-reported small studies than the random-effects mean; then (2) apply **cluster-robust (CR2) variance estimation** (`clubSandwich`), clustering by study, so that the standard errors and confidence intervals remain valid under the non-independence of multiple effect sizes per study. This is the *"bias-robust estimate"*.
+* **New method — Yang et al. [-@yangRobustPointVariance2024] bias-robust estimation.** A two-step procedure: (1) fit a **multivariate fixed-/common-effect** model whose weights come from the sampling variance–covariance matrix (**FE + VCV**, assuming $\rho = 0.5$). This inverse-VCV weighting is the bias-robust ingredient: it is far less inflated by selectively-reported small studies than the random-effects mean, and it prevents studies contributing many correlated effect sizes from accumulating weight in proportion to their effect-size count. Then (2) apply **cluster-robust (CR2) variance estimation** (`clubSandwich`), clustering by study, so that standard errors and confidence intervals remain valid under the non-independence of multiple effect sizes per study. This is the *"bias-robust estimate"*. Note that the step-one model contains **no random effects**, which is why the CR2 correction is applicable here — CR2 is not valid for models with crossed random effects.
 
 We compute both, overlay them on an orchard plot of the uncorrected multilevel mean with `orchaRd::pub_bias_plot()`, and tabulate the three estimates (uncorrected vs. the two corrections) side by side.
 
@@ -841,13 +954,34 @@ We compute both, overlay them on an orchard plot of the uncorrected multilevel m
 #| message: false
 #| warning: false
 # --- New method: Yang et al. (2024) bias-robust estimate ---------------------
-# Step 1: common-/fixed-effect model (bias-robust GLS weighting).
-fe_hedges <- metafor::rma(
-    yi = yi,
+# Step 1: multivariate common-/fixed-effect model with the sampling
+# variance-covariance matrix supplying the weights ("FE + VCV").
+#
+# The inverse-VCV weighting scheme IS the bias-robust part of the method: it
+# assigns smaller weights to imprecise studies reporting large effects, and it
+# stops a study contributing many correlated effect sizes from accumulating
+# weight in proportion to its effect-size count. Using rma(vi = vi) instead
+# would weight each effect size by 1/v_i independently, discarding the rho =
+# 0.5 within-study correlation assumed everywhere else in this workflow.
+#
+# rma.mv() with no `random` argument is the fixed-effect model (the fit reports
+# "Variance Components: none"); `method` is therefore immaterial here.
+VCV_hedges_fe <- metafor::vcalc(
     vi = vi,
+    cluster = identifierStudyId,
+    obs = identifierEffectSizeID,
+    rho = 0.5,
+    data = db_hedges_egger
+)
+
+fe_hedges <- metafor::rma.mv(
+    yi = yi,
+    V = VCV_hedges_fe,
     data = db_hedges_egger,
-    method = "FE",
-    test = "t"
+    method = "REML",
+    test = "t",
+    dfs = "contain",
+    sparse = TRUE
 )
 
 # Step 2: cluster-robust (CR2) variance estimation, clustering by study,
@@ -855,6 +989,7 @@ fe_hedges <- metafor::rma(
 fe_hedges_robust <- metafor::robust(
     fe_hedges,
     cluster = db_hedges_egger$identifierStudyId,
+    adjust = TRUE,
     clubSandwich = TRUE
 )
 
@@ -902,17 +1037,32 @@ print(p_pubbias_hedges)
 #| message: false
 #| warning: false
 # --- New method: Yang et al. (2024) bias-robust estimate ---------------------
-fe_or <- metafor::rma(
-    yi = yi,
+# Step 1: multivariate common-/fixed-effect model weighted by the sampling
+# variance-covariance matrix ("FE + VCV"). See the Hedges' g chunk above for
+# why the VCV, rather than diagonal 1/v_i weights, is what makes this estimator
+# bias-robust.
+VCV_or_fe <- metafor::vcalc(
     vi = vi,
+    cluster = identifierStudyId,
+    obs = identifierEffectSizeID,
+    rho = 0.5,
+    data = db_or_egger
+)
+
+fe_or <- metafor::rma.mv(
+    yi = yi,
+    V = VCV_or_fe,
     data = db_or_egger,
-    method = "FE",
-    test = "t"
+    method = "REML",
+    test = "t",
+    dfs = "contain",
+    sparse = TRUE
 )
 
 fe_or_robust <- metafor::robust(
     fe_or,
     cluster = db_or_egger$identifierStudyId,
+    adjust = TRUE,
     clubSandwich = TRUE
 )
 
@@ -975,10 +1125,10 @@ extract_mean <- function(model, label, method) {
 bias_correction_summary <- rbind(
     extract_mean(ma_hedges,         "Hedges' g (Continuous)",  "Uncorrected (Multilevel mean)"),
     extract_mean(egger_hedges_v,    "Hedges' g (Continuous)",  "Bias-Corrected — Nakagawa 2022 (current; vi-intercept)"),
-    extract_mean(fe_hedges_robust,  "Hedges' g (Continuous)",  "Bias-Robust — Yang 2024 (new; FE + CR2)"),
+    extract_mean(fe_hedges_robust,  "Hedges' g (Continuous)",  "Bias-Robust — Yang 2024 (new; FE + VCV, CR2)"),
     extract_mean(ma_or,             "Log Odds Ratio (Binary)", "Uncorrected (Multilevel mean)"),
     extract_mean(egger_or_v,        "Log Odds Ratio (Binary)", "Bias-Corrected — Nakagawa 2022 (current; vi-intercept)"),
-    extract_mean(fe_or_robust,      "Log Odds Ratio (Binary)", "Bias-Robust — Yang 2024 (new; FE + CR2)")
+    extract_mean(fe_or_robust,      "Log Odds Ratio (Binary)", "Bias-Robust — Yang 2024 (new; FE + VCV, CR2)")
 )
 
 # Shrinkage of each corrected mean relative to the uncorrected multilevel mean
@@ -1072,7 +1222,7 @@ DT::datatable(
    For Hedges' $g$ (continuous), the publication-year trend is `r sigw(decline_hedges$pval[2])` ($\beta = `r fmt(decline_hedges$b[2])`$, $`r pstr(decline_hedges$pval[2])`$). `r if(decline_hedges$pval[2] < 0.05) "This indicates a shift in the reported magnitude of continuous effects over the history of the literature." else "This suggests the continuous reporting scales have been relatively stable in magnitude over the history of the literature."`
 
 4. **Bias-Corrected Means — Current vs. New Method:**
-   We compared two correction frameworks on the adjusted pooled mean. For Hedges' $g$, the **current** Nakagawa [-@nakagawaMethodsTestingPublication2022] $v_i$-intercept correction yields $`r fmt(egger_hedges_v$b[1])`$ while the **new** Yang [-@yangRobustPointVariance2024] bias-robust (fixed-effect + CR2) estimate yields $`r fmt(fe_hedges_robust$b[1])`$ (uncorrected multilevel mean: $`r fmt(ma_hedges$b[1])`$). For Log Odds Ratio, the corresponding values are $`r fmt(egger_or_v$b[1])`$ (Nakagawa) and $`r fmt(fe_or_robust$b[1])`$ (Yang), against an uncorrected mean of $`r fmt(ma_or$b[1])`$. The Yang bias-robust estimate is generally the more conservative, inference-valid option because it respects within-study dependence through cluster-robust variance estimation and avoids the wide-interval extrapolation inherent in the regression-intercept approach; where the two corrections agree, the adjusted conclusion is robust to modelling choice.
+   We compared two correction frameworks on the adjusted pooled mean. For Hedges' $g$, the **current** Nakagawa [-@nakagawaMethodsTestingPublication2022] $v_i$-intercept correction yields $`r fmt(egger_hedges_v$b[1])`$ while the **new** Yang [-@yangRobustPointVariance2024] bias-robust (FE + VCV, then CR2) estimate yields $`r fmt(fe_hedges_robust$b[1])`$ (uncorrected multilevel mean: $`r fmt(ma_hedges$b[1])`$). For Log Odds Ratio, the corresponding values are $`r fmt(egger_or_v$b[1])`$ (Nakagawa) and $`r fmt(fe_or_robust$b[1])`$ (Yang), against an uncorrected mean of $`r fmt(ma_or$b[1])`$. The Yang bias-robust estimate is generally the more conservative, inference-valid option because it respects within-study dependence through cluster-robust variance estimation and avoids the wide-interval extrapolation inherent in the regression-intercept approach; where the two corrections agree, the adjusted conclusion is robust to modelling choice.
 
 These diagnostic results suggest that while mate-choice copying is a genuine ecological phenomenon, the overall raw pooled estimates from both continuous and binary literatures may be moderately inflated due to selective reporting and publication biases. Future research should prioritize large-sample pre-registered replication studies to provide unbiased baselines.
 

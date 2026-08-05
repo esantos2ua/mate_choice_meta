@@ -592,6 +592,7 @@ fit_overall_mv <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierS
         random = random_list,
         R = R_arg,
         test = "t",
+        dfs = "contain",
         method = "REML",
         sparse = TRUE,
         data = dat2
@@ -601,7 +602,13 @@ fit_overall_mv <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierS
 }
 
 # Helper function to fit bias-corrected multilevel models with a continuous moderator (Egger-type)
-fit_corrected_mv <- function(dat, yi = "yi", vi = "vi", moderator = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5) {
+#
+# The random-effects structure MIRRORS fit_overall_mv(), including the optional
+# phylogenetic term. This matters: the headline contrast in the paper is the
+# uncorrected mean against this model's intercept at vi = 0, so the two fits must
+# differ only by the moderator, not by their random-effects structure.
+fit_corrected_mv <- function(dat, yi = "yi", vi = "vi", moderator = "vi", cluster_var = "identifierStudyId", obs_var = "identifierEffectSizeID", rho = 0.5,
+                             phylo_cor = NULL, phylo_var = "species_phylo") {
     # Remove rows with missing values
     dat2 <- dat %>%
         filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
@@ -624,24 +631,50 @@ fit_corrected_mv <- function(dat, yi = "yi", vi = "vi", moderator = "vi", cluste
         data = dat2
     )
 
-    # 2. Fit Multi-Level Egger Model using dynamic formula
+    # 2. Assemble the random-effects structure, adding the phylogenetic term when
+    #    a correlation matrix is supplied and every species level is present in it
+    #    (identical logic and fallback behaviour to fit_overall_mv).
+    random_list <- list(
+        ~ 1 | identifierStudyId,
+        ~ 1 | identifierEffectSizeID,
+        ~ 1 | taxonomySpecies
+    )
+    R_arg <- NULL
+    used_phylo <- FALSE
+
+    if (!is.null(phylo_cor) && phylo_var %in% colnames(dat2)) {
+        sp <- unique(as.character(dat2[[phylo_var]]))
+        missing_sp <- setdiff(sp, rownames(phylo_cor))
+        if (length(missing_sp) == 0) {
+            dat2[[phylo_var]] <- factor(as.character(dat2[[phylo_var]]))
+            Csub <- phylo_cor[sp, sp, drop = FALSE]
+            random_list <- c(random_list, list(stats::as.formula(paste0("~ 1 | ", phylo_var))))
+            R_arg <- stats::setNames(list(Csub), phylo_var)
+            used_phylo <- TRUE
+        } else {
+            warning(
+                "Phylogenetic random effect skipped in bias-corrected model (species absent from correlation matrix): ",
+                paste(missing_sp, collapse = ", ")
+            )
+        }
+    }
+
+    # 3. Fit Multi-Level Egger Model using dynamic formula
     formula_str <- paste("~ 1 +", moderator)
     mod <- metafor::rma.mv(
         yi = dat2[[yi]],
         V = VCV,
         mods = as.formula(formula_str),
-        random = list(
-            ~ 1 | identifierStudyId,
-            ~ 1 | identifierEffectSizeID,
-            ~ 1 | taxonomySpecies
-        ),
+        random = random_list,
+        R = R_arg,
         test = "t",
+        dfs = "contain",
         method = "REML",
         sparse = TRUE,
         data = dat2
     )
 
-    list(data = dat2, VCV = VCV, model = mod)
+    list(data = dat2, VCV = VCV, model = mod, used_phylo = used_phylo)
 }
 
 # Helper function to add Mean (95% CI) labels dynamically one line above k-values in orchard plots
@@ -697,9 +730,9 @@ res_hedges_orig <- fit_overall_mv(db_hedges %>% filter(Dataset_Source == "Origin
 res_hedges_comb <- fit_overall_mv(db_hedges, phylo_cor = phylo_cor_hedges)
 
 # HEDGES' G MODELS (BIAS-CORRECTED)
-res_hedges_new_corr <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
-res_hedges_orig_corr <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"), moderator = "vi")
-res_hedges_comb_corr <- fit_corrected_mv(db_hedges, moderator = "vi")
+res_hedges_new_corr <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi", phylo_cor = phylo_cor_new)
+res_hedges_orig_corr <- fit_corrected_mv(db_hedges %>% filter(Dataset_Source == "Original (Davies 2020)"), moderator = "vi", phylo_cor = phylo_cor_hedges)
+res_hedges_comb_corr <- fit_corrected_mv(db_hedges, moderator = "vi", phylo_cor = phylo_cor_hedges)
 
 # ---------------------------------------------------------------------------
 # ODDS RATIO MODELS (UNCORRECTED) — now incorporating phylogenetic relatedness
@@ -711,9 +744,9 @@ res_or_orig <- fit_overall_mv(db_or %>% filter(Dataset_Source == "Original (Jone
 res_or_comb <- fit_overall_mv(db_or, phylo_cor = phylo_cor_or)
 
 # ODDS RATIO MODELS (BIAS-CORRECTED)
-res_or_new_corr <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi")
-res_or_orig_corr <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"), moderator = "vi")
-res_or_comb_corr <- fit_corrected_mv(db_or, moderator = "vi")
+res_or_new_corr <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "New Extraction (Santos)"), moderator = "vi", phylo_cor = phylo_cor_new)
+res_or_orig_corr <- fit_corrected_mv(db_or %>% filter(Dataset_Source == "Original (Jones & DuVal 2019)"), moderator = "vi", phylo_cor = phylo_cor_or)
+res_or_comb_corr <- fit_corrected_mv(db_or, moderator = "vi", phylo_cor = phylo_cor_or)
 ```
 
 ---
@@ -1262,21 +1295,45 @@ The three estimates shown per subplot are:
 
 * **Uncorrected** (the trunk) — the multilevel `rma.mv` mean.
 * **Bias-Corrected (Nakagawa et al. [-@nakagawaMethodsTestingPublication2022]); purple overlay** — the intercept of the multilevel meta-regression with sampling variance ($v_i$) as a moderator, evaluated at $v_i = 0$ (the effect a hypothetical infinitely-precise study would report).
-* **Bias-Robust (Yang et al. [-@yangRobustPointVariance2024]); green overlay** — a fixed-/common-effect model with cluster-robust (CR2) variance estimation clustered by study.
+* **Bias-Robust (Yang et al. [-@yangRobustPointVariance2024]); green overlay** — a multivariate fixed-/common-effect model weighted by the sampling variance–covariance matrix (FE + VCV, $\rho = 0.5$), followed by cluster-robust (CR2) variance estimation clustered by study. The step-one model contains no random effects, which is what makes the CR2 correction applicable.
 
 ```{r}
 #| label: fit_bias_robust_splits
 #| message: false
 #| warning: false
-# Yang et al. (2024) bias-robust estimate (fixed-effect + CR2 cluster-robust),
+# Yang et al. (2024) bias-robust estimate (FE + VCV, then CR2 cluster-robust),
 # fitted for each database split. Mirrors the construction in publication_bias.qmd
 # but applied to New, Original, and Combined subsets.
-fit_bias_robust <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierStudyId") {
+#
+# Step one must be a MULTIVARIATE fixed-effect model whose weights come from the
+# sampling variance-covariance matrix (rho = 0.5), not a univariate rma() with
+# diagonal 1/v_i weights. The inverse-VCV weighting scheme is what makes the
+# estimator bias-robust: it downweights imprecise studies reporting large
+# effects and prevents a study contributing many correlated effect sizes from
+# accruing weight in proportion to its effect-size count. rma.mv() with no
+# `random` argument is the fixed-effect model ("Variance Components: none").
+fit_bias_robust <- function(dat, yi = "yi", vi = "vi", cluster_var = "identifierStudyId",
+                            obs_var = "identifierEffectSizeID", rho = 0.5) {
     dat2 <- dat %>% filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0)
     if (nrow(dat2) == 0) return(NULL)
     tryCatch({
-        fe <- metafor::rma(yi = dat2[[yi]], vi = dat2[[vi]], method = "FE", test = "t")
-        metafor::robust(fe, cluster = dat2[[cluster_var]], clubSandwich = TRUE)
+        VCV <- metafor::vcalc(
+            vi = dat2[[vi]],
+            cluster = dat2[[cluster_var]],
+            obs = dat2[[obs_var]],
+            rho = rho,
+            data = dat2
+        )
+        fe <- metafor::rma.mv(
+            yi = dat2[[yi]],
+            V = VCV,
+            method = "REML",
+            test = "t",
+            dfs = "contain",
+            sparse = TRUE,
+            data = dat2
+        )
+        metafor::robust(fe, cluster = dat2[[cluster_var]], adjust = TRUE, clubSandwich = TRUE)
     }, error = function(e) {
         warning("Bias-robust fit failed: ", conditionMessage(e)); NULL
     })
@@ -1624,10 +1681,16 @@ DT::datatable(
 #   variance per group with no cross-group covariance.
 # * PRIMARY structure: group-specific RESIDUAL variance
 #   (`~ tax_group | identifierEffectSizeID`) over a single pooled between-study
-#   variance (`~ 1 | identifierStudyId`) and a homoscedastic species intercept
-#   (`~ 1 | taxonomySpecies`). NO phylogenetic term. (The fuller both-level
-#   structure was dropped: its per-group between-study variances collapse to
-#   zero for the thin groups, i.e. it is over-parameterised for these data.)
+#   variance (`~ 1 | identifierStudyId`), a homoscedastic species intercept
+#   (`~ 1 | taxonomySpecies`), AND the phylogenetic correlation term
+#   (`~ 1 | species_phylo` with `R =`), so that the moderator models match the
+#   random-effects structure of the intercept-only models. If that fit fails the
+#   cascade falls back to the same structure without phylogeny, then to the
+#   homoscedastic variants; the cascade log records which was used, giving an
+#   empirical justification for whatever structure the manuscript reports.
+#   (The fuller both-level heteroscedastic structure -- per-group BETWEEN-STUDY
+#   variances as well -- remains excluded: those variances collapse to the zero
+#   boundary for the thin groups, i.e. it is over-parameterised for these data.)
 # * Each heteroscedastic structure is tried with several optimisers (nlminb,
 #   optim/BFGS, optim/L-BFGS-B, then a high-iteration Nelder-Mead) before being
 #   declared a failure; only if none converge does the cascade fall back to a
@@ -1636,7 +1699,8 @@ DT::datatable(
 # ---------------------------------------------------------------------------
 fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "vi",
                                 cluster_var = "identifierStudyId",
-                                obs_var = "identifierEffectSizeID", rho = 0.5) {
+                                obs_var = "identifierEffectSizeID", rho = 0.5,
+                                phylo_cor = NULL, phylo_var = "species_phylo") {
     dat2 <- dat %>%
         filter(!is.na(.data[[yi]]), !is.na(.data[[vi]]), .data[[vi]] > 0, !is.na(.data[[group_var]]))
     if (nrow(dat2) == 0) {
@@ -1669,6 +1733,7 @@ fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "v
             cand$args
         )
         if (!is.null(cand$struct)) args$struct <- cand$struct
+        if (!is.null(cand$R))      args$R      <- cand$R
         if (!is.null(ctrl))        args$control <- ctrl
         do.call(metafor::rma.mv, args)
     }
@@ -1680,14 +1745,49 @@ fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "v
     # both-level structure was dropped because its per-group between-study
     # variances collapse to the zero boundary for the thin groups (Other
     # Vertebrates, Arthropods) — i.e. it is over-parameterised for these data.
-    candidates <- list(
+    # Build the optional phylogenetic term, mirroring fit_overall_mv(). The
+    # phylogenetic candidates are tried FIRST so that the taxon-moderator models
+    # match the random-effects structure of the intercept-only models. If
+    # HCS + phylogeny is over-parameterised for these data the cascade falls back
+    # automatically, and the recorded cascade log then documents WHY the
+    # phylogenetic term was dropped -- which is exactly what the manuscript needs
+    # to state.
+    phylo_random <- NULL
+    R_arg <- NULL
+    if (!is.null(phylo_cor) && phylo_var %in% colnames(dat2)) {
+        sp <- unique(as.character(dat2[[phylo_var]]))
+        missing_sp <- setdiff(sp, rownames(phylo_cor))
+        if (length(missing_sp) == 0) {
+            dat2[[phylo_var]] <- factor(as.character(dat2[[phylo_var]]))
+            phylo_random <- stats::as.formula(paste0("~ 1 | ", phylo_var))
+            R_arg <- stats::setNames(list(phylo_cor[sp, sp, drop = FALSE]), phylo_var)
+        } else {
+            warning(
+                "Phylogenetic random effect unavailable for taxon model (species absent from correlation matrix): ",
+                paste(missing_sp, collapse = ", ")
+            )
+        }
+    }
+
+    candidates <- list()
+    if (!is.null(phylo_random)) {
+        candidates <- c(candidates, list(
+            list(spec = "Heteroscedastic + phylogeny (residual only, per group; HCS, rho = 0)",
+                 random = list(~ 1 | identifierStudyId, obs_f, ~ 1 | taxonomySpecies, phylo_random),
+                 struct = "HCS", args = list(rho = 0), R = R_arg, het = TRUE),
+            list(spec = "Homoscedastic + phylogeny (single variance per component)",
+                 random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies, phylo_random),
+                 struct = NULL, args = list(), R = R_arg, het = FALSE)
+        ))
+    }
+    candidates <- c(candidates, list(
         list(spec = "Heteroscedastic (residual only, per group; HCS, rho = 0)",
              random = list(~ 1 | identifierStudyId, obs_f, ~ 1 | taxonomySpecies),
              struct = "HCS", args = list(rho = 0), het = TRUE),
         list(spec = "Homoscedastic (single variance per component)",
              random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
              struct = NULL, args = list(), het = FALSE)
-    )
+    ))
 
     # Attempt one candidate. Heteroscedastic structures cycle through opt_grid
     # until one converges; the homoscedastic structure uses the metafor default.
@@ -1764,8 +1864,8 @@ fit_taxon_hetero_mv <- function(dat, group_var = "tax_group", yi = "yi", vi = "v
     list(data = dat2, VCV = VCV, model = chosen, spec = chosen_spec, diagnostics = diagnostics)
 }
 
-res_tax_hedges <- fit_taxon_hetero_mv(db_hedges_tax)
-res_tax_or     <- fit_taxon_hetero_mv(db_or_tax)
+res_tax_hedges <- fit_taxon_hetero_mv(db_hedges_tax, phylo_cor = phylo_cor_hedges)
+res_tax_or     <- fit_taxon_hetero_mv(db_or_tax,     phylo_cor = phylo_cor_or)
 
 # Omnibus among-group test. With the intercept-coded moderator, metafor's built-in
 # QM tests all non-intercept coefficients jointly — i.e. exactly whether the group
