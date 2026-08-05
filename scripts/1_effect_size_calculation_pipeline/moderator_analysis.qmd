@@ -102,7 +102,7 @@ During extraction we collected several candidate moderators that are plausible s
 This chapter does two things, in order:
 
 1. **Diagnostics (Part 1).** Before fitting anything, we audit each candidate moderator *in the new extraction* — how its levels are populated, how much is missing, and how many studies/species back each level — and we check whether the coding can be reconciled with the original meta-analyses. This determines **which** moderators are analysable and **on which dataset** (new-only versus combined).
-2. **Uni-moderator models (Part 2).** For the moderators that pass the diagnostic, we fit single-moderator multilevel models using the same `rma.mv` machinery, omnibus $Q_M$ test, and partial-$I^2$ heterogeneity decomposition used elsewhere in this workflow. We report two things for each: (i) whether the moderator explains a meaningful share of the *heterogeneity* (the $Q_M$ / $I^2$ question), and (ii) the **direction and magnitude of the differences between levels** ([§Biologically Meaningful Level Differences](#sec-biological)) — because even when a contrast is not statistically distinct, its sign can speak to specific hypotheses raised in the main text (most notably whether virgin observers copy more, as the original synthesis reported).
+2. **Uni-moderator models (Part 2).** For the moderators that pass the diagnostic, we fit single-moderator multilevel models using the same `rma.mv` machinery, omnibus $F$-test, and partial-$I^2$ heterogeneity decomposition used elsewhere in this workflow. We report two things for each: (i) whether the moderator explains a meaningful share of the *heterogeneity* (the $F$ / $I^2$ question), and (ii) the **direction and magnitude of the differences between levels** ([§Biologically Meaningful Level Differences](#sec-biological)) — because even when a contrast is not statistically distinct, its sign can speak to specific hypotheses raised in the main text (most notably whether virgin observers copy more, as the original synthesis reported).
 
 > These analyses are **exploratory**. With the dataset at its current size, several moderator levels are thin, and we have not pre-registered these tests. We report them to map the most promising directions for future, ideally pre-registered, syntheses — not as confirmatory claims.
 
@@ -352,7 +352,7 @@ Each model is a single-moderator multilevel meta-analysis fitted with `metafor::
 * **Dependency.** A variance–covariance matrix from `vcalc()` ($\rho = 0.5$) handles multiple effect sizes within a study.
 * **Random effects.** Study (`identifierStudyId`), residual effect-size (`identifierEffectSizeID`), and a non-phylogenetic species intercept (`taxonomySpecies`). The phylogenetic term is **omitted**: the heterogeneity decomposition showed it carries negligible variance, and dropping it keeps these smaller moderator models identifiable (the same choice made for the taxonomic model).
 * **Heteroscedasticity with a fallback cascade.** We first attempt a heteroscedastic structure that lets the **residual (within-study) variance differ by moderator level** (`~ moderator | effect-size`, `struct = "HCS"`, `rho = 0`), trying several optimisers; if it errors we fall back to a homoscedastic structure. This is the `orchaRd` 2.0 recommendation for meta-regression with heterogeneous variances [@nakagawaOrchaRd2Visualising2023].
-* **Inference.** The moderator is intercept-coded (`mods = ~ moderator`); per-level means, CIs, and prediction intervals come from `orchaRd::mod_results()` (marginalised means via `emmeans`), and the among-level test is the model's omnibus $Q_M$. Heterogeneity is decomposed with partial $I^2$ from `orchaRd::i2_ml()`.
+* **Inference.** The moderator is intercept-coded (`mods = ~ moderator`); per-level means, CIs, and prediction intervals come from `orchaRd::mod_results()` (marginalised means via `emmeans`), and the among-level test is the model's omnibus $F$-test. Because these models are fitted with `test = "t"`, `metafor` returns an $F$-statistic with containment degrees of freedom rather than a Wald $Q_M$ chi-square; we report it as $F_{df_1,df_2}$ throughout. Heterogeneity is decomposed with partial $I^2$ from `orchaRd::i2_ml()`.
 
 ```{r}
 #| label: fit_function
@@ -451,10 +451,15 @@ fit_mod_hetero <- function(dat, group_var, group_levels, yi = "yi", vi = "vi",
          diagnostics = diagnostics, group_var = group_var)
 }
 
-# Omnibus among-level test (QM tests all non-intercept coefficients jointly).
+# Omnibus among-level test (tests all non-intercept coefficients jointly).
+#
+# NOTE ON THE TEST STATISTIC: these models are fitted with test = "t", so
+# metafor returns an F-statistic with containment degrees of freedom, NOT a
+# Wald Q_M chi-square. The value is still stored in $QM for historical reasons,
+# and $QMdf holds c(df1, df2). We therefore label it F(df1, df2) everywhere.
 among_test <- function(res) {
     if (is.null(res) || is.null(res$model)) return(NULL)
-    list(QM = res$model$QM, QMp = res$model$QMp, QMdf = res$model$QMdf)
+    list(F = res$model$QM, Fp = res$model$QMp, df1 = res$model$QMdf[1], df2 = res$model$QMdf[2])
 }
 ```
 
@@ -519,7 +524,7 @@ comp_labels <- c(
 # cascade prefers, so for the partial-I² *decomposition* we compute i2_ml on a
 # homoscedastic refit of the same data (one variance per random effect). This is
 # exactly how the overall synthesis reports partial I² (from the homoscedastic
-# intercept models); the heteroscedastic model is retained for the means/Q_M.
+# intercept models); the heteroscedastic model is retained for the means/F-test.
 i2_homosc_refit <- function(res) {
     if (is.null(res) || is.null(res$model) || is.null(res$data)) return(NULL)
     d <- res$data
@@ -613,8 +618,9 @@ plot_mod_orchard <- function(res, palette, xlab, title) {
 qm_line <- function(res, scale_label) {
     a <- among_test(res); i2 <- total_i2(res)
     if (is.null(a)) return(paste0("*", scale_label, ":* model did not fit."))
-    paste0("*", scale_label, ":* total $I^2$ = ", fmt(i2, 1), "%; omnibus $Q_M$ = ",
-           fmt(a$QM, 2), " (", pstr(a$QMp), "), a **", sigw(a$QMp), "** difference among levels.")
+    paste0("*", scale_label, ":* total $I^2$ = ", fmt(i2, 1), "%; omnibus $F_{",
+           a$df1, ",", a$df2, "}$ = ", fmt(a$F, 2), " (", pstr(a$Fp), "), a **",
+           sigw(a$Fp), "** difference among levels.")
 }
 ```
 
@@ -811,17 +817,19 @@ qm_mech <- among_test(fit_comb_mech_hedges)
 qm_virg <- among_test(fit_comb_virgin_or)
 i2_mech <- total_i2(fit_comb_mech_hedges)
 i2_virg <- total_i2(fit_comb_virgin_or)
-qmp <- function(a) if (is.null(a) || is.null(a$QMp)) NA_real_ else as.numeric(a$QMp)
-qms <- function(a) if (is.null(a) || is.null(a$QM)) NA_real_ else as.numeric(a$QM)
+qmp  <- function(a) if (is.null(a) || is.null(a$Fp))  NA_real_ else as.numeric(a$Fp)
+qms  <- function(a) if (is.null(a) || is.null(a$F))   NA_real_ else as.numeric(a$F)
+qdf1 <- function(a) if (is.null(a) || is.null(a$df1)) NA_real_ else as.numeric(a$df1)
+qdf2 <- function(a) if (is.null(a) || is.null(a$df2)) NA_real_ else as.numeric(a$df2)
 ```
 
-In the combined data the conclusions are unchanged. For **copying mechanism** (Hedges' $g$), total heterogeneity is `r fmt(i2_mech, 1)`% and the among-level test is `r pstr(qmp(qm_mech))` ($Q_M$ = `r fmt(qms(qm_mech), 2)`) — a **`r sigw(qmp(qm_mech))`** difference between generalized and individual copying. For **observer virginity** (log OR), total heterogeneity is `r fmt(i2_virg, 1)`% and the among-level test is `r pstr(qmp(qm_virg))` ($Q_M$ = `r fmt(qms(qm_virg), 2)`), again a **`r sigw(qmp(qm_virg))`** difference between virgin and non-virgin observers.
+In the combined data the conclusions are unchanged. For **copying mechanism** (Hedges' $g$), total heterogeneity is `r fmt(i2_mech, 1)`% and the among-level test is `r pstr(qmp(qm_mech))` ($F_{`r qdf1(qm_mech)`,`r fmt(qdf2(qm_mech), 1)`}$ = `r fmt(qms(qm_mech), 2)`) — a **`r sigw(qmp(qm_mech))`** difference between generalized and individual copying. For **observer virginity** (log OR), total heterogeneity is `r fmt(i2_virg, 1)`% and the among-level test is `r pstr(qmp(qm_virg))` ($F_{`r qdf1(qm_virg)`,`r fmt(qdf2(qm_virg), 1)`}$ = `r fmt(qms(qm_virg), 2)`), again a **`r sigw(qmp(qm_virg))`** difference between virgin and non-virgin observers.
 
 ---
 
 ## Biologically Meaningful Level Differences {#sec-biological}
 
-A non-significant $Q_M$ tells us a moderator does not *explain the heterogeneity*, but it does not tell us whether the **direction and magnitude** of the level differences are biologically interesting. Because the point estimates speak to specific hypotheses raised in the main text, we read them here as well — keeping firmly in mind that every contrast CI below overlaps zero, so these are **directional signals, not demonstrated effects**.
+A non-significant omnibus $F$ tells us a moderator does not *explain the heterogeneity*, but it does not tell us whether the **direction and magnitude** of the level differences are biologically interesting. Because the point estimates speak to specific hypotheses raised in the main text, we read them here as well — keeping firmly in mind that every contrast CI below overlaps zero, so these are **directional signals, not demonstrated effects**.
 
 ```{r}
 #| label: biological_inline
@@ -870,7 +878,7 @@ The modality comparison (visual $g$ = `r fmt(mo_vis, 2)`, chemical = `r fmt(mo_c
 
 ## Heterogeneity After Moderators {#sec-heterogeneity-after}
 
-The point of this exercise was to see whether any single moderator could absorb a meaningful share of the heterogeneity that the intercept models left unexplained. The table below collects the total $I^2$ and omnibus $Q_M$ for every model fitted in this chapter.
+The point of this exercise was to see whether any single moderator could absorb a meaningful share of the heterogeneity that the intercept models left unexplained. The table below collects the total $I^2$ and the omnibus $F$-test (with its degrees of freedom) for every model fitted in this chapter.
 
 ```{r}
 #| label: heterogeneity_summary_table
@@ -878,15 +886,18 @@ The point of this exercise was to see whether any single moderator could absorb 
 summarise_fit <- function(res, analysis) {
     if (is.null(res) || is.null(res$model)) {
         return(tibble::tibble(Analysis = analysis, k = NA_integer_, `Total I² (%)` = NA_real_,
-                              `Q_M` = NA_real_, `Q_M p` = NA_real_, Structure = "did not fit"))
+                              `F` = NA_real_, `df1` = NA_integer_, `df2` = NA_real_,
+                              `p` = NA_real_, Structure = "did not fit"))
     }
     a <- among_test(res)
     tibble::tibble(
         Analysis = analysis,
         k = res$model$k,
         `Total I² (%)` = round(total_i2(res), 1),
-        `Q_M` = round(a$QM, 2),
-        `Q_M p` = signif(a$QMp, 3),
+        `F` = round(a$F, 2),
+        `df1` = a$df1,
+        `df2` = round(a$df2, 1),
+        `p` = signif(a$Fp, 3),
         Structure = res$spec
     )
 }
@@ -906,11 +917,11 @@ het_summary <- dplyr::bind_rows(
 
 DT::datatable(
     het_summary,
-    caption = "Total heterogeneity and omnibus moderator test for every uni-moderator model in this chapter. High total I² alongside a non-significant Q_M means the moderator does not explain the heterogeneity.",
-    options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = c(1, 2, 3, 4)))),
+    caption = "Total heterogeneity and omnibus moderator test for every uni-moderator model in this chapter. Because the models use test = \"t\", the omnibus test is an F-statistic with containment degrees of freedom, not a Wald Q_M chi-square. High total I² alongside a non-significant F means the moderator does not explain the heterogeneity.",
+    options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-center", targets = c(1, 2, 3, 4, 5, 6)))),
     rownames = FALSE
 ) %>%
-    DT::formatStyle("Q_M p", fontWeight = DT::styleInterval(0.05, c("bold", "normal")))
+    DT::formatStyle("p", fontWeight = DT::styleInterval(0.05, c("bold", "normal")))
 ```
 
 ### Interpretation {#sec-interpretation}
@@ -923,7 +934,7 @@ That said, the null heterogeneity result and the [directional level differences]
 
 ::: {.callout-note}
 ## Caveats
-These models are exploratory and were not pre-registered. Several levels (Chemical and Acoustic modality in particular) rest on very few studies and are confounded with individual species, so their estimates are unstable. Absence of a significant $Q_M$ is *not* evidence that a moderator has no effect — only that the current data cannot resolve one. Finally, where the heteroscedastic (`HCS`) structure was used, `orchaRd`/`metafor` flag that **prediction intervals** for random-slope structures are approximate (the point estimates, confidence intervals, and $Q_M$ are unaffected); the PI columns in the per-level tables should therefore be read as indicative only.
+These models are exploratory and were not pre-registered. Several levels (Chemical and Acoustic modality in particular) rest on very few studies and are confounded with individual species, so their estimates are unstable. Absence of a significant omnibus $F$ is *not* evidence that a moderator has no effect — only that the current data cannot resolve one. Finally, where the heteroscedastic (`HCS`) structure was used, `orchaRd`/`metafor` flag that **prediction intervals** for random-slope structures are approximate (the point estimates, confidence intervals, and $F$-tests are unaffected); the PI columns in the per-level tables should therefore be read as indicative only.
 :::
 
 ---

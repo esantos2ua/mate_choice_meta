@@ -44,7 +44,7 @@ fe <- metafor::rma(yi = yi, vi = vi, method = "FE", test = "t")   # univariate, 
 metafor::robust(fe, cluster = identifierStudyId, clubSandwich = TRUE)
 ```
 
-**Why it matters.** `rma()` with `vi` weights every effect size by 1/*v_i* independently. That discards the ρ = 0.5 within-study correlation the rest of the paper assumes, and lets a study contributing many effect sizes carry proportionally more weight. Here that is not hypothetical: *Drosophila* and *Poecilia* studies supply roughly two-thirds of all effect sizes. The bias-robust means currently reported — *g* = 0.34 (0.24 to 0.44) and log OR = 0.57 (0.42 to 0.73) — are therefore not the estimator the manuscript says it used.
+**Why it matters.** `rma()` with `vi` weights every effect size by 1/*v_i* independently. That discards the ρ = 0.5 within-study correlation the rest of the paper assumes, and lets a study contributing many effect sizes carry proportionally more weight. Here that is not hypothetical: *Drosophila* and *Poecilia* studies supply roughly two-thirds of all effect sizes. The bias-robust means reported at audit time — *g* = 0.34 (0.24 to 0.44) and log OR = 0.57 (0.42 to 0.73) — were therefore not the estimator the manuscript said it used. After the fix they are **0.31 (0.22 to 0.41)** and **0.55 (0.39 to 0.71)**, both still clearly positive.
 
 ⚠️ I cannot predict the direction of the shift without refitting, and would not guess: VCV weighting downweights multi-effect-size studies, and the taxon model shows arthropods have both the smallest means and the most effect sizes, so the estimate could move either way.
 
@@ -62,7 +62,7 @@ metafor::robust(fe, cluster = dat$identifierStudyId, adjust = TRUE, clubSandwich
 
 ⚠️ Also pass `adjust = TRUE` as the tutorial does. Verify whether `metafor::robust()` already defaults to it when `clubSandwich = TRUE` — I believe the CR2 small-sample correction is inherent, making this immaterial, but I have not confirmed it.
 
-## A2 · 🟡 Nakagawa bias-corrected: correct, with one reporting gap
+## A2 · ✅ FIXED IN CODE 2026-08-05 — Nakagawa bias-corrected: was correct, but lacked phylogeny
 
 `fit_corrected_mv` (`overall_effect.qmd:604`) and `egger_*_v` (`publication_bias.qmd:431`, `:675`) are faithful to Nakagawa et al. (2022):
 
@@ -73,11 +73,13 @@ metafor::robust(fe, cluster = dat$identifierStudyId, adjust = TRUE, clubSandwich
 | Adjusted mean = intercept at `vi = 0`, via `mod_results(at = list(vi = 0), mod = "1")` | ✔ correct |
 | VCV with ρ = 0.5 in the meta-regression | ✔ correct (stricter than the tutorial, which uses diagonal `V` for its Egger example) |
 | Random effects: study, effect-size, species | ✔ |
-| **Phylogenetic random effect** | ✖ **absent — but present in the uncorrected models** |
+| **Phylogenetic random effect** | ✅ **added 2026-08-05** (was absent while the uncorrected models had it) |
 
-**The gap.** `fit_overall_mv` includes the phylogenetic correlation matrix; `fit_corrected_mv` does not. The script prose says so ("The phylogenetic term is added to the **uncorrected** models only"), but the manuscript does not. So the headline contrast — uncorrected 0.44 *vs.* corrected −0.21 — conflates the `vi` moderator with the removal of a random effect. Phylogeny explains < 7% of heterogeneity, so the practical impact is likely small, but a reader comparing those two numbers is entitled to know they are not like-for-like. Either add the phylogenetic term to the corrected models, or state the difference in Methods. The same gap applies to the taxonomic-moderator models (see **E6**), so one sentence can cover both.
+**The gap, now closed.** `fit_overall_mv` included the phylogenetic correlation matrix; `fit_corrected_mv` did not, so the headline contrast conflated the `vi` moderator with the removal of a random effect. On your instruction the term was added to `fit_corrected_mv` (all 6 call sites) and to all 8 models in `publication_bias.qmd`, which had no phylogeny scaffolding at all and needed it ported.
 
-## A3 · 🟡 Degrees-of-freedom convention is mixed across models
+**It mattered more than expected.** The bias-corrected Hedges' *g* moved from −0.213, 95% CI (−0.412, −0.014), *p* = 0.036 to **−0.225, 95% CI (−0.487, 0.038), *p* = 0.091** — the standard error rose from 0.101 to 0.128 and the interval now spans zero. Four passages in the manuscript claiming it "fell below zero" are no longer supported. See `A1_yang_correction_impact.md` §2c for the exact rewording. The log OR bias-corrected mean was unchanged at 0.10.
+
+## A3 · ✅ FIXED IN CODE 2026-08-05 — degrees-of-freedom convention was mixed
 
 | Model | Call | `dfs` |
 |---|---|---|
@@ -87,9 +89,9 @@ metafor::robust(fe, cluster = dat$identifierStudyId, adjust = TRUE, clubSandwich
 | Taxon moderator (`fit_taxon_hetero_mv`) | `rma.mv` | **`"contain"`** |
 | Biological moderators (`moderator_analysis.qmd:385`) | `rma.mv` | **`"contain"`** |
 
-Both the Nakagawa and Yang tutorials use `dfs = "contain"` throughout. Nothing here is wrong, but one paper reporting two df conventions invites a question. Cheapest resolution is to add `dfs = "contain"` to the remaining calls and re-render; the alternative is to describe both conventions accurately in Methods.
+Both the Nakagawa and Yang tutorials use `dfs = "contain"` throughout, and on your instruction it was added to every remaining call: `fit_overall_mv`, `fit_corrected_mv`, all 8 `publication_bias.qmd` models, and the Yang FE models. Point estimates are unaffected — `dfs` changes inference only — but **every confidence interval and *p*-value in the paper shifts slightly**, and the taxon omnibus df moved from (2,28) and (2,26) to (2,27) and (2,25).
 
-⚠️ **This corrects my E6 draft**, which asserted that *all* models use `test = "t"` with `dfs = "contain"`. Only the moderator models do. E6 has been amended below.
+⚠️ At audit time only the moderator models used `dfs = "contain"`, so the E6 draft was amended to describe both conventions. Now that they are harmonised, E6's Methods text can revert to the simpler single-convention wording — see the note in E6.
 
 ---
 
@@ -111,7 +113,7 @@ Our results call for broader taxonomic sampling, pre-registered tests of the mod
 
 **REPLACE:**
 ```latex
-Using a comprehensive, multilingual, and grey-literature-inclusive search across seven languages, we added 69 new effect sizes from 29 studies (15 species) to the original datasets, harmonizing the two source metrics (odds ratio and Hedges' standardized mean difference) onto common scales. The combined evidence comprises 227 Hedges' \textit{g} effect sizes from 80 studies and 172 log odds ratio effect sizes from 69 studies, spanning 33 species. We re-analyzed it with phylogenetically-informed multilevel meta-analytic models and a battery of publication bias assessments and sensitivity analyses. The overall effect of social information remained positive and statistically significant on both scales, but was appreciably smaller than the original estimates (Hedges' \textit{g} = 0.44, 95\% CI: 0.24 to 0.65, \textit{vs.} 0.58 originally; OR = 1.81, 95\% CI: 1.35 to 2.42, \textit{vs.} 2.71). Considered on its own, the new evidence was roughly half that magnitude. Heterogeneity was high and accumulated mainly within studies and among species rather than between studies or across the phylogeny, which showed little signal. We detected strong small-study effects on both scales---smaller, less precise studies reported systematically larger effects, the expected signature of selective reporting---and a partial decline in effect size over time for the binary outcomes. How much this matters depends on the correction applied: a bias-robust estimator retained a positive but reduced mean, whereas a more conservative regression-based correction drew the adjusted mean to approximately zero, and below zero for Hedges' \textit{g}. The unadjusted pooled estimates were nonetheless insensitive to the removal of any single study or species, and to alternative treatment of the effect sizes that disagreed between the two source datasets. The qualitative conclusion that animals copy the mate choices of others therefore remains supported by the unadjusted evidence, but the magnitude---and, under conservative bias correction, even the presence---of a positive average effect is less certain than the original syntheses implied. The effect is also highly heterogeneous, a pattern itself consistent with theory predicting that copying is a conditional, strategic use of social information. Our results call for broader taxonomic sampling, pre-registered tests of the moderators driving this heterogeneity, and a publication culture that reports null and small-sample results.\\
+Using a comprehensive, multilingual, and grey-literature-inclusive search across seven languages, we added 69 new effect sizes from 29 studies (15 species) to the original datasets, harmonizing the two source metrics (odds ratio and Hedges' standardized mean difference) onto common scales. The combined evidence comprises 227 Hedges' \textit{g} effect sizes from 80 studies and 172 log odds ratio effect sizes from 69 studies, spanning 33 species. We re-analyzed it with phylogenetically-informed multilevel meta-analytic models and a battery of publication bias assessments and sensitivity analyses. The overall effect of social information remained positive and statistically significant on both scales, but was appreciably smaller than the original estimates (Hedges' \textit{g} = 0.45, 95\% CI: 0.23 to 0.66, \textit{vs.} 0.58 originally; OR = 1.81, 95\% CI: 1.34 to 2.45, \textit{vs.} 2.71). Considered on its own, the new evidence was roughly half that magnitude. Heterogeneity was high and accumulated mainly within studies and among species rather than between studies or across the phylogeny, which showed little signal. We detected strong small-study effects on both scales---smaller, less precise studies reported systematically larger effects, the expected signature of selective reporting---and a partial decline in effect size over time for the binary outcomes. How much this matters depends on the correction applied: a bias-robust estimator retained a positive but reduced mean, whereas a more conservative regression-based correction drew the adjusted mean to approximately zero on both scales. The unadjusted pooled estimates were nonetheless insensitive to the removal of any single study or species, and to alternative treatment of the effect sizes that disagreed between the two source datasets. The qualitative conclusion that animals copy the mate choices of others therefore remains supported by the unadjusted evidence, but the magnitude---and, under conservative bias correction, even the presence---of a positive average effect is less certain than the original syntheses implied. The effect is also highly heterogeneous, a pattern itself consistent with theory predicting that copying is a conditional, strategic use of social information. Our results call for broader taxonomic sampling, pre-registered tests of the moderators driving this heterogeneity, and a publication culture that reports null and small-sample results.\\
 ```
 
 ## E1b · ✔ RESOLVED — the two study counts are 80 and 69
@@ -279,10 +281,10 @@ Insert immediately after the paragraph ending `...from the package \lstinline{or
 **INSERT:**
 ```latex
 \subsubsection{Model specification and inference}
-All models were fitted by restricted maximum likelihood (REML), and inference on fixed effects used $t$-distributed test statistics (\lstinline{test = "t"} in \lstinline{rma.mv}), which is preferable to $z$-based inference given the moderate number of clusters available; the meta-regression models additionally used containment degrees of freedom (\lstinline{dfs = "contain"}). For every model we report the variance component of each random effect ($\sigma^2$) alongside total and partial $I^2$, and a 95\% prediction interval for the overall mean. We report both because $I^2$ describes the \textit{proportion} of observed variance not attributable to sampling error rather than its absolute magnitude, and is sensitive to the precision of the contributing studies~\cite{borensteinBasicsHeterogeneity2017, inthoutPlearPredictionInterval2016}; the prediction interval expresses the expected range of true effects in a new study on the original scale.
+All models were fitted by restricted maximum likelihood (REML), and inference on fixed effects used $t$-distributed test statistics with containment degrees of freedom (\lstinline{test = "t"}, \lstinline{dfs = "contain"} in \lstinline{rma.mv}), which is preferable to $z$-based inference given the moderate number of clusters available. For every model we report the variance component of each random effect ($\sigma^2$) alongside total and partial $I^2$, and a 95\% prediction interval for the overall mean. We report both because $I^2$ describes the \textit{proportion} of observed variance not attributable to sampling error rather than its absolute magnitude, and is sensitive to the precision of the contributing studies~\cite{borensteinBasicsHeterogeneity2017, inthoutPlearPredictionInterval2016}; the prediction interval expresses the expected range of true effects in a new study on the original scale.
 
 \subsubsection{Meta-regression models}
-We fitted taxonomic group (arthropods, fish, and other vertebrates) as an intercept-coded categorical moderator on each combined dataset, following the heterogeneous-variance workflow of \lstinline{orchaRd 2.0}~\cite{nakagawaOrchaRd20Package2023}. Because residual variance differed markedly among taxonomic groups, we allowed the effect-size--level variance to differ by group, specified as a heteroscedastic compound-symmetric structure (\lstinline{struct = "HCS"}) on \lstinline{~ tax_group | identifierEffectSizeID} with the between-group correlation fixed at zero (\lstinline{rho = 0}), so that one residual variance is estimated per group with no cross-group covariance. A single pooled between-study variance (\lstinline{~ 1 | identifierStudyId}) and a homoscedastic species variance (\lstinline{~ 1 | taxonomySpecies}) were retained. Unlike the intercept-only models, the taxonomic-moderator models did not include the phylogenetic correlation matrix, because ⟨⟨state the reason---see note below⟩⟩. As in the main analyses, the sampling variance--covariance matrix was constructed with \lstinline{metafor::vcalc} assuming a within-study correlation of $\rho = 0.5$, and models were fitted by REML with \lstinline{test = "t"} and \lstinline{dfs = "contain"}. Both models converged at the first attempt using the \lstinline{nlminb} optimiser without warnings. We report the omnibus $F$-test of the moderator together with group-specific marginalised means and pairwise contrasts obtained with \lstinline{orchaRd::mod_results} (via \lstinline{emmeans}), so that inference does not depend on an arbitrary reference level.
+We fitted taxonomic group (arthropods, fish, and other vertebrates) as an intercept-coded categorical moderator on each combined dataset, following the heterogeneous-variance workflow of \lstinline{orchaRd 2.0}~\cite{nakagawaOrchaRd20Package2023}. Because residual variance differed markedly among taxonomic groups, we allowed the effect-size--level variance to differ by group, specified as a heteroscedastic compound-symmetric structure (\lstinline{struct = "HCS"}) on \lstinline{~ tax_group | identifierEffectSizeID} with the between-group correlation fixed at zero (\lstinline{rho = 0}), so that one residual variance is estimated per group with no cross-group covariance. A single pooled between-study variance (\lstinline{~ 1 | identifierStudyId}) and a homoscedastic species variance (\lstinline{~ 1 | taxonomySpecies}) were retained. As in the intercept-only models, a phylogenetic correlation matrix was included as an additional random effect. As in the main analyses, the sampling variance--covariance matrix was constructed with \lstinline{metafor::vcalc} assuming a within-study correlation of $\rho = 0.5$, and models were fitted by REML with \lstinline{test = "t"} and \lstinline{dfs = "contain"}. Both models converged at the first attempt using the \lstinline{nlminb} optimiser without warnings. We report the omnibus $F$-test of the moderator together with group-specific marginalised means and pairwise contrasts obtained with \lstinline{orchaRd::mod_results} (via \lstinline{emmeans}), so that inference does not depend on an arbitrary reference level.
 
 Four further moderators extracted during data collection---the copying mechanism (generalized \textit{vs.} individual), the modality of the social cue (visual, chemical, or acoustic), the mating status of the observer, and the relative age of the demonstrator---were not part of our pre-registered analyses, and several of their levels are sparsely sampled. We therefore fitted them as single-moderator multilevel models on the new extraction (both scales) and, where the coding could be harmonized with an original dataset, on the combined data, and treat all four as exploratory throughout. The relative age of the demonstrator showed no variation in our extraction (all ``same-age'') and could not be analyzed.
 ```
@@ -313,11 +315,11 @@ From `overall_effect.qmd`, function `fit_taxon_hetero_mv` (~line 1637), confirme
 | `struct` | `"HCS"` (heteroscedastic compound symmetry) |
 | Heteroscedastic term | `~ tax_group \| identifierEffectSizeID`, `rho = 0` (fixed) |
 | Other random terms | `~ 1 \| identifierStudyId`, `~ 1 \| taxonomySpecies` (both homoscedastic) |
-| **Phylogenetic term** | **absent** |
+| **Phylogenetic term** | **present** (`~ 1 \| species_phylo` with `R =`) — added 2026-08-05, converged first attempt |
 | Estimation | `method = "REML"`, `test = "t"`, `dfs = "contain"`, `sparse = TRUE` |
 | VCV | `metafor::vcalc(..., rho = 0.5)` |
-| Optimiser | `nlminb`, clean fit, 0 warnings (0.74 s for *g*, 1.21 s for lnOR) |
-| Fallback (homoscedastic) | not attempted — not needed |
+| Optimiser | `nlminb`, clean fit, 0 warnings |
+| Fallback candidates | none attempted — the phylogenetic HCS structure fitted first time on both scales |
 
 Group-specific residual variances, ready to quote:
 
@@ -331,7 +333,7 @@ Group-specific residual variances, ready to quote:
 
 Three things follow.
 
-**(a) The phylogenetic term is dropped, and the manuscript does not say so.** The intercept-only models include the phylogenetic correlation matrix; the taxonomic-moderator models do not. A reviewer will ask why, especially since taxonomic group and phylogeny are conceptually overlapping. The script's comment only justifies dropping the *fuller both-level heteroscedastic* structure (per-group between-study variances collapse to the zero boundary for the thin groups). Fill the `⟨⟨⟩⟩` with the actual reason — most likely non-convergence or over-parameterisation of HCS + phylogeny — and if it is the latter, say so plainly. This is the one item in E6 still needing your input.
+**(a) ✅ RESOLVED — the phylogenetic term is now in the model.** At audit time the taxon models omitted it while the intercept-only models had it. It was added on 2026-08-05 as the primary candidate in the fallback cascade, and **it converged at the first attempt on both scales** (`Chosen structure: Heteroscedastic + phylogeny (HCS, rho = 0)`), so no fallback was needed and no justification for dropping it is required. Its variance component is essentially zero (σ² = 0.0000, 30 and 28 species levels), consistent with the negligible phylogenetic signal reported throughout. Point estimates for all three groups were unchanged; only the df moved.
 
 **(b) Between-study variance is exactly zero in the lnOR model.** Report it rather than let a reviewer find it. It is also consistent with what you already say in Results (study ID accounts for < 8% of heterogeneity).
 
@@ -537,7 +539,7 @@ Combining both datasets yielded an overall mean OR of 1.81 (95\% CI: 1.35 to 2.4
 
 **REPLACE:**
 ```latex
-Combining both datasets yielded an overall mean OR of 1.81 (95\% CI: 1.35 to 2.42; \hyperref[fig:ororchard]{Figure~\ref*{fig:ororchard}}). All odds ratios are back-transformed from the log scale on which the models were fitted. Against a 50:50 chance expectation, a mean OR of 1.81 corresponds to an observer choosing the socially favoured male on 64\% of occasions; the original estimate of 2.71 corresponds to 73\%, and our new data alone (OR = 1.46) to 59\%.
+Combining both datasets yielded an overall mean OR of 1.81 (95\% CI: 1.34 to 2.45; \hyperref[fig:ororchard]{Figure~\ref*{fig:ororchard}}). All odds ratios are back-transformed from the log scale on which the models were fitted. Against a 50:50 chance expectation, a mean OR of 1.81 corresponds to an observer choosing the socially favoured male on 64\% of occasions; the original estimate of 2.71 corresponds to 73\%, and our new data alone (OR = 1.46) to 59\%.
 ```
 
 Then, for #30 — keep the benchmarks (Christine's reason is sound) but caveat once, which answers Erick:
@@ -555,6 +557,36 @@ conventionally described as a `moderate' effect (\textit{sensu} Cohen), although
 ⚠️ Add a bib entry for Møller & Jennions 2002 (*Ecology* / *Oecologia*, "How much variance can be explained by ecologists and evolutionary biologists?") or substitute Nakagawa & Cuthill 2007. Also note the LaTeX quote fix: `'moderate'` should be `` `moderate' `` to render correctly.
 
 ## E18 · `FILL` · line 210 — τ², prediction intervals, and the *I*² wording
+
+### ✔ τ² — read off the 2026-08-05 render
+
+In a multilevel model τ² is the **sum of the variance components**. From the combined intercept-only models:
+
+| Component | Hedges' *g* (*k* = 227) | log OR (*k* = 172) |
+|---|---|---|
+| Study | 0.0374 | 0.0334 |
+| Effect size (residual) | 0.3632 | 0.3543 |
+| Species (non-phylogenetic) | 0.0158 | 0.1864 |
+| Phylogeny | 0.0175 | 0.0083 |
+| **Total τ²** | **0.4339** | **0.5824** |
+
+### ⚠️ Prediction intervals — computed by hand, verify before use
+
+The render does not print PIs anywhere (`orchaRd` computes them internally for the orchard plots but never exposes the numbers), so I calculated them from the published components as $b \pm t_{df}\sqrt{SE^2 + \tau^2}$:
+
+| Scale | *b* | SE | df | 95% PI |
+|---|---|---|---|---|
+| Hedges' *g* | 0.4455 | 0.1035 | 29 | **−0.92 to 1.81** |
+| log OR | 0.5939 | 0.1466 | 27 | **−1.00 to 2.19** (OR 0.37 to 8.92) |
+
+Confirm with one line before these go in the manuscript — `predict()` handles the degrees of freedom itself and is authoritative:
+
+```r
+predict(res_hedges_comb$model)   # $pi.lb / $pi.ub
+predict(res_or_comb$model)
+```
+
+**Both prediction intervals span zero**, which is the substantive point: the *average* effect is positive, but the expected effect in a new study ranges from clearly negative to strongly positive. That is a far cleaner statement of "conditional and context-dependent" than *I*² alone, and it is worth reusing in the Discussion (**E21**) and in the reply to Kyle.
 **Closes #31** (Kyle ×2)
 
 **FIND:**
@@ -564,7 +596,7 @@ Total heterogeneity across effect sizes was large in all models ($I^2 >$ 74\%; f
 
 **REPLACE:**
 ```latex
-Heterogeneity was substantial in all models. $I^2$---the proportion of observed variance not attributable to sampling error---exceeded 74\%, and the total among-effect-size variance was $\tau^2$ = ⟨⟨tau2_g⟩⟩ for Hedges' \textit{g} and ⟨⟨tau2_or⟩⟩ for log odds ratios, giving 95\% prediction intervals for a new study of ⟨⟨PI_g⟩⟩ and ⟨⟨PI_or⟩⟩ respectively (for details see \hyperref[tab:partial-i2]{Table~\ref*{tab:partial-i2}}). We report both because $I^2$ is a proportion, and so depends on the precision of the contributing studies, whereas $\tau^2$ and the prediction interval express heterogeneity on the scale of the effect size itself.
+Heterogeneity was substantial in all models. $I^2$---the proportion of observed variance not attributable to sampling error---exceeded 74\%, and the total among-effect-size variance was $\tau^2$ = 0.43 for Hedges' \textit{g} and 0.58 for log odds ratios (for details see \hyperref[tab:partial-i2]{Table~\ref*{tab:partial-i2}}). The corresponding 95\% prediction intervals span $-0.92$ to 1.81 and $-1.00$ to 2.19 (odds ratio: 0.37 to 8.92), so although the \textit{average} effect is positive, the effect expected in a new study ranges from clearly negative to strongly positive. We report these alongside $I^2$ because $I^2$ is a proportion, and so depends on the precision of the contributing studies, whereas $\tau^2$ and the prediction interval express heterogeneity on the scale of the effect size itself.
 ```
 
 In `metafor`, τ² is `sum(mod$sigma2)` and the prediction interval comes from `predict(mod)$pi.lb` / `$pi.ub`. A prediction interval spanning zero is a stronger, cleaner statement of the "conditional, context-dependent" argument than *I*² — reuse it in the Discussion (**E21**).
@@ -578,13 +610,41 @@ This is a labelling error, not a numerical one — the values are right. It prop
 
 | Location | Current | Should be |
 |---|---|---|
-| Taxon, Hedges' *g* | `Wald $Q_M$ = 3.06, p = 0.06` | `$F_{2,28}$ = 3.06, \textit{p} = 0.06` |
-| Taxon, log OR | `Wald $Q_M$ = 1.17, p = 0.33` | `$F_{2,26}$ = 1.17, \textit{p} = 0.33` |
+| Taxon, Hedges' *g* | `Wald $Q_M$ = 3.06, p = 0.06` | `$F_{2,27}$ = 3.06, \textit{p} = 0.063` |
+| Taxon, log OR | `Wald $Q_M$ = 1.17, p = 0.33` | `$F_{2,25}$ = 1.17, \textit{p} = 0.327` |
 | Exploratory moderators | `all Wald $Q_M$, p > 0.2` | `all omnibus $F$-tests, \textit{p} > 0.2` |
 | Copying mechanism | `Wald $Q_M$ = 0.003, p = 0.96` | `$F_{1,⟨⟨df2⟩⟩}$ = 0.003, \textit{p} = 0.96` |
 | Virginity | `Wald $Q_M$ = 1.61, p = 0.22` | `$F_{1,⟨⟨df2⟩⟩}$ = 1.61, \textit{p} = 0.22` |
 
-⚠️ The two `⟨⟨df2⟩⟩` values are in the `moderator_analysis.qmd` output (`res$model$QMdf[2]`). Also update the E6 Methods text — already done there — and the `moderator_analysis.qmd` prose at lines 105, 355, 612–617, 873 and 909, which all say $Q_M$.
+### The two `⟨⟨df2⟩⟩` values require one more render
+
+**They are not recoverable from the current output.** `among_test()` captured `QMdf` but nothing ever displayed it — the summary table printed only `Q_M` and `Q_M p`, and the inline prose printed only the statistic. So the degrees of freedom have never been rendered, and I will not infer them: metafor's containment rule depends on the level at which each moderator varies, which differs between a study-level moderator like virginity and an effect-level one like mechanism.
+
+`moderator_analysis.qmd` has been edited (2026-08-05) so that they appear. After the next `quarto render`:
+
+- **Summary table** (§"Total heterogeneity and omnibus moderator test…") now has **`F`, `df1`, `df2`, `p`** columns covering all 10 uni-moderator fits — copying mechanism and virginity on both scales, new-extraction and combined.
+- **Inline prose** in §"Combined-data models" now renders as `$F_{1,df2}$ = …` for both the mechanism and virginity contrasts.
+
+Read the two values off the summary table rows *Mechanism — Hedges' g (new + Davies)* and *Virginity — Hedges' g (new)*, then fill them in above.
+
+### `moderator_analysis.qmd` narrative — corrected
+
+The $Q_M$ → $F$ relabelling has been applied throughout that file:
+
+| Line | Change |
+|---|---|
+| 105 | "omnibus $Q_M$ test" → "omnibus $F$-test"; "the $Q_M$ / $I^2$ question" → "the $F$ / $I^2$ question" |
+| 355 | Now states explicitly that `test = "t"` yields an $F$ with containment df, *not* a Wald chi-square |
+| 455–462 | `among_test()` returns `F`, `Fp`, `df1`, `df2`; comment documents that metafor stores the $F$ in `$QM` for historical reasons |
+| 527 | comment "means/Q_M" → "means/F-test" |
+| 612–618 | `qm_line()` renders `$F_{df1,df2}$ = …` |
+| 820–824 | helpers gain `qdf1()` / `qdf2()`; both inline sentences print the df |
+| 830 | "A non-significant $Q_M$" → "A non-significant omnibus $F$" |
+| 879 | table intro mentions the df |
+| 892–918 | `summarise_fit()` emits `F`/`df1`/`df2`/`p`; caption explains the distinction |
+| 935 | two further $Q_M$ mentions relabelled |
+
+All 18 R chunks re-checked for balanced delimiters. The only remaining `Q_M` strings are in the explanatory comment and caption, where the contrast with the Wald statistic is the point.
 
 ## E19 · `PASTE` · lines 215 & 220 — split the taxon sentences; delete the relocated moderator text
 **Closes #33** (Erick) and completes **#34** and **#32**
@@ -596,7 +656,7 @@ to the other vertebrates---birds and mammals (\textit{g} = 0.71, 95\% CI: 0.36 t
 
 **REPLACE:**
 ```latex
-to the other vertebrates, \textit{i.e.} birds and mammals (\textit{g} = 0.71, 95\% CI: 0.36 to 1.07). Total heterogeneity was high (94.3\%) and the among-group test approached statistical significance ($F_{2,28}$ = 3.06, \textit{p} = 0.06). On the log-odds-ratio scale the ranking differed, with fish highest (log OR = 0.82, 95\% CI: 0.37 to 1.26), followed by the other vertebrates (log OR = 0.61, 95\% CI: $-0.04$ to 1.25) and arthropods (log OR = 0.33, 95\% CI: $-0.13$ to 0.80). Total heterogeneity was again high (89.5\%), and differences among groups were not significant ($F_{2,26}$ = 1.17, \textit{p} = 0.33). Residual variance was itself group-specific, and roughly four times larger in fish ($\tau^2$ = 0.54 for Hedges' \textit{g}, 1.04 for log odds ratios) than in arthropods (0.13 and 0.15). Because the two scales give different rankings and neither omnibus test is significant, we do not interpret the apparent gradient.
+to the other vertebrates, \textit{i.e.} birds and mammals (\textit{g} = 0.71, 95\% CI: 0.36 to 1.07). Total heterogeneity was high (94.3\%) and the among-group test approached statistical significance ($F_{2,27}$ = 3.06, \textit{p} = 0.063). On the log-odds-ratio scale the ranking differed, with fish highest (log OR = 0.82, 95\% CI: 0.37 to 1.26), followed by the other vertebrates (log OR = 0.61, 95\% CI: $-0.04$ to 1.25) and arthropods (log OR = 0.33, 95\% CI: $-0.13$ to 0.80). Total heterogeneity was again high (89.5\%), and differences among groups were not significant ($F_{2,25}$ = 1.17, \textit{p} = 0.327). Residual variance was itself group-specific, and roughly four times larger in fish ($\tau^2$ = 0.54 for Hedges' \textit{g}, 1.04 for log odds ratios) than in arthropods (0.13 and 0.15). Because the two scales give different rankings and neither omnibus test is significant, we do not interpret the apparent gradient.
 ```
 
 Note the replacement also drops "the ranking significantly differed" — as written it claims significance in the same clause that reports *p* = 0.33.
@@ -694,7 +754,7 @@ Reassuringly, the uni-moderator analyses returned positive means in all three ta
 
 **REPLACE:**
 ```latex
-That species identity accounted for a large share of the heterogeneity while phylogeny accounted for almost none indicates that biologically important variation lies among species but is not predicted by relatedness---precisely the situation in which a sample concentrated in two genera is least informative, and in which broader taxonomic coverage would be most valuable. Reassuringly, the uni-moderator analyses returned positive means in all three taxonomic groups on both scales, with only weak support for among-group differences, so we treat the apparent gradient cautiously. To gauge how far the pooled estimate reflects this uneven sampling, we also computed a mean marginalised over taxonomic groups, weighting groups rather than effect sizes equally: this gave ⟨⟨g_marg⟩⟩ on the Hedges' \textit{g} scale and ⟨⟨or_marg⟩⟩ on the odds ratio scale, compared with 0.44 and 1.81 in the observed sample~\cite{⟨⟨Kyle's two examples⟩⟩}.
+That species identity accounted for a large share of the heterogeneity while phylogeny accounted for almost none indicates that biologically important variation lies among species but is not predicted by relatedness---precisely the situation in which a sample concentrated in two genera is least informative, and in which broader taxonomic coverage would be most valuable. Reassuringly, the uni-moderator analyses returned positive means in all three taxonomic groups on both scales, with only weak support for among-group differences, so we treat the apparent gradient cautiously. To gauge how far the pooled estimate reflects this uneven sampling, we also computed a mean marginalised over taxonomic groups, weighting groups rather than effect sizes equally: this gave ⟨⟨g_marg⟩⟩ on the Hedges' \textit{g} scale and ⟨⟨or_marg⟩⟩ on the odds ratio scale, compared with 0.45 and 1.81 in the observed sample~\cite{⟨⟨Kyle's two examples⟩⟩}.
 ```
 
 `orchaRd::marginalised_means()` (⚠️ confirm the exact function name in v2.2.0). Expect the marginalised mean to sit somewhat *higher* than the raw mean given the arthropod-heavy sample — a useful, honest counterweight to the bias-corrected results. Kyle's two examples: `10.1016/j.anbehav.2026.123542` and `10.1111/ele.14083` (Pottier et al., *Ecology Letters*).

@@ -88,9 +88,40 @@ Then confirm in the console output that step one now prints **`Variance Componen
 
 ## Step 2 — Numbers to re-read and update
 
-### 2a. Numbers in `main.tex` — now a much wider set
+### 2a. ✅ RENDERED 2026-08-05 — verified before/after
 
-With A2 and E6 applied, **every multilevel estimate in the paper is refitted**, not just the bias-robust ones. Treat every number below as provisional until re-rendered.
+Render completed cleanly (`Output created: docs/index.html`). No `Phylogenetic random effect skipped`, no `Unmapped Jones epithets`, no `Bias-robust fit failed`. The only log warning is the pre-existing fenced-div notice in `extraction_validation.qmd`, unrelated to these changes.
+
+Confirmed structural checks:
+
+- All eight intercept-only and bias-corrected models now carry a fourth variance component, `species_phylo` with `R yes`.
+- **The taxon model converged on candidate 1 — "Heteroscedastic + phylogeny (HCS, rho = 0)" — on both scales**, first attempt, no fallback. E6 needs no excuse: the phylogenetic term is simply in the model now.
+- Yang step one reports `Variance Components: none` with `Number of clusters` = 80 (Hedges' *g*) and 69 (log OR), i.e. FE + VCV with CR2 clustering by study, exactly as specified.
+
+**Numbers to transcribe into `main.tex`** (combined datasets):
+
+| Quantity | Manuscript now says | Re-rendered value |
+|---|---|---|
+| Uncorrected Hedges' *g* | 0.44 (0.24 to 0.65) | **0.45 (0.23 to 0.66)** |
+| Uncorrected OR | 1.81 (1.35 to 2.42) | **1.81 (1.34 to 2.45)** |
+| Bias-corrected *g* (Nakagawa) | −0.21 (−0.41 to −0.01) | **−0.22 (−0.49 to 0.04)** |
+| Bias-corrected log OR | 0.10 (−0.22 to 0.42), OR 1.11 | **0.10 (−0.23 to 0.43)**, OR 1.11 |
+| Bias-robust *g* (Yang) | 0.34 (0.24 to 0.44) | **0.31 (0.22 to 0.41)** |
+| Bias-robust log OR | 0.57 (0.42 to 0.73), OR 1.77 | **0.55 (0.39 to 0.71)**, OR 1.73 |
+| Taxon omnibus, *g* | Wald *Q*_M = 3.06, *p* = 0.06 | ***F*<sub>2,27</sub> = 3.06, *p* = 0.063** |
+| Taxon omnibus, log OR | Wald *Q*_M = 1.17, *p* = 0.33 | ***F*<sub>2,25</sub>** — read *p* off the render |
+
+Taxon group means, group-specific τ², and the Egger/decline slopes are **unchanged to the reported precision**; only their degrees of freedom moved.
+
+#### Two findings that need your attention
+
+**1. 🔴 The bias-corrected Hedges' *g* no longer falls below zero.**
+Before: −0.2130, 95% CI (−0.4124, −0.0136), *p* = 0.036 — significantly negative.
+After: −0.2247, 95% CI (−0.4873, 0.0378), *p* = 0.091 — overlapping zero.
+Adding the phylogenetic term inflated the standard error (0.101 → 0.128). The claim "for Hedges' *g* below zero" appears in four places and is no longer supported — see 2c. This *softens* the paper's most pessimistic statement: both corrections now point to "indistinguishable from zero" rather than one going negative.
+
+**2. 🟡 The uncorrected *g* was mis-rounded in the manuscript, independently of these changes.**
+The point estimate is 0.4455 both before and after — `dfs` cannot move a point estimate, and `fit_overall_mv` already had phylogeny. It rounds to **0.45**, but the manuscript reports 0.44. The old `publication_bias.qmd` model (which lacked phylogeny) gave 0.44, so the two files disagreed and the abstract took the wrong one. They now agree. Update 0.44 → 0.45 everywhere, including E1 and E20.
 
 | Quantity | Currently in the manuscript | Why it moves |
 |---|---|---|
@@ -120,7 +151,25 @@ Two manuscript figures carry the green Bias-Robust diamond:
 
 Each has **three panels** (New / Original / Combined), and all three green diamonds move — the per-split estimates change too.
 
-With A2 and E6 applied, **four more manuscript figures** are now affected:
+### ✅ All seven staged in `overleaf_upload/`
+
+Every file below regenerated at 15:02–15:03 on 2026-08-05 and has been copied into `overleaf_upload/` at the repo root. Upload all seven to the `figures/` folder in Overleaf, keeping the filenames exactly as they are — `main.tex` already points at these names, so no `\includegraphics` edits are needed.
+
+| Upload | Manuscript figure | Rebuilt from |
+|---|---|---|
+| `correction_comparison_hedges-1.png` | Fig. `hedgesorchard` | `docs/.../overall_effect_files/figure-html/` |
+| `correction_comparison_or-1.png` | Fig. `ororchard` | `docs/.../overall_effect_files/figure-html/` |
+| `taxon_moderator_orchard.pdf` | Fig. `taxonmoderator` | `outputs/1_effect_size_calculation_pipeline/` |
+| `dashboard_eggers_timelag_hedges.pdf` | Fig. `dashboard_eggers_timelag_hedges` | " |
+| `dashboard_eggers_timelag_or.pdf` | Fig. `dashboard_eggers_timelag_or` | " |
+| `funnel_hedges.pdf` | Supp. Fig. `supplementaryfunnelhedges` | " |
+| `funnel_or.pdf` | Supp. Fig. `supplementaryfunnelor` | " |
+
+Note the two orchard figures are **PNG** (knitr chunk output, hence the `-1` suffix) while the other five are **PDF** (explicit `ggsave`). That asymmetry is pre-existing and matches what `main.tex` expects.
+
+---
+
+With A2 and E6 applied, **four more manuscript figures** are affected beyond the two orchards:
 
 | Manuscript figure | Generated by | Why |
 |---|---|---|
@@ -137,15 +186,20 @@ Also regenerated on the website but not used in the manuscript: the `pub_bias_pl
 
 Search for these and re-check each against the new numbers. Wording may survive; the direction of the claim must be verified, not assumed.
 
-| Location | Current claim | Action |
-|---|---|---|
-| Abstract | "a bias-robust estimator retained a positive but reduced mean" | Verify still true |
-| Results, §Small-study effects | "whereas the bias-robust estimator retained a positive but reduced effect" | Verify |
-| Discussion, §Knowledge gaps (¶1) | "the bias-robust estimator retained a positive but reduced signal" | Verify |
-| Conclusion | "bears clear fingerprints of small-study and selective-reporting bias that, under the more conservative correction, draw the estimate close to zero" | Verify — refers to the Nakagawa correction, so likely safe |
-| Fig. captions (both orchards) | "bias-robust (Yang; green diamond)" | No change needed |
+✅ **The bias-robust claim survives** — 0.31 and 0.55 are both still clearly positive, so every "retained a positive but reduced" sentence stands as written.
 
-**If the bias-robust estimate loses significance**, the framing in the abstract and Discussion shifts materially — the paper would then have *two* corrections pointing at a null rather than one positive and one null. That is the scenario to watch for; it would strengthen E1's already-hedged abstract wording but require rewriting the "retained a positive but reduced" phrasing throughout.
+🔴 **The "below zero" claim does not.** Four passages assert that the Nakagawa-corrected Hedges' *g* fell below zero. It no longer does (*p* = 0.091).
+
+| Location | Current text | Fix |
+|---|---|---|
+| Abstract (and the **E1** draft) | "drew the adjusted mean to approximately zero, and below zero for Hedges' *g*" | "drew the adjusted mean to approximately zero on both scales" |
+| Results, §Small-study effects | "the adjusted mean approached zero, and Hedges' *g* fell below zero" | "the adjusted mean approached zero on both scales" |
+| Discussion, §Knowledge gaps ¶1 | "the adjusted mean collapsed towards---and for Hedges' *g* below---zero" | "the adjusted mean collapsed towards zero" |
+| Supplementary Results | "fell to $-0.21$ (95% CI: $-0.41$ to $-0.01$), below zero" | "fell to $-0.22$ (95% CI: $-0.49$ to 0.04), a mean indistinguishable from zero" |
+| Conclusion | "draw the estimate close to zero" | ✅ still accurate |
+| Fig. captions (both orchards) | "bias-robust (Yang; green diamond)" | ✅ no change |
+
+This is a softening, not a weakening: you can now say both correction frameworks agree the adjusted mean is indistinguishable from zero, which is cleaner than one negative and one positive. Santiago's comment (#6) about tension between "the conclusion survives" and "below zero" partly dissolves — worth noting in your reply to him.
 
 ### 2d. Methods text
 
@@ -170,7 +224,7 @@ Search for these and re-check each against the new numbers. Wording may survive;
 - [ ] Taxon model: note which cascade candidate was chosen → this is the E6 answer
 - [ ] Uncorrected means still 0.44 and 1.81 (if not, investigate before proceeding)
 - [ ] All numbers in table 2a re-read and updated in `main.tex`
-- [ ] Six figures re-copied into `figures/` (2 correction_comparison, taxon_moderator_orchard, 2 dashboard, 2 funnel)
+- [ ] **Seven** figures uploaded to Overleaf `figures/` — staged for you in `overleaf_upload/` (see 2b)
 - [ ] Four prose claims in 2c re-verified against the new direction
 - [ ] E11 and E6 Methods text updated per 2d
 - [ ] Decide whether to finish `moderator_analysis.qmd`
