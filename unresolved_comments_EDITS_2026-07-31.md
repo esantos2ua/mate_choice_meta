@@ -613,19 +613,30 @@ This is a labelling error, not a numerical one — the values are right. It prop
 | Taxon, Hedges' *g* | `Wald $Q_M$ = 3.06, p = 0.06` | `$F_{2,27}$ = 3.06, \textit{p} = 0.063` |
 | Taxon, log OR | `Wald $Q_M$ = 1.17, p = 0.33` | `$F_{2,25}$ = 1.17, \textit{p} = 0.327` |
 | Exploratory moderators | `all Wald $Q_M$, p > 0.2` | `all omnibus $F$-tests, \textit{p} > 0.2` |
-| Copying mechanism | `Wald $Q_M$ = 0.003, p = 0.96` | `$F_{1,⟨⟨df2⟩⟩}$ = 0.003, \textit{p} = 0.96` |
-| Virginity | `Wald $Q_M$ = 1.61, p = 0.22` | `$F_{1,⟨⟨df2⟩⟩}$ = 1.61, \textit{p} = 0.22` |
+| Copying mechanism (combined *g*) | `Wald $Q_M$ = 0.003, p = 0.96` | `$F_{1,225}$ = 0.00, \textit{p} = 0.958` |
+| Virginity (new extraction) | `Wald $Q_M$ = 1.61, p = 0.22` | `$F_{1,27}$ = 1.61, \textit{p} = 0.215` |
+| Virginity (combined OR) | `OR = 1.75 \textit{vs.} 1.91; $p$ = 0.72` | `$F_{1,170}$ = 0.13, \textit{p} = 0.723` |
 
-### The two `⟨⟨df2⟩⟩` values require one more render
+### ✔ Degrees of freedom — read off the 2026-08-05 re-render
 
-**They are not recoverable from the current output.** `among_test()` captured `QMdf` but nothing ever displayed it — the summary table printed only `Q_M` and `Q_M p`, and the inline prose printed only the statistic. So the degrees of freedom have never been rendered, and I will not infer them: metafor's containment rule depends on the level at which each moderator varies, which differs between a study-level moderator like virginity and an effect-level one like mechanism.
+`among_test()` had captured `QMdf` all along but nothing displayed it. After exposing it, the full set for all 10 uni-moderator fits:
 
-`moderator_analysis.qmd` has been edited (2026-08-05) so that they appear. After the next `quarto render`:
+| Analysis | *F* | df1 | df2 | *p* |
+|---|---|---|---|---|
+| Mechanism — Hedges' *g* (new) | 0.31 | 1 | 27 | 0.582 |
+| Mechanism — log OR (new) | 0.30 | 1 | 27 | 0.587 |
+| Modality — Hedges' *g* (new) | 0.18 | 2 | 12 | 0.839 |
+| Modality — log OR (new) | 0.18 | 2 | 12 | 0.836 |
+| Demonstration sub-type — Hedges' *g* (new) | 1.13 | 1 | 56 | 0.293 |
+| Demonstration sub-type — log OR (new) | 1.13 | 1 | 56 | 0.293 |
+| **Virginity — Hedges' *g* (new)** | **1.61** | **1** | **27** | **0.215** |
+| Virginity — log OR (new) | 1.61 | 1 | 27 | 0.215 |
+| **Mechanism — Hedges' *g* (new + Davies)** | **0.00** | **1** | **225** | **0.958** |
+| **Virginity — log OR (new + Jones)** | **0.13** | **1** | **170** | **0.723** |
 
-- **Summary table** (§"Total heterogeneity and omnibus moderator test…") now has **`F`, `df1`, `df2`, `p`** columns covering all 10 uni-moderator fits — copying mechanism and virginity on both scales, new-extraction and combined.
-- **Inline prose** in §"Combined-data models" now renders as `$F_{1,df2}$ = …` for both the mechanism and virginity contrasts.
+⚠️ **Note the df2 jump between new-extraction and combined models** — 27 against 225 and 170. Containment df track the level at which the moderator varies: in the new extraction these moderators vary between studies, whereas in the combined data they vary within them. Worth a glance to confirm the coding is what you intend, since a moderator varying *within* study is a materially different claim from one varying between studies.
 
-Read the two values off the summary table rows *Mechanism — Hedges' g (new + Davies)* and *Virginity — Hedges' g (new)*, then fill them in above.
+⚠️ The manuscript's `$p$ = 0.96` for mechanism and `$p$ = 0.72` for combined virginity match at 2 s.f.; `Wald $Q_M$ = 0.003` does **not** — the *F* is 0.00 (0.0028 before rounding). Use `$F_{1,225}$ = 0.00`, or quote more decimals.
 
 ### `moderator_analysis.qmd` narrative — corrected
 
@@ -698,17 +709,58 @@ Mate choice copying therefore occurs across a broad range of taxa, but is more m
 
 Note the capital M — the sentence currently begins with a lowercase "mate". Same problem at the §4.1 heading and at the start of the Conclusion (**E25**).
 
-## E21 · `WRITE` · insert after line 237 — species and methodological heterogeneity
-**Closes #37** (Kyle, +Christine on the species half) — the largest writing item
+## E21 · `PASTE` ✔ · insert after line 237 — species and methodological heterogeneity
+**Closes #37** (Kyle, +Christine on the species half)
 
-Kyle asks for three things; the third is what reviewers will also want. Insert as a new paragraph in §4.1 after the paragraph ending `...an interpretation consistent with the negligible phylogenetic signal we recovered.` Skeleton with your own numbers to slot in:
+Covers all three of Kyle's asks — species-level variation, methodological heterogeneity, and the comparison with the re-extracted studies — in **three paragraphs, ~330 words**, down from ~600 in the first draft. Every figure verified against the 2026-08-05 render and `outputs/3_original_dataset_crosscheck/`. Insert in §4.1 after the paragraph ending `...an interpretation consistent with the negligible phylogenetic signal we recovered.`
 
+**INSERT:**
 ```latex
-The location of that heterogeneity is itself informative. Species identity accounted for a substantial share of the variance (partial $I^2$ = ⟨⟨X⟩⟩\%) while phylogeny accounted for almost none ($I^2 <$ 7\%), meaning that variation among species is real but is not organised by relatedness---a pattern more consistent with differences in mating system, ecology, and assay tradition than with lineage-specific cognition. Two caveats temper any clade-level reading. First, the apparent taxonomic gradient reversed between the two effect-size scales and neither omnibus test was significant, so we do not treat it as established. Second, because \textit{Drosophila} and \textit{Poecilia} contribute roughly two-thirds of all effect sizes, ``among-species'' variance is partly variance among the small number of laboratories that study those two genera.
+Where that heterogeneity sits differs between the two scales. Species identity absorbed 23.9\% of it on the log odds ratio scale but only 3.1\% on the Hedges' \textit{g} scale, while phylogeny absorbed almost none on either ($\leq 3.5\%$; \hyperref[tab:partial-i2]{Table~\ref*{tab:partial-i2}}). That difference reflects dataset composition rather than biology: species accounted for 29\% of the heterogeneity in our new extraction and 45.6\% in the binary data of Jones and DuVal~\cite{jonesMechanismsSocialInfluence2019}, but for none at all in the continuous data of Davies et al.~\cite{daviesMetaanalysisFactorsInfluencing2020}. Two readings follow. Where species variance is detectable it is not organised by relatedness, which points to mating system, ecology, and assay tradition rather than to lineage-specific cognition. But because \textit{Drosophila} and \textit{Poecilia} supply two-thirds of all effect sizes, ``among-species'' variance is partly variance among the few laboratories that study them; with the taxonomic gradient reversing between scales and neither omnibus test significant, we do not treat it as established.
 
-Methodological variation is a plausible source of the remainder, and much of it is not captured by our coding. Studies differ in whether they used a before-and-after or a no-pretest design, whether preference was scored as association time or as copulation, whether demonstrators were live animals, video, or still images, and---for ⟨⟨22 of 38⟩⟩ binary effect sizes---whether a genuine control group existed at all or a chance expectation was substituted. These design axes plausibly generate more variance than the biological moderators we were able to test, which would explain why none of the latter accounted for a detectable share of the heterogeneity.
+Much of the remaining variance lies in design features our coding could not capture: before-and-after \textit{versus} no-pretest designs, association time \textit{versus} copulation, live \textit{versus} video demonstrators, and---for 22 of the 38 binary effect sizes---whether a control group existed at all or a chance expectation stood in for one. These axes plausibly generate more variance than the biological moderators we tested, which would explain why none of the latter absorbed a detectable share.
 
-⟨⟨Third paragraph: how your re-extracted values differ from the originals'. Draw on outputs/3_original_dataset_crosscheck/ for the per-study comparison. Say for the seven flagged studies what the disagreement was and why: figure-based extraction, pooling decisions, three over-counted binary rows, one pooled effect size retained as two outcomes. Kyle explicitly expects this.⟩⟩
+Variation also enters through extraction itself. The two source syntheses report overlapping studies on different metrics, and for seven of them the values disagreed by more than 0.5 Hedges' \textit{g} units. Re-extraction from the primary sources resolved every one toward the odds ratios of Jones and DuVal: the continuous extraction had variously captured a different construct (association time, body size), doubled paired sample sizes, produced artifacts of degenerate $2\times2$ tables, and in one case reversed the sign, turning a reported absence of copying into apparent evidence for it. The binary extraction had its own faults, over-counting effect sizes in two studies. Our estimates are robust to how these values are handled (\nameref{supplresults}), but the episode matters: much of what reads as biological disagreement between the two syntheses was extraction disagreement---an argument for cross-validating source data whenever meta-analyses are combined.
+```
+
+### What was cut, and why it is safe to cut
+
+| Dropped | Where it survives |
+|---|---|
+| Fourth paragraph ("We draw a broader lesson…") | Its one load-bearing clause is now the closing sentence of ¶3; the cross-validation argument also appears in **E23** |
+| Per-study naming (Applebaum, Briggs, Howard, Gierszewski, Fowler-Finn) | `reextraction_flagged_studies.md`, already citable as supplementary material |
+| $2+\sqrt{3} = 3.732$; the structural zero cell | ibid. — vivid, but detail a reader does not need to follow the argument |
+| "$N = 40$ where 20 were tested" spelled out for both Dugatkin papers | compressed to "doubled paired sample sizes" |
+| Fowler-Finn pool-vs-split as a separate sentence | dropped; it is the one disagreement that was *not* an error, so it weakens rather than strengthens the paragraph |
+| Explicit 71.7% / 45.4% residual figures | now in the Results correction below, where they belong |
+
+Naming colleagues' extraction errors in a Discussion reads as an attack, and the supplement carries the detail. If you would rather name them: construct errors = Applebaum & Cruz 2000, Briggs et al. 1996, Howard et al. 1998; artifacts = Dugatkin 1992, Gierszewski et al. 2018; sign error = Howard et al. 1998; over-counting = Dugatkin 1992, Gierszewski et al. 2018.
+
+### Provenance
+
+| Claim | Source |
+|---|---|
+| 23.9 / 3.1 / ≤3.5% partial *I*² | `tab:partial-i2`, reproduced exactly from post-render variance components ✔ |
+| Species 29% (new), 45.6% (Jones), 0.0% (Davies) | same table, "New Only" / "Original Only" rows |
+| 22 of 38 binary effect sizes | extraction spreadsheet ✔ (**E4**) |
+| Seven studies, all resolving toward Jones & DuVal; the four error classes | `outputs/3_original_dataset_crosscheck/reextraction_flagged_studies.md` |
+
+### 🔴 Related correction to the Results
+
+Writing this exposed an inaccuracy in the heterogeneity paragraph, which currently reads:
+
+> "study ID ... accounted for less than 8\% across models, whereas observation ID ... and species ID ... accounted for most of the heterogeneity."
+
+True for log OR (45.4% + 23.9%), false for Hedges' *g*, where species is **3.1%** and the effect-size level alone is 71.7%.
+
+**FIND:**
+```
+whereas observation ID (representing the within-study effect) and species ID (representing the non-phylogenetic effect) accounted for most of the heterogeneity.
+```
+
+**REPLACE:**
+```latex
+whereas observation ID (representing the within-study effect) accounted for most of the heterogeneity on both scales (71.7\% for Hedges' \textit{g}, 45.4\% for log odds ratios). Species ID (the non-phylogenetic species effect) contributed substantially on the log odds ratio scale (23.9\%) but little on the Hedges' \textit{g} scale (3.1\%).
 ```
 
 ## E22 · `WRITE` · line 239 — generalized vs. individual copying
