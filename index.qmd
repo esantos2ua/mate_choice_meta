@@ -29,7 +29,7 @@ Mate-choice copying is a form of socially learned preference: an individual's ev
 Each phase of the meta-analysis is documented so that it can be reproduced:
 
 - **Literature screening:** how records from the two databases were deduplicated, scored for completeness, randomly shuffled, and split among the screening team.
-- **Data extraction:** how the included papers were processed through an AI-assisted extraction pipeline (Google NotebookLM, with Google Gemini and Claude Code) and how the extracted numbers were verified.
+- **Data extraction:** how study metadata was compiled with AI assistance (Google NotebookLM), how the effect-size data were extracted from text, tables and figures, and how every extracted number was verified against its source.
 - **Effect-size synthesis:** how continuous outcomes (Hedges' $g$) and binary outcomes (odds ratios) were calculated, combined in multi-level random-effects models, and visualised.
 - **Publication-bias diagnostics:** funnel plots, Egger's regression tests, small-study-effect corrections, and tests for a decline in effect size over time.
 :::

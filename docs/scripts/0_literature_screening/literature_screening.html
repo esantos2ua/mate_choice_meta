@@ -305,7 +305,7 @@ window.Quarto = {
   <li><a href="#step-1-species-study-identification" id="toc-step-1-species-study-identification" class="nav-link" data-scroll-target="#step-1-species-study-identification">Step 1 — Species &amp; study identification</a></li>
   <li><a href="#step-2-co-authorship-lab-identification" id="toc-step-2-co-authorship-lab-identification" class="nav-link" data-scroll-target="#step-2-co-authorship-lab-identification">Step 2 — Co-authorship &amp; lab identification</a></li>
   <li><a href="#step-3-trial-level-data-mapping" id="toc-step-3-trial-level-data-mapping" class="nav-link" data-scroll-target="#step-3-trial-level-data-mapping">Step 3 — Trial-level data mapping</a></li>
-  <li><a href="#step-4-quantitative-extraction-multi-agent-pipeline" id="toc-step-4-quantitative-extraction-multi-agent-pipeline" class="nav-link" data-scroll-target="#step-4-quantitative-extraction-multi-agent-pipeline">Step 4 — Quantitative extraction (multi-agent pipeline)</a></li>
+  <li><a href="#sec-quant-extraction" id="toc-sec-quant-extraction" class="nav-link" data-scroll-target="#sec-quant-extraction">Quantitative extraction</a></li>
   </ul></li>
   <li><a href="#sec-effect-sizes" id="toc-sec-effect-sizes" class="nav-link" data-scroll-target="#sec-effect-sizes">Effect Size Calculation</a>
   <ul class="collapse">
@@ -963,7 +963,8 @@ Table&nbsp;3.2: Screener assignments
 </section>
 <section id="sec-extraction" class="level2">
 <h2 class="anchored" data-anchor-id="sec-extraction">Data Extraction Pipeline</h2>
-<p>Included articles are sent to <strong>Google NotebookLM</strong> for AI-assisted data extraction via a four-step structured prompting protocol. All prompts are grounded by a <code>MetaAnalysis_Reference_Sheet.pdf</code> data dictionary containing few-shot examples of correct extractions.</p>
+<p>Extraction proceeded in two parts. <strong>Structured metadata</strong> about each included article — taxonomy, authorship, and internal trial structure — was compiled with the assistance of <strong>Google NotebookLM</strong> using the three-step prompting protocol below. All prompts are grounded by a <code>MetaAnalysis_Reference_Sheet.pdf</code> data dictionary containing few-shot examples of correct extractions.</p>
+<p>The <strong>quantitative</strong> effect-size data were extracted separately and are described under <a href="#sec-quant-extraction">Quantitative extraction</a> at the end of this section.</p>
 <div class="callout callout-style-default callout-warning callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1107,84 +1108,18 @@ Table&nbsp;3.2: Screener assignments
 </tbody>
 </table>
 </section>
-<section id="step-4-quantitative-extraction-multi-agent-pipeline" class="level3">
-<h3 class="anchored" data-anchor-id="step-4-quantitative-extraction-multi-agent-pipeline">Step 4 — Quantitative extraction (multi-agent pipeline)</h3>
-<p><strong>Goal:</strong> Extract the actual numbers and cross-check them within a single structured prompt.</p>
-<section id="three-role-prompting-protocol" class="level4">
-<h4 class="anchored" data-anchor-id="three-role-prompting-protocol">Three-role prompting protocol</h4>
-<p>The extraction prompt instructs the language model to perform three sequential roles on each paper, so that every number is pulled, checked, and reconciled before it is written out. These are roles played by one model, not three separate programs:</p>
-<ul>
-<li><strong>Role 1 — Extractor:</strong> pulls the raw statistics (means, variances, counts, and test statistics) directly from the Methods and Results text and tables.</li>
-<li><strong>Role 2 — Verifier:</strong> cross-checks the extracted numbers, verifies sample independence, flags any standard-deviation vs.&nbsp;standard-error confusion, and re-reads the text to confirm no secondary trials were missed.</li>
-<li><strong>Role 3 — Arbiter:</strong> resolves any discrepancies between the Extractor and Verifier, standardises the reporting, and outputs the final data row.</li>
-</ul>
-<p><strong>The Verifier role checks explicitly for three systematic extraction errors:</strong></p>
-<ol type="1">
-<li><strong>SD/SE confusion</strong> — a common error in manual extraction that biases heterogeneity estimates if uncorrected.</li>
-<li><strong>Sample independence</strong> — flags whether the N used is independent across trials or from repeated measures on the same subjects.</li>
-<li><strong>Missing trials</strong> — re-reads the Methods to confirm no secondary experiments were missed by Agent 1.</li>
-</ol>
-</section>
-<section id="final-output-columns" class="level4">
-<h4 class="anchored" data-anchor-id="final-output-columns">Final output columns</h4>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 50%">
-<col style="width: 50%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Column</th>
-<th>Content</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>Study_ID</code></td>
-<td>Author_Year_JournalName</td>
-</tr>
-<tr class="even">
-<td><code>Trial_ID</code></td>
-<td>Specific experiment or condition</td>
-</tr>
-<tr class="odd">
-<td><code>Response_Metric</code></td>
-<td>What was measured</td>
-</tr>
-<tr class="even">
-<td><code>Validated_Exp_Group_Data</code></td>
-<td>Mean ± SD/SE, Counts, or Test Stat</td>
-</tr>
-<tr class="odd">
-<td><code>Validated_Control_Group_Data</code></td>
-<td>Mean ± SD/SE, Counts, or NA</td>
-</tr>
-<tr class="even">
-<td><code>SD_or_SE</code></td>
-<td>Explicit variance metric label</td>
-</tr>
-<tr class="odd">
-<td><code>Agent1_Initial_Pull</code></td>
-<td>Brief summary of original extraction</td>
-</tr>
-<tr class="even">
-<td><code>Agent2_Verification_Notes</code></td>
-<td>Corrections made, or “No missing trials found”</td>
-</tr>
-<tr class="odd">
-<td><code>Verification_Location</code></td>
-<td>Exact page and table/figure number</td>
-</tr>
-</tbody>
-</table>
+<section id="sec-quant-extraction" class="level3">
+<h3 class="anchored" data-anchor-id="sec-quant-extraction">Quantitative extraction</h3>
+<p>Effect-size data — group means, standard deviations or standard errors, sample sizes, and raw choice counts — were extracted from the source papers by ESAS, working from the text, tables and figures of each article.</p>
+<p>Values reported <strong>only in figures</strong> were extracted with the assistance of <code>Google Gemini 3.1 Pro</code>: the cropped figure and its caption were supplied to the model with a prompt requesting the point estimates and error-bar limits, returned as a markdown table. Because automated figure extraction can fail silently, every extracted value was checked against the source figure, and a validation subset of 20 records was independently re-extracted with <code>metaDigitise</code> <span class="citation" data-cites="pickReproducibleFlexibleHighthroughput2019">(<a href="../../references.html#ref-pickReproducibleFlexibleHighthroughput2019" role="doc-biblioref"><strong>pickReproducibleFlexibleHighthroughput2019?</strong></a>)</span>; the two methods agreed closely (mean signed <em>z</em>-score = −0.10, 95% CI: −0.27 to 0.06).</p>
+<p>Ten per cent of all extracted records were independently checked for accuracy by ML. Where the information needed for an effect size was ambiguous or missing, the study was excluded; the excluded studies and the reason in each case are listed in the supplementary tables.</p>
 <hr>
-</section>
 </section>
 </section>
 <section id="sec-effect-sizes" class="level2">
 <h2 class="anchored" data-anchor-id="sec-effect-sizes">Effect Size Calculation</h2>
-<p>Following data extraction, effect sizes and their sampling variances are calculated using the reproducible Python pipeline located at <a href="file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py">scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py</a>.</p>
-<p>The raw data is stored in the Excel spreadsheet <a href="file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/data/1_effect_size_calculation_pipeline/Data%20Extraction%20Mate%20Choice%20Meta%20Analysis.xlsx">data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx</a> inside the <code>EduardoExtraction</code> sheet. To support tracking, each row contains an <code>identifierEffectSizeID</code> column containing a unique sequential identifier for each control–experimental comparison (e.g., <code>es0001</code>, <code>es0002</code>). The Python pipeline dynamically resolves column locations by scanning the header row, computes the following effect size metrics, and saves them back to the spreadsheet:</p>
+<p>Following data extraction, effect sizes and their sampling variances are calculated using the reproducible Python pipeline located at <a href="https://github.com/esantos2ua/mate_choice_meta/blob/main/scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py">scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py</a>.</p>
+<p>The raw data is stored in the Excel spreadsheet <a href="https://github.com/esantos2ua/mate_choice_meta/blob/main/data/1_effect_size_calculation_pipeline/Data%20Extraction%20Mate%20Choice%20Meta%20Analysis.xlsx">data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx</a> inside the <code>EduardoExtraction</code> sheet. To support tracking, each row contains an <code>identifierEffectSizeID</code> column containing a unique sequential identifier for each control–experimental comparison (e.g., <code>es0001</code>, <code>es0002</code>). The Python pipeline dynamically resolves column locations by scanning the header row, computes the following effect size metrics, and saves them back to the spreadsheet:</p>
 <section id="hedges-g-bias-corrected-standardised-mean-difference" class="level3">
 <h3 class="anchored" data-anchor-id="hedges-g-bias-corrected-standardised-mean-difference">1. Hedges’ <span class="math inline">\(g\)</span> (Bias-Corrected Standardised Mean Difference)</h3>
 <p>Calculated depending on the data type extracted:</p>
@@ -2137,173 +2072,157 @@ Santos, Eduardo, Shinichi Nakagawa, and Malgorzata Lagisz. 2026. <span>“Mate-C
 <span id="cb11-426"><a href="#cb11-426" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb11-427"><a href="#cb11-427" aria-hidden="true" tabindex="-1"></a><span class="fu">## Data Extraction Pipeline {#sec-extraction}</span></span>
 <span id="cb11-428"><a href="#cb11-428" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-429"><a href="#cb11-429" aria-hidden="true" tabindex="-1"></a>Included articles are sent to **Google NotebookLM** for AI-assisted data extraction</span>
-<span id="cb11-430"><a href="#cb11-430" aria-hidden="true" tabindex="-1"></a>via a four-step structured prompting protocol. All prompts are grounded by a</span>
-<span id="cb11-431"><a href="#cb11-431" aria-hidden="true" tabindex="-1"></a><span class="in">`MetaAnalysis_Reference_Sheet.pdf`</span> data dictionary containing few-shot examples of</span>
-<span id="cb11-432"><a href="#cb11-432" aria-hidden="true" tabindex="-1"></a>correct extractions.</span>
-<span id="cb11-433"><a href="#cb11-433" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-434"><a href="#cb11-434" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning}</span>
-<span id="cb11-435"><a href="#cb11-435" aria-hidden="true" tabindex="-1"></a><span class="fu">## Cache-bust rule</span></span>
-<span id="cb11-436"><a href="#cb11-436" aria-hidden="true" tabindex="-1"></a>Each step must be run in a **completely new** NotebookLM chat window. Re-using a</span>
-<span id="cb11-437"><a href="#cb11-437" aria-hidden="true" tabindex="-1"></a>previous window causes the model to recycle earlier tables rather than reading the</span>
-<span id="cb11-438"><a href="#cb11-438" aria-hidden="true" tabindex="-1"></a>PDFs afresh.</span>
-<span id="cb11-439"><a href="#cb11-439" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb11-440"><a href="#cb11-440" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-441"><a href="#cb11-441" aria-hidden="true" tabindex="-1"></a><span class="fu">### Step 1 — Species &amp; study identification</span></span>
-<span id="cb11-442"><a href="#cb11-442" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-443"><a href="#cb11-443" aria-hidden="true" tabindex="-1"></a>**Goal:** Establish taxonomic accuracy across all included papers.</span>
+<span id="cb11-429"><a href="#cb11-429" aria-hidden="true" tabindex="-1"></a>Extraction proceeded in two parts. **Structured metadata** about each included</span>
+<span id="cb11-430"><a href="#cb11-430" aria-hidden="true" tabindex="-1"></a>article — taxonomy, authorship, and internal trial structure — was compiled with the</span>
+<span id="cb11-431"><a href="#cb11-431" aria-hidden="true" tabindex="-1"></a>assistance of **Google NotebookLM** using the three-step prompting protocol below. All</span>
+<span id="cb11-432"><a href="#cb11-432" aria-hidden="true" tabindex="-1"></a>prompts are grounded by a <span class="in">`MetaAnalysis_Reference_Sheet.pdf`</span> data dictionary containing</span>
+<span id="cb11-433"><a href="#cb11-433" aria-hidden="true" tabindex="-1"></a>few-shot examples of correct extractions.</span>
+<span id="cb11-434"><a href="#cb11-434" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-435"><a href="#cb11-435" aria-hidden="true" tabindex="-1"></a>The **quantitative** effect-size data were extracted separately and are described under</span>
+<span id="cb11-436"><a href="#cb11-436" aria-hidden="true" tabindex="-1"></a><span class="co">[</span><span class="ot">Quantitative extraction</span><span class="co">](#sec-quant-extraction)</span> at the end of this section.</span>
+<span id="cb11-437"><a href="#cb11-437" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-438"><a href="#cb11-438" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning}</span>
+<span id="cb11-439"><a href="#cb11-439" aria-hidden="true" tabindex="-1"></a><span class="fu">## Cache-bust rule</span></span>
+<span id="cb11-440"><a href="#cb11-440" aria-hidden="true" tabindex="-1"></a>Each step must be run in a **completely new** NotebookLM chat window. Re-using a</span>
+<span id="cb11-441"><a href="#cb11-441" aria-hidden="true" tabindex="-1"></a>previous window causes the model to recycle earlier tables rather than reading the</span>
+<span id="cb11-442"><a href="#cb11-442" aria-hidden="true" tabindex="-1"></a>PDFs afresh.</span>
+<span id="cb11-443"><a href="#cb11-443" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb11-444"><a href="#cb11-444" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-445"><a href="#cb11-445" aria-hidden="true" tabindex="-1"></a>Each PDF yields one row in a Markdown table with two columns:</span>
+<span id="cb11-445"><a href="#cb11-445" aria-hidden="true" tabindex="-1"></a><span class="fu">### Step 1 — Species &amp; study identification</span></span>
 <span id="cb11-446"><a href="#cb11-446" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-447"><a href="#cb11-447" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Column <span class="pp">|</span> Format <span class="pp">|</span> Example <span class="pp">|</span></span>
-<span id="cb11-448"><a href="#cb11-448" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
-<span id="cb11-449"><a href="#cb11-449" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Study_ID`</span> <span class="pp">|</span> <span class="in">`FirstAuthorLastName_Year_CamelCaseJournal`</span> <span class="pp">|</span> <span class="in">`Belkina_2021_AnimalBehaviour`</span> <span class="pp">|</span></span>
-<span id="cb11-450"><a href="#cb11-450" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Species`</span> <span class="pp">|</span> Full binomial nomenclature <span class="pp">|</span> *Poecilia reticulata* <span class="pp">|</span></span>
-<span id="cb11-451"><a href="#cb11-451" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-452"><a href="#cb11-452" aria-hidden="true" tabindex="-1"></a>Common names alone are not accepted. The Study ID format is consistent across all</span>
-<span id="cb11-453"><a href="#cb11-453" aria-hidden="true" tabindex="-1"></a>four steps to serve as the primary join key.</span>
-<span id="cb11-454"><a href="#cb11-454" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-455"><a href="#cb11-455" aria-hidden="true" tabindex="-1"></a><span class="fu">### Step 2 — Co-authorship &amp; lab identification</span></span>
-<span id="cb11-456"><a href="#cb11-456" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-457"><a href="#cb11-457" aria-hidden="true" tabindex="-1"></a>**Goal:** Build a bipartite co-authorship network to identify "hub labs."</span>
+<span id="cb11-447"><a href="#cb11-447" aria-hidden="true" tabindex="-1"></a>**Goal:** Establish taxonomic accuracy across all included papers.</span>
+<span id="cb11-448"><a href="#cb11-448" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-449"><a href="#cb11-449" aria-hidden="true" tabindex="-1"></a>Each PDF yields one row in a Markdown table with two columns:</span>
+<span id="cb11-450"><a href="#cb11-450" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-451"><a href="#cb11-451" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Column <span class="pp">|</span> Format <span class="pp">|</span> Example <span class="pp">|</span></span>
+<span id="cb11-452"><a href="#cb11-452" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb11-453"><a href="#cb11-453" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Study_ID`</span> <span class="pp">|</span> <span class="in">`FirstAuthorLastName_Year_CamelCaseJournal`</span> <span class="pp">|</span> <span class="in">`Belkina_2021_AnimalBehaviour`</span> <span class="pp">|</span></span>
+<span id="cb11-454"><a href="#cb11-454" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Species`</span> <span class="pp">|</span> Full binomial nomenclature <span class="pp">|</span> *Poecilia reticulata* <span class="pp">|</span></span>
+<span id="cb11-455"><a href="#cb11-455" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-456"><a href="#cb11-456" aria-hidden="true" tabindex="-1"></a>Common names alone are not accepted. The Study ID format is consistent across all</span>
+<span id="cb11-457"><a href="#cb11-457" aria-hidden="true" tabindex="-1"></a>four steps to serve as the primary join key.</span>
 <span id="cb11-458"><a href="#cb11-458" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-459"><a href="#cb11-459" aria-hidden="true" tabindex="-1"></a>Output is in **long format** — one row per author per paper — so that network edges</span>
-<span id="cb11-460"><a href="#cb11-460" aria-hidden="true" tabindex="-1"></a>can be constructed directly.</span>
-<span id="cb11-461"><a href="#cb11-461" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-462"><a href="#cb11-462" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Column <span class="pp">|</span> Description <span class="pp">|</span></span>
-<span id="cb11-463"><a href="#cb11-463" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
-<span id="cb11-464"><a href="#cb11-464" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Study_ID`</span> <span class="pp">|</span> Join key <span class="pp">|</span></span>
-<span id="cb11-465"><a href="#cb11-465" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Author_Name`</span> <span class="pp">|</span> Full name <span class="pp">|</span></span>
-<span id="cb11-466"><a href="#cb11-466" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Author_Position`</span> <span class="pp">|</span> First / Last / Corresponding / Middle <span class="pp">|</span></span>
-<span id="cb11-467"><a href="#cb11-467" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Institutional_Affiliation`</span> <span class="pp">|</span> University or institute <span class="pp">|</span></span>
-<span id="cb11-468"><a href="#cb11-468" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Lab_Identifier`</span> <span class="pp">|</span> <span class="in">`PILastName_Institution_City`</span> (e.g., <span class="in">`Dukas_UniversityOfToronto_Toronto`</span>) <span class="pp">|</span></span>
-<span id="cb11-469"><a href="#cb11-469" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-470"><a href="#cb11-470" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb11-471"><a href="#cb11-471" aria-hidden="true" tabindex="-1"></a><span class="fu">## Lab identifier design</span></span>
-<span id="cb11-472"><a href="#cb11-472" aria-hidden="true" tabindex="-1"></a>The **last author** is designated as the lab PI, and the same <span class="in">`Lab_Identifier`</span> string</span>
-<span id="cb11-473"><a href="#cb11-473" aria-hidden="true" tabindex="-1"></a>is applied to every co-author row on the same paper. This links all authors to one</span>
-<span id="cb11-474"><a href="#cb11-474" aria-hidden="true" tabindex="-1"></a>"primary lab" node in the bipartite network, enabling correct degree-centrality</span>
-<span id="cb11-475"><a href="#cb11-475" aria-hidden="true" tabindex="-1"></a>calculation for hub-lab detection.</span>
-<span id="cb11-476"><a href="#cb11-476" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb11-477"><a href="#cb11-477" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-478"><a href="#cb11-478" aria-hidden="true" tabindex="-1"></a><span class="fu">### Step 3 — Trial-level data mapping</span></span>
-<span id="cb11-479"><a href="#cb11-479" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-480"><a href="#cb11-480" aria-hidden="true" tabindex="-1"></a>**Goal:** Map the internal experimental structure of each paper — how many distinct</span>
-<span id="cb11-481"><a href="#cb11-481" aria-hidden="true" tabindex="-1"></a>trials exist, where their data live, and whether subjects are independent.</span>
-<span id="cb11-482"><a href="#cb11-482" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-483"><a href="#cb11-483" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Column <span class="pp">|</span> Description <span class="pp">|</span></span>
-<span id="cb11-484"><a href="#cb11-484" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
-<span id="cb11-485"><a href="#cb11-485" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Study_ID`</span> <span class="pp">|</span> Join key <span class="pp">|</span></span>
-<span id="cb11-486"><a href="#cb11-486" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Trial_ID`</span> <span class="pp">|</span> Experiment name/number (e.g., "Experiment 1", "Treatment A") <span class="pp">|</span></span>
-<span id="cb11-487"><a href="#cb11-487" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Trial_Description`</span> <span class="pp">|</span> 1–2 sentence summary of manipulation <span class="pp">|</span></span>
-<span id="cb11-488"><a href="#cb11-488" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Sample_Size_N`</span> <span class="pp">|</span> Focal subjects in this trial <span class="pp">|</span></span>
-<span id="cb11-489"><a href="#cb11-489" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Subject_Independence`</span> <span class="pp">|</span> "Independent Cohort" or "Repeated Measures" <span class="pp">|</span></span>
-<span id="cb11-490"><a href="#cb11-490" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Control_Group_Shared`</span> <span class="pp">|</span> Yes/No + which trial (if Yes) <span class="pp">|</span></span>
-<span id="cb11-491"><a href="#cb11-491" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Data_Location`</span> <span class="pp">|</span> Exact page and figure/table reference (e.g., "Table 1, Page 5") <span class="pp">|</span></span>
-<span id="cb11-492"><a href="#cb11-492" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-493"><a href="#cb11-493" aria-hidden="true" tabindex="-1"></a><span class="fu">### Step 4 — Quantitative extraction (multi-agent pipeline)</span></span>
-<span id="cb11-494"><a href="#cb11-494" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-495"><a href="#cb11-495" aria-hidden="true" tabindex="-1"></a>**Goal:** Extract the actual numbers and cross-check them within a single structured</span>
-<span id="cb11-496"><a href="#cb11-496" aria-hidden="true" tabindex="-1"></a>prompt.</span>
-<span id="cb11-497"><a href="#cb11-497" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-498"><a href="#cb11-498" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Three-role prompting protocol</span></span>
-<span id="cb11-499"><a href="#cb11-499" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-500"><a href="#cb11-500" aria-hidden="true" tabindex="-1"></a>The extraction prompt instructs the language model to perform three sequential roles on</span>
-<span id="cb11-501"><a href="#cb11-501" aria-hidden="true" tabindex="-1"></a>each paper, so that every number is pulled, checked, and reconciled before it is written</span>
-<span id="cb11-502"><a href="#cb11-502" aria-hidden="true" tabindex="-1"></a>out. These are roles played by one model, not three separate programs:</span>
-<span id="cb11-503"><a href="#cb11-503" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-504"><a href="#cb11-504" aria-hidden="true" tabindex="-1"></a><span class="ss">*   </span>**Role 1 — Extractor:** pulls the raw statistics (means, variances, counts, and test statistics) directly from the Methods and Results text and tables.</span>
-<span id="cb11-505"><a href="#cb11-505" aria-hidden="true" tabindex="-1"></a><span class="ss">*   </span>**Role 2 — Verifier:** cross-checks the extracted numbers, verifies sample independence, flags any standard-deviation vs. standard-error confusion, and re-reads the text to confirm no secondary trials were missed.</span>
-<span id="cb11-506"><a href="#cb11-506" aria-hidden="true" tabindex="-1"></a><span class="ss">*   </span>**Role 3 — Arbiter:** resolves any discrepancies between the Extractor and Verifier, standardises the reporting, and outputs the final data row.</span>
-<span id="cb11-507"><a href="#cb11-507" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-508"><a href="#cb11-508" aria-hidden="true" tabindex="-1"></a>**The Verifier role checks explicitly for three systematic extraction errors:**</span>
-<span id="cb11-509"><a href="#cb11-509" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-510"><a href="#cb11-510" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**SD/SE confusion** — a common error in manual extraction that biases heterogeneity</span>
-<span id="cb11-511"><a href="#cb11-511" aria-hidden="true" tabindex="-1"></a>   estimates if uncorrected.</span>
-<span id="cb11-512"><a href="#cb11-512" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**Sample independence** — flags whether the N used is independent across trials or</span>
-<span id="cb11-513"><a href="#cb11-513" aria-hidden="true" tabindex="-1"></a>   from repeated measures on the same subjects.</span>
-<span id="cb11-514"><a href="#cb11-514" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>**Missing trials** — re-reads the Methods to confirm no secondary experiments</span>
-<span id="cb11-515"><a href="#cb11-515" aria-hidden="true" tabindex="-1"></a>   were missed by Agent 1.</span>
+<span id="cb11-459"><a href="#cb11-459" aria-hidden="true" tabindex="-1"></a><span class="fu">### Step 2 — Co-authorship &amp; lab identification</span></span>
+<span id="cb11-460"><a href="#cb11-460" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-461"><a href="#cb11-461" aria-hidden="true" tabindex="-1"></a>**Goal:** Build a bipartite co-authorship network to identify "hub labs."</span>
+<span id="cb11-462"><a href="#cb11-462" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-463"><a href="#cb11-463" aria-hidden="true" tabindex="-1"></a>Output is in **long format** — one row per author per paper — so that network edges</span>
+<span id="cb11-464"><a href="#cb11-464" aria-hidden="true" tabindex="-1"></a>can be constructed directly.</span>
+<span id="cb11-465"><a href="#cb11-465" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-466"><a href="#cb11-466" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Column <span class="pp">|</span> Description <span class="pp">|</span></span>
+<span id="cb11-467"><a href="#cb11-467" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
+<span id="cb11-468"><a href="#cb11-468" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Study_ID`</span> <span class="pp">|</span> Join key <span class="pp">|</span></span>
+<span id="cb11-469"><a href="#cb11-469" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Author_Name`</span> <span class="pp">|</span> Full name <span class="pp">|</span></span>
+<span id="cb11-470"><a href="#cb11-470" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Author_Position`</span> <span class="pp">|</span> First / Last / Corresponding / Middle <span class="pp">|</span></span>
+<span id="cb11-471"><a href="#cb11-471" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Institutional_Affiliation`</span> <span class="pp">|</span> University or institute <span class="pp">|</span></span>
+<span id="cb11-472"><a href="#cb11-472" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Lab_Identifier`</span> <span class="pp">|</span> <span class="in">`PILastName_Institution_City`</span> (e.g., <span class="in">`Dukas_UniversityOfToronto_Toronto`</span>) <span class="pp">|</span></span>
+<span id="cb11-473"><a href="#cb11-473" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-474"><a href="#cb11-474" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
+<span id="cb11-475"><a href="#cb11-475" aria-hidden="true" tabindex="-1"></a><span class="fu">## Lab identifier design</span></span>
+<span id="cb11-476"><a href="#cb11-476" aria-hidden="true" tabindex="-1"></a>The **last author** is designated as the lab PI, and the same <span class="in">`Lab_Identifier`</span> string</span>
+<span id="cb11-477"><a href="#cb11-477" aria-hidden="true" tabindex="-1"></a>is applied to every co-author row on the same paper. This links all authors to one</span>
+<span id="cb11-478"><a href="#cb11-478" aria-hidden="true" tabindex="-1"></a>"primary lab" node in the bipartite network, enabling correct degree-centrality</span>
+<span id="cb11-479"><a href="#cb11-479" aria-hidden="true" tabindex="-1"></a>calculation for hub-lab detection.</span>
+<span id="cb11-480"><a href="#cb11-480" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb11-481"><a href="#cb11-481" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-482"><a href="#cb11-482" aria-hidden="true" tabindex="-1"></a><span class="fu">### Step 3 — Trial-level data mapping</span></span>
+<span id="cb11-483"><a href="#cb11-483" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-484"><a href="#cb11-484" aria-hidden="true" tabindex="-1"></a>**Goal:** Map the internal experimental structure of each paper — how many distinct</span>
+<span id="cb11-485"><a href="#cb11-485" aria-hidden="true" tabindex="-1"></a>trials exist, where their data live, and whether subjects are independent.</span>
+<span id="cb11-486"><a href="#cb11-486" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-487"><a href="#cb11-487" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Column <span class="pp">|</span> Description <span class="pp">|</span></span>
+<span id="cb11-488"><a href="#cb11-488" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
+<span id="cb11-489"><a href="#cb11-489" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Study_ID`</span> <span class="pp">|</span> Join key <span class="pp">|</span></span>
+<span id="cb11-490"><a href="#cb11-490" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Trial_ID`</span> <span class="pp">|</span> Experiment name/number (e.g., "Experiment 1", "Treatment A") <span class="pp">|</span></span>
+<span id="cb11-491"><a href="#cb11-491" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Trial_Description`</span> <span class="pp">|</span> 1–2 sentence summary of manipulation <span class="pp">|</span></span>
+<span id="cb11-492"><a href="#cb11-492" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Sample_Size_N`</span> <span class="pp">|</span> Focal subjects in this trial <span class="pp">|</span></span>
+<span id="cb11-493"><a href="#cb11-493" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Subject_Independence`</span> <span class="pp">|</span> "Independent Cohort" or "Repeated Measures" <span class="pp">|</span></span>
+<span id="cb11-494"><a href="#cb11-494" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Control_Group_Shared`</span> <span class="pp">|</span> Yes/No + which trial (if Yes) <span class="pp">|</span></span>
+<span id="cb11-495"><a href="#cb11-495" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Data_Location`</span> <span class="pp">|</span> Exact page and figure/table reference (e.g., "Table 1, Page 5") <span class="pp">|</span></span>
+<span id="cb11-496"><a href="#cb11-496" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-497"><a href="#cb11-497" aria-hidden="true" tabindex="-1"></a><span class="fu">### Quantitative extraction {#sec-quant-extraction}</span></span>
+<span id="cb11-498"><a href="#cb11-498" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-499"><a href="#cb11-499" aria-hidden="true" tabindex="-1"></a>Effect-size data — group means, standard deviations or standard errors, sample sizes, and</span>
+<span id="cb11-500"><a href="#cb11-500" aria-hidden="true" tabindex="-1"></a>raw choice counts — were extracted from the source papers by ESAS, working from the text,</span>
+<span id="cb11-501"><a href="#cb11-501" aria-hidden="true" tabindex="-1"></a>tables and figures of each article.</span>
+<span id="cb11-502"><a href="#cb11-502" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-503"><a href="#cb11-503" aria-hidden="true" tabindex="-1"></a>Values reported **only in figures** were extracted with the assistance of</span>
+<span id="cb11-504"><a href="#cb11-504" aria-hidden="true" tabindex="-1"></a><span class="in">`Google Gemini 3.1 Pro`</span>: the cropped figure and its caption were supplied to the model</span>
+<span id="cb11-505"><a href="#cb11-505" aria-hidden="true" tabindex="-1"></a>with a prompt requesting the point estimates and error-bar limits, returned as a markdown</span>
+<span id="cb11-506"><a href="#cb11-506" aria-hidden="true" tabindex="-1"></a>table. Because automated figure extraction can fail silently, every extracted value was</span>
+<span id="cb11-507"><a href="#cb11-507" aria-hidden="true" tabindex="-1"></a>checked against the source figure, and a validation subset of 20 records was independently</span>
+<span id="cb11-508"><a href="#cb11-508" aria-hidden="true" tabindex="-1"></a>re-extracted with <span class="in">`metaDigitise`</span> <span class="co">[</span><span class="ot">@pickReproducibleFlexibleHighthroughput2019</span><span class="co">]</span>; the two</span>
+<span id="cb11-509"><a href="#cb11-509" aria-hidden="true" tabindex="-1"></a>methods agreed closely (mean signed *z*-score = −0.10, 95% CI: −0.27 to 0.06).</span>
+<span id="cb11-510"><a href="#cb11-510" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-511"><a href="#cb11-511" aria-hidden="true" tabindex="-1"></a>Ten per cent of all extracted records were independently checked for accuracy by ML. Where</span>
+<span id="cb11-512"><a href="#cb11-512" aria-hidden="true" tabindex="-1"></a>the information needed for an effect size was ambiguous or missing, the study was excluded;</span>
+<span id="cb11-513"><a href="#cb11-513" aria-hidden="true" tabindex="-1"></a>the excluded studies and the reason in each case are listed in the supplementary tables.</span>
+<span id="cb11-514"><a href="#cb11-514" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-515"><a href="#cb11-515" aria-hidden="true" tabindex="-1"></a>---</span>
 <span id="cb11-516"><a href="#cb11-516" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-517"><a href="#cb11-517" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Final output columns</span></span>
+<span id="cb11-517"><a href="#cb11-517" aria-hidden="true" tabindex="-1"></a><span class="fu">## Effect Size Calculation {#sec-effect-sizes}</span></span>
 <span id="cb11-518"><a href="#cb11-518" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-519"><a href="#cb11-519" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Column <span class="pp">|</span> Content <span class="pp">|</span></span>
-<span id="cb11-520"><a href="#cb11-520" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
-<span id="cb11-521"><a href="#cb11-521" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Study_ID`</span> <span class="pp">|</span> Author_Year_JournalName <span class="pp">|</span></span>
-<span id="cb11-522"><a href="#cb11-522" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Trial_ID`</span> <span class="pp">|</span> Specific experiment or condition <span class="pp">|</span></span>
-<span id="cb11-523"><a href="#cb11-523" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Response_Metric`</span> <span class="pp">|</span> What was measured <span class="pp">|</span></span>
-<span id="cb11-524"><a href="#cb11-524" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Validated_Exp_Group_Data`</span> <span class="pp">|</span> Mean ± SD/SE, Counts, or Test Stat <span class="pp">|</span></span>
-<span id="cb11-525"><a href="#cb11-525" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Validated_Control_Group_Data`</span> <span class="pp">|</span> Mean ± SD/SE, Counts, or NA <span class="pp">|</span></span>
-<span id="cb11-526"><a href="#cb11-526" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`SD_or_SE`</span> <span class="pp">|</span> Explicit variance metric label <span class="pp">|</span></span>
-<span id="cb11-527"><a href="#cb11-527" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Agent1_Initial_Pull`</span> <span class="pp">|</span> Brief summary of original extraction <span class="pp">|</span></span>
-<span id="cb11-528"><a href="#cb11-528" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Agent2_Verification_Notes`</span> <span class="pp">|</span> Corrections made, or "No missing trials found" <span class="pp">|</span></span>
-<span id="cb11-529"><a href="#cb11-529" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`Verification_Location`</span> <span class="pp">|</span> Exact page and table/figure number <span class="pp">|</span></span>
-<span id="cb11-530"><a href="#cb11-530" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-531"><a href="#cb11-531" aria-hidden="true" tabindex="-1"></a>---</span>
-<span id="cb11-532"><a href="#cb11-532" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-533"><a href="#cb11-533" aria-hidden="true" tabindex="-1"></a><span class="fu">## Effect Size Calculation {#sec-effect-sizes}</span></span>
+<span id="cb11-519"><a href="#cb11-519" aria-hidden="true" tabindex="-1"></a>Following data extraction, effect sizes and their sampling variances are calculated using the reproducible Python pipeline located at <span class="co">[</span><span class="ot">scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py</span><span class="co">](https://github.com/esantos2ua/mate_choice_meta/blob/main/scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py)</span>. </span>
+<span id="cb11-520"><a href="#cb11-520" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-521"><a href="#cb11-521" aria-hidden="true" tabindex="-1"></a>The raw data is stored in the Excel spreadsheet <span class="co">[</span><span class="ot">data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx</span><span class="co">](https://github.com/esantos2ua/mate_choice_meta/blob/main/data/1_effect_size_calculation_pipeline/Data%20Extraction%20Mate%20Choice%20Meta%20Analysis.xlsx)</span> inside the <span class="in">`EduardoExtraction`</span> sheet. To support tracking, each row contains an <span class="in">`identifierEffectSizeID`</span> column containing a unique sequential identifier for each control–experimental comparison (e.g., <span class="in">`es0001`</span>, <span class="in">`es0002`</span>). The Python pipeline dynamically resolves column locations by scanning the header row, computes the following effect size metrics, and saves them back to the spreadsheet:</span>
+<span id="cb11-522"><a href="#cb11-522" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-523"><a href="#cb11-523" aria-hidden="true" tabindex="-1"></a><span class="fu">### 1. Hedges' $g$ (Bias-Corrected Standardised Mean Difference)</span></span>
+<span id="cb11-524"><a href="#cb11-524" aria-hidden="true" tabindex="-1"></a>Calculated depending on the data type extracted:</span>
+<span id="cb11-525"><a href="#cb11-525" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-526"><a href="#cb11-526" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**From Means &amp; SDs:** Using control and treatment means, standard deviations (or standard errors converted using $SD = SE \times \sqrt{n}$), and sample sizes.</span>
+<span id="cb11-527"><a href="#cb11-527" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**From $t$-statistics:** Supported for both paired/one-sample designs (Case 2, in the Python script) and independent-sample designs (Case 3, assuming an equal sample split if individual group sizes are unknown).</span>
+<span id="cb11-528"><a href="#cb11-528" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-529"><a href="#cb11-529" aria-hidden="true" tabindex="-1"></a><span class="fu">### 2. Odds Ratio (OR)</span></span>
+<span id="cb11-530"><a href="#cb11-530" aria-hidden="true" tabindex="-1"></a>Calculated for categorical outcomes from $2 \times 2$ contingency tables ($A$, $B$, $C$, $D$), where the sampling variance of the log odds ratio is approximated using the delta method.</span>
+<span id="cb11-531"><a href="#cb11-531" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-532"><a href="#cb11-532" aria-hidden="true" tabindex="-1"></a><span class="fu">### 3. Odds Ratio $\leftrightarrow$ Hedges' $g$ Cross-Conversion</span></span>
+<span id="cb11-533"><a href="#cb11-533" aria-hidden="true" tabindex="-1"></a>For rows containing only one of the two metrics, the missing metric is derived using the logistic-normal approximation <span class="co">[</span><span class="ot">@chinnSimpleMethodConverting2000; @borensteinIntroductionMetaanalysis2011</span><span class="co">]</span>:</span>
 <span id="cb11-534"><a href="#cb11-534" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-535"><a href="#cb11-535" aria-hidden="true" tabindex="-1"></a>Following data extraction, effect sizes and their sampling variances are calculated using the reproducible Python pipeline located at <span class="co">[</span><span class="ot">scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py</span><span class="co">](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py)</span>. </span>
-<span id="cb11-536"><a href="#cb11-536" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-537"><a href="#cb11-537" aria-hidden="true" tabindex="-1"></a>The raw data is stored in the Excel spreadsheet <span class="co">[</span><span class="ot">data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx</span><span class="co">](file:///Users/eduardosantos/Documents/Repos/mate_choice_meta/data/1_effect_size_calculation_pipeline/Data%20Extraction%20Mate%20Choice%20Meta%20Analysis.xlsx)</span> inside the <span class="in">`EduardoExtraction`</span> sheet. To support tracking, each row contains an <span class="in">`identifierEffectSizeID`</span> column containing a unique sequential identifier for each control–experimental comparison (e.g., <span class="in">`es0001`</span>, <span class="in">`es0002`</span>). The Python pipeline dynamically resolves column locations by scanning the header row, computes the following effect size metrics, and saves them back to the spreadsheet:</span>
-<span id="cb11-538"><a href="#cb11-538" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-539"><a href="#cb11-539" aria-hidden="true" tabindex="-1"></a><span class="fu">### 1. Hedges' $g$ (Bias-Corrected Standardised Mean Difference)</span></span>
-<span id="cb11-540"><a href="#cb11-540" aria-hidden="true" tabindex="-1"></a>Calculated depending on the data type extracted:</span>
-<span id="cb11-541"><a href="#cb11-541" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-542"><a href="#cb11-542" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**From Means &amp; SDs:** Using control and treatment means, standard deviations (or standard errors converted using $SD = SE \times \sqrt{n}$), and sample sizes.</span>
-<span id="cb11-543"><a href="#cb11-543" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**From $t$-statistics:** Supported for both paired/one-sample designs (Case 2, in the Python script) and independent-sample designs (Case 3, assuming an equal sample split if individual group sizes are unknown).</span>
+<span id="cb11-535"><a href="#cb11-535" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**$\text{OR} \rightarrow \text{Hedges' } g$**: $d = \ln(\text{OR}) \times \frac{\sqrt{3}}{\pi}$ and then bias-corrected to $g$ using the $J$ correction factor.</span>
+<span id="cb11-536"><a href="#cb11-536" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**$\text{Hedges' } g \rightarrow \text{OR}$**: $\ln(\text{OR}) = g \times \frac{\pi}{\sqrt{3}}$ and $\text{Var}(\ln\text{OR}) = \text{Var}(g) \times \frac{\pi^2}{3}$.</span>
+<span id="cb11-537"><a href="#cb11-537" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-538"><a href="#cb11-538" aria-hidden="true" tabindex="-1"></a>To execute the calculations and update the workbook, run:</span>
+<span id="cb11-539"><a href="#cb11-539" aria-hidden="true" tabindex="-1"></a><span class="in">```bash</span></span>
+<span id="cb11-540"><a href="#cb11-540" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py</span>
+<span id="cb11-541"><a href="#cb11-541" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb11-542"><a href="#cb11-542" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-543"><a href="#cb11-543" aria-hidden="true" tabindex="-1"></a>---</span>
 <span id="cb11-544"><a href="#cb11-544" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-545"><a href="#cb11-545" aria-hidden="true" tabindex="-1"></a><span class="fu">### 2. Odds Ratio (OR)</span></span>
-<span id="cb11-546"><a href="#cb11-546" aria-hidden="true" tabindex="-1"></a>Calculated for categorical outcomes from $2 \times 2$ contingency tables ($A$, $B$, $C$, $D$), where the sampling variance of the log odds ratio is approximated using the delta method.</span>
-<span id="cb11-547"><a href="#cb11-547" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-548"><a href="#cb11-548" aria-hidden="true" tabindex="-1"></a><span class="fu">### 3. Odds Ratio $\leftrightarrow$ Hedges' $g$ Cross-Conversion</span></span>
-<span id="cb11-549"><a href="#cb11-549" aria-hidden="true" tabindex="-1"></a>For rows containing only one of the two metrics, the missing metric is derived using the logistic-normal approximation <span class="co">[</span><span class="ot">@chinnSimpleMethodConverting2000; @borensteinIntroductionMetaanalysis2011</span><span class="co">]</span>:</span>
+<span id="cb11-545"><a href="#cb11-545" aria-hidden="true" tabindex="-1"></a><span class="fu">## Planned Analyses {#sec-analyses}</span></span>
+<span id="cb11-546"><a href="#cb11-546" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-547"><a href="#cb11-547" aria-hidden="true" tabindex="-1"></a>All models will be implemented in R. Our pre-registration details are available in Santos et al. <span class="co">[</span><span class="ot">-@santosMatechoiceCopyingNonhuman2026</span><span class="co">]</span>.</span>
+<span id="cb11-548"><a href="#cb11-548" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-549"><a href="#cb11-549" aria-hidden="true" tabindex="-1"></a><span class="fu">### Meta-analytic models</span></span>
 <span id="cb11-550"><a href="#cb11-550" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-551"><a href="#cb11-551" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**$\text{OR} \rightarrow \text{Hedges' } g$**: $d = \ln(\text{OR}) \times \frac{\sqrt{3}}{\pi}$ and then bias-corrected to $g$ using the $J$ correction factor.</span>
-<span id="cb11-552"><a href="#cb11-552" aria-hidden="true" tabindex="-1"></a><span class="ss">* </span>**$\text{Hedges' } g \rightarrow \text{OR}$**: $\ln(\text{OR}) = g \times \frac{\pi}{\sqrt{3}}$ and $\text{Var}(\ln\text{OR}) = \text{Var}(g) \times \frac{\pi^2}{3}$.</span>
-<span id="cb11-553"><a href="#cb11-553" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-554"><a href="#cb11-554" aria-hidden="true" tabindex="-1"></a>To execute the calculations and update the workbook, run:</span>
-<span id="cb11-555"><a href="#cb11-555" aria-hidden="true" tabindex="-1"></a><span class="in">```bash</span></span>
-<span id="cb11-556"><a href="#cb11-556" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> scripts/1_effect_size_calculation_pipeline/calculate_effect_sizes.py</span>
-<span id="cb11-557"><a href="#cb11-557" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb11-551"><a href="#cb11-551" aria-hidden="true" tabindex="-1"></a>Multi-level random-effects meta-analysis to estimate the overall effect size for MCC, accounting for trials nested within papers nested within labs.</span>
+<span id="cb11-552"><a href="#cb11-552" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-553"><a href="#cb11-553" aria-hidden="true" tabindex="-1"></a>Package: <span class="in">`metafor`</span>.</span>
+<span id="cb11-554"><a href="#cb11-554" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-555"><a href="#cb11-555" aria-hidden="true" tabindex="-1"></a>**Heterogeneity** will be quantified with $I^2$ and $\tau^2$ at each level.</span>
+<span id="cb11-556"><a href="#cb11-556" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-557"><a href="#cb11-557" aria-hidden="true" tabindex="-1"></a><span class="fu">### Phylogenetic comparative methods</span></span>
 <span id="cb11-558"><a href="#cb11-558" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-559"><a href="#cb11-559" aria-hidden="true" tabindex="-1"></a>---</span>
-<span id="cb11-560"><a href="#cb11-560" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-561"><a href="#cb11-561" aria-hidden="true" tabindex="-1"></a><span class="fu">## Planned Analyses {#sec-analyses}</span></span>
-<span id="cb11-562"><a href="#cb11-562" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-563"><a href="#cb11-563" aria-hidden="true" tabindex="-1"></a>All models will be implemented in R. Our pre-registration details are available in Santos et al. <span class="co">[</span><span class="ot">-@santosMatechoiceCopyingNonhuman2026</span><span class="co">]</span>.</span>
-<span id="cb11-564"><a href="#cb11-564" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-565"><a href="#cb11-565" aria-hidden="true" tabindex="-1"></a><span class="fu">### Meta-analytic models</span></span>
+<span id="cb11-559"><a href="#cb11-559" aria-hidden="true" tabindex="-1"></a>Species non-independence is controlled via a phylogenetic covariance matrix</span>
+<span id="cb11-560"><a href="#cb11-560" aria-hidden="true" tabindex="-1"></a>incorporated into the meta-analytic model (<span class="in">`metafor`</span> + <span class="in">`ape`</span>). This accounts for the possibility that closely related species share similar MCC propensity due to shared evolutionary history.</span>
+<span id="cb11-561"><a href="#cb11-561" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-562"><a href="#cb11-562" aria-hidden="true" tabindex="-1"></a><span class="fu">### Publication bias</span></span>
+<span id="cb11-563"><a href="#cb11-563" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-564"><a href="#cb11-564" aria-hidden="true" tabindex="-1"></a>Funnel plot asymmetry, and Egger's regression test to assess publication bias.</span>
+<span id="cb11-565"><a href="#cb11-565" aria-hidden="true" tabindex="-1"></a>Time-lag bias will be examined by plotting effect size against publication year.</span>
 <span id="cb11-566"><a href="#cb11-566" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-567"><a href="#cb11-567" aria-hidden="true" tabindex="-1"></a>Multi-level random-effects meta-analysis to estimate the overall effect size for MCC, accounting for trials nested within papers nested within labs.</span>
+<span id="cb11-567"><a href="#cb11-567" aria-hidden="true" tabindex="-1"></a><span class="fu">### Moderator analyses</span></span>
 <span id="cb11-568"><a href="#cb11-568" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-569"><a href="#cb11-569" aria-hidden="true" tabindex="-1"></a>Package: <span class="in">`metafor`</span>.</span>
+<span id="cb11-569"><a href="#cb11-569" aria-hidden="true" tabindex="-1"></a>Meta-regression models will test whether effect sizes vary by:</span>
 <span id="cb11-570"><a href="#cb11-570" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-571"><a href="#cb11-571" aria-hidden="true" tabindex="-1"></a>**Heterogeneity** will be quantified with $I^2$ and $\tau^2$ at each level.</span>
-<span id="cb11-572"><a href="#cb11-572" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-573"><a href="#cb11-573" aria-hidden="true" tabindex="-1"></a><span class="fu">### Phylogenetic comparative methods</span></span>
-<span id="cb11-574"><a href="#cb11-574" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-575"><a href="#cb11-575" aria-hidden="true" tabindex="-1"></a>Species non-independence is controlled via a phylogenetic covariance matrix</span>
-<span id="cb11-576"><a href="#cb11-576" aria-hidden="true" tabindex="-1"></a>incorporated into the meta-analytic model (<span class="in">`metafor`</span> + <span class="in">`ape`</span>). This accounts for the possibility that closely related species share similar MCC propensity due to shared evolutionary history.</span>
+<span id="cb11-571"><a href="#cb11-571" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Sex of the copying individual (female vs. male)</span>
+<span id="cb11-572"><a href="#cb11-572" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Taxonomic group (fish, bird, mammal, invertebrate)</span>
+<span id="cb11-573"><a href="#cb11-573" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Experimental design (before-and-after vs. no pre-test)</span>
+<span id="cb11-574"><a href="#cb11-574" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Copying mechanism (individual vs. generalized)</span>
+<span id="cb11-575"><a href="#cb11-575" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-576"><a href="#cb11-576" aria-hidden="true" tabindex="-1"></a><span class="fu">### Sensitivity analyses</span></span>
 <span id="cb11-577"><a href="#cb11-577" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-578"><a href="#cb11-578" aria-hidden="true" tabindex="-1"></a><span class="fu">### Publication bias</span></span>
-<span id="cb11-579"><a href="#cb11-579" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-580"><a href="#cb11-580" aria-hidden="true" tabindex="-1"></a>Funnel plot asymmetry, and Egger's regression test to assess publication bias.</span>
-<span id="cb11-581"><a href="#cb11-581" aria-hidden="true" tabindex="-1"></a>Time-lag bias will be examined by plotting effect size against publication year.</span>
-<span id="cb11-582"><a href="#cb11-582" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-583"><a href="#cb11-583" aria-hidden="true" tabindex="-1"></a><span class="fu">### Moderator analyses</span></span>
-<span id="cb11-584"><a href="#cb11-584" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-585"><a href="#cb11-585" aria-hidden="true" tabindex="-1"></a>Meta-regression models will test whether effect sizes vary by:</span>
-<span id="cb11-586"><a href="#cb11-586" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-587"><a href="#cb11-587" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Sex of the copying individual (female vs. male)</span>
-<span id="cb11-588"><a href="#cb11-588" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Taxonomic group (fish, bird, mammal, invertebrate)</span>
-<span id="cb11-589"><a href="#cb11-589" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Experimental design (before-and-after vs. no pre-test)</span>
-<span id="cb11-590"><a href="#cb11-590" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Copying mechanism (individual vs. generalized)</span>
-<span id="cb11-591"><a href="#cb11-591" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-592"><a href="#cb11-592" aria-hidden="true" tabindex="-1"></a><span class="fu">### Sensitivity analyses</span></span>
-<span id="cb11-593"><a href="#cb11-593" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-594"><a href="#cb11-594" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Inclusion of pre-2019 records.</span>
-<span id="cb11-595"><a href="#cb11-595" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Leave-one-out analysis for influential studies.</span>
+<span id="cb11-578"><a href="#cb11-578" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Inclusion of pre-2019 records.</span>
+<span id="cb11-579"><a href="#cb11-579" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Leave-one-out analysis for influential studies.</span>
 </code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->

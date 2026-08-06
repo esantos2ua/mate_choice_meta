@@ -18,7 +18,7 @@ tbl <- function(df, cap) knitr::kable(df, caption = cap, align = "l")
 ::: callout-note
 ## What this page is
 
-A **concise companion** to the manuscript. It reproduces only the numbers,
+A **concise overview** of the study's headline results. It reproduces only the numbers,
 tables, and figures that the main text actually reports, section by section,
 with a sentence or two of plain-language context for each — for readers and
 reviewers who want the headline evidence without the full computational trail.

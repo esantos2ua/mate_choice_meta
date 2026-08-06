@@ -106,8 +106,11 @@ Davies pooling what Jones split.
 | Gierszewski et al. 2018 | 15 | No-spot vs control (10/15) | ~2.9 | ~1.61 | ★★ |
 | Howard et al. 1998 | 20 | reversal (5 rev : 15 retained) | −1.099 | −0.61 | ★★★ |
 
-Decisions for the team: (a) whether to pool or split Fowler-Finn; (b) how many
-ES to keep for Dugatkin 1992 and Gierszewski; (c) confirm the Gierszewski
-control reversal count (text "2" vs figure "≈1"); (d) whether any "different
-outcome construct" Davies values (affiliation time, size preference) should be
-retained as separate effect sizes rather than discarded.
+Four judgement calls were required, and are documented here for transparency:
+(a) whether to pool or split Fowler-Finn; (b) how many effect sizes to retain for
+Dugatkin 1992 and Gierszewski; (c) how to resolve the Gierszewski control
+reversal count, which differs between the text ("2") and the figure ("~1"); and
+(d) whether Davies values measuring a different outcome construct (affiliation
+time, size preference) should be retained as separate effect sizes or discarded.
+The handling adopted is reflected in the *Corrected* dataset version, and the
+pooled estimates are shown to be insensitive to it in the sensitivity analysis.

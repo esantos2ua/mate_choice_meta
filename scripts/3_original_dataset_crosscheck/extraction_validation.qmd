@@ -534,7 +534,10 @@ only the *magnitude* (the 2 + √3 artifact) is wrong — while Jones's third re
 value for this study (lnOR 2.234) is spurious: it reproduces from no pair of the
 paper's six experiments and should be dropped.
 
-## What to report in the manuscript
+## Summary of the cross-check
+
+Four findings emerge from the comparison, and they are the basis for the
+sensitivity analyses reported elsewhere in this supplement.
 
 * **Re-extraction (the > 0.5 set).** Returning to the source PDFs for the
   `r nrow(reext)` effect sizes that disagreed most, the design-blind re-derivation

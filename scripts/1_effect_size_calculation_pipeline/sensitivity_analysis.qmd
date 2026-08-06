@@ -762,7 +762,7 @@ mean and the open-vs-filled distinction between retained and omitted effects. Th
 helper below strips that mapping, re-orders rows by estimate, and uses the grey-filled /
 open-orange encoding instead. Each panel is also written to `outputs/1_effect_size_calculation_pipeline/`
 as both PNG and **PDF** (`loo_study_hedges`, `loo_study_or`, `loo_species_hedges`,
-`loo_species_or`) for use as manuscript figures.
+`loo_species_or`) as vector PDFs alongside the on-screen versions.
 :::
 
 ```{r}
