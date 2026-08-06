@@ -6,7 +6,7 @@ and table in the manuscript is produced by the code in this repository.
 
 **Reproducible supplement (rendered site):** <https://esantos2ua.github.io/mate_choice_meta/>
 **Preregistration:** <https://osf.io/vfahk/overview>
-**Archived release:** Zenodo DOI — *pending*
+**Archived release:** <https://doi.org/10.5281/zenodo.21829677>
 
 ---
 
@@ -16,29 +16,29 @@ If you have arrived from the paper and want to check a specific result, the rend
 is the fastest route — every chapter shows the code, the model output and the figure
 together. Otherwise:
 
-| You want to… | Go to |
-|---|---|
-| See the headline estimates and how they were fitted | [`overall_effect.qmd`](scripts/1_effect_size_calculation_pipeline/overall_effect.qmd) |
-| Check the publication-bias corrections | [`publication_bias.qmd`](scripts/1_effect_size_calculation_pipeline/publication_bias.qmd) |
-| See why the two source datasets disagreed for seven studies | [`extraction_validation.qmd`](scripts/3_original_dataset_crosscheck/extraction_validation.qmd) |
-| Check robustness (leave-one-out, contentious effect sizes) | [`sensitivity_analysis.qmd`](scripts/1_effect_size_calculation_pipeline/sensitivity_analysis.qmd) |
-| See the exploratory moderator models | [`moderator_analysis.qmd`](scripts/1_effect_size_calculation_pipeline/moderator_analysis.qmd) |
-| Read the screening/PRISMA process | [`literature_screening.qmd`](scripts/0_literature_screening/literature_screening.qmd) |
-| Inspect the raw extraction | [`data/1_effect_size_calculation_pipeline/`](data/1_effect_size_calculation_pipeline/) |
+| You want to…                                                | Go to                                                                                             |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| See the headline estimates and how they were fitted         | [`overall_effect.qmd`](scripts/1_effect_size_calculation_pipeline/overall_effect.qmd)             |
+| Check the publication-bias corrections                      | [`publication_bias.qmd`](scripts/1_effect_size_calculation_pipeline/publication_bias.qmd)         |
+| See why the two source datasets disagreed for seven studies | [`extraction_validation.qmd`](scripts/3_original_dataset_crosscheck/extraction_validation.qmd)    |
+| Check robustness (leave-one-out, contentious effect sizes)  | [`sensitivity_analysis.qmd`](scripts/1_effect_size_calculation_pipeline/sensitivity_analysis.qmd) |
+| See the exploratory moderator models                        | [`moderator_analysis.qmd`](scripts/1_effect_size_calculation_pipeline/moderator_analysis.qmd)     |
+| Read the screening/PRISMA process                           | [`literature_screening.qmd`](scripts/0_literature_screening/literature_screening.qmd)             |
+| Inspect the raw extraction                                  | [`data/1_effect_size_calculation_pipeline/`](data/1_effect_size_calculation_pipeline/)            |
 
 ## Where the manuscript's numbers come from
 
-| Manuscript item | Produced by |
-|---|---|
-| Overall effects; orchard figures with bias corrections | `overall_effect.qmd` |
-| Taxonomic moderator model and figure | `overall_effect.qmd` |
-| Partial *I*² table | `overall_effect.qmd` (writes `outputs/1_effect_size_calculation_pipeline/partial_i2_table.tex`) |
-| Egger's regression, time-lag models, funnel plots | `publication_bias.qmd` |
-| Leave-one-out and contentious-effect-size analyses | `sensitivity_analysis.qmd` |
-| Biological moderator models | `moderator_analysis.qmd` |
-| Cross-check of the two source datasets | `scripts/3_original_dataset_crosscheck/` |
-| Phylogeny and correlation matrices | `scripts/2_phylogeny/build_phylogeny.R` |
-| PRISMA flow diagram | `scripts/0_literature_screening/2_prisma_flowdiagram.R` |
+| Manuscript item                                        | Produced by                                                                                     |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Overall effects; orchard figures with bias corrections | `overall_effect.qmd`                                                                            |
+| Taxonomic moderator model and figure                   | `overall_effect.qmd`                                                                            |
+| Partial *I*² table                                     | `overall_effect.qmd` (writes `outputs/1_effect_size_calculation_pipeline/partial_i2_table.tex`) |
+| Egger's regression, time-lag models, funnel plots      | `publication_bias.qmd`                                                                          |
+| Leave-one-out and contentious-effect-size analyses     | `sensitivity_analysis.qmd`                                                                      |
+| Biological moderator models                            | `moderator_analysis.qmd`                                                                        |
+| Cross-check of the two source datasets                 | `scripts/3_original_dataset_crosscheck/`                                                        |
+| Phylogeny and correlation matrices                     | `scripts/2_phylogeny/build_phylogeny.R`                                                         |
+| PRISMA flow diagram                                    | `scripts/0_literature_screening/2_prisma_flowdiagram.R`                                         |
 
 ## Repository layout
 
@@ -97,11 +97,11 @@ keyed on a content hash, so touching a file does not invalidate it.
 
 ## Data provenance
 
-| Source | File | Note |
-|---|---|---|
-| This study | `data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx` | new extraction, 29 studies |
-| Davies et al. (2020) | `data/original_meta_analyses_datasets/Davies_et_al_2020_Final_data.xlsx` | reused with thanks; see note below |
-| Jones & DuVal (2019) | `data/original_meta_analyses_datasets/Jones_DuVal_2019_data.CSV` | reused with thanks |
+| Source               | File                                                                                     | Note                               |
+| -------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------- |
+| This study           | `data/1_effect_size_calculation_pipeline/Data Extraction Mate Choice Meta Analysis.xlsx` | new extraction, 29 studies         |
+| Davies et al. (2020) | `data/original_meta_analyses_datasets/Davies_et_al_2020_Final_data.xlsx`                 | reused with thanks; see note below |
+| Jones & DuVal (2019) | `data/original_meta_analyses_datasets/Jones_DuVal_2019_data.CSV`                         | reused with thanks                 |
 
 The two original datasets are redistributed here so the update is reproducible end to end.
 Please cite the original papers when using them.
@@ -126,10 +126,10 @@ screened records, judged eligibility, or made a final analytical or interpretive
 If you use this code or the harmonised dataset, please cite the paper and the archived
 release:
 
-> Santos, E. S. A., *et al.* Mate choice copying in non-human animals: an update of two
-> meta-analyses. *Preprint*, EcoEvoRxiv. DOI *pending*.
+> Santos, E. S. A., _et al._ Mate choice copying in non-human animals: an update of two
+> meta-analyses. _Preprint_, EcoEvoRxiv. DOI _pending_.
 >
-> Archived code and data: Zenodo, DOI *pending*.
+> Archived code and data: Zenodo, DOI 10.5281/zenodo.21829677.
 
 ## Licence
 
