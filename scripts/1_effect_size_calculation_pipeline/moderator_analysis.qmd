@@ -535,7 +535,7 @@ i2_homosc_refit <- function(res) {
             yi = d$yi, V = res$VCV,
             mods = stats::as.formula(paste0("~ ", res$group_var)),
             random = list(~ 1 | identifierStudyId, ~ 1 | identifierEffectSizeID, ~ 1 | taxonomySpecies),
-            test = "t", method = "REML", sparse = TRUE, data = d
+            test = "t", dfs = "contain", method = "REML", sparse = TRUE, data = d
         ),
         error = function(e) NULL
     )

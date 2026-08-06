@@ -429,7 +429,7 @@ fit_overall_mv <- function(dat, cluster_var = "identifierStudyId",
         }
     }
     mod <- metafor::rma.mv(yi = dat2$yi, V = VCV, random = random_list, R = R_arg,
-                           test = "t", method = "REML", sparse = TRUE, data = dat2)
+                           test = "t", dfs = "contain", method = "REML", sparse = TRUE, data = dat2)
     list(data = dat2, model = mod)
 }
 
@@ -787,7 +787,7 @@ fit_overall_loo <- function(dat, phylo_cor) {
         Rarg <- list(species_phylo = phylo_cor[sp, sp, drop = FALSE])
     }
     mod <- metafor::rma.mv(yi = yi, V = VCV, random = rand, R = Rarg,
-                           test = "t", method = "REML", sparse = TRUE, data = d)
+                           test = "t", dfs = "contain", method = "REML", sparse = TRUE, data = d)
     # Embed objects as literals so leave_one_out() can re-evaluate the call on each subset.
     mod$call$random <- rand
     mod$call$V      <- VCV
