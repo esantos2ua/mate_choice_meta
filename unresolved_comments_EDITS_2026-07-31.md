@@ -8,11 +8,13 @@ Each edit gives a **FIND** block (exact current text — search for it) and a **
 
 | Tag | Meaning | Comments closed |
 |---|---|---|
-| `PASTE` | Apply verbatim. Nothing to decide, nothing to look up. | 26 |
-| `FILL` | Apply verbatim except for `⟨⟨placeholder⟩⟩` tokens — one number each. | 4 |
-| `WRITE` | Draft supplied, but needs your judgement or new prose. | 13 |
-| `RUN` | Needs a new analysis before the text can be written. | 3 |
+| `PASTE` | Apply verbatim. Nothing to decide, nothing to look up. | 32 |
+| `FILL` | Apply verbatim except for `⟨⟨placeholder⟩⟩` tokens. | 5 |
+| `WRITE` | Draft supplied, but needs your judgement or new prose. | 7 |
+| `RUN` | Needs a new analysis before the text can be written. | 2 |
 | — | No action (#43, a compliment). | 1 |
+
+*Last reconciled 2026-08-05 after the A1/A2/E6/A3 corrections and re-render.*
 
 Placeholders are written as `⟨⟨like this⟩⟩` so you can grep for `⟨⟨` to find everything still outstanding.
 
@@ -796,8 +798,21 @@ Several features of our approach constrain the strength of these inferences. Bec
 
 ✔ All counts here are verified: 38 / 31 conversions and 22-of-38 imputed controls against the extraction spreadsheet, zero grafted tips against the saved trees (**E5**).
 
-## E24 · `RUN` · line 246 — tie taxonomic gaps to heterogeneity, add marginalised means
-**Addresses #40** (Kyle)
+## E24 · `PASTE` ✔ · line 246 — tie taxonomic gaps to heterogeneity, add marginalised means
+**Addresses #40** (Kyle) · **DECIDED: Option B — recalculation only, no new model**
+
+The marginalised mean is the taxon-moderator model with the three groups weighted equally rather than by effect-size count. Because the model is intercept-coded (Arthropods as reference), that is $\beta_0 + \tfrac{1}{3}\beta_{\text{Fish}} + \tfrac{1}{3}\beta_{\text{OtherVert}}$, computable directly from the published coefficients:
+
+| Scale | Arthropods | Fish | Other vert. | Equal-weighted | Observed | Shift |
+|---|---|---|---|---|---|---|
+| Hedges' *g* | 0.235 | 0.487 | 0.715 | **0.479** | 0.446 | **+0.034** |
+| log OR | 0.335 | 0.816 | 0.606 | **0.586** | 0.594 | **−0.008** (OR 1.80 *vs.* 1.81) |
+
+Balanced taxonomic coverage would barely move the pooled estimate. Because this is a statement about the *sensitivity of a point estimate* rather than a new inferential claim, it needs no confidence interval — but the text must say plainly that it is a recalculation, not a separately fitted model.
+
+### The manuscript edit
+
+⚠️ Deliberately does **not** restate that species variance is unrelated to phylogeny — **E21 ¶1 already makes that point**, and repeating it here would add length to a Discussion already flagged as too long. This edit picks up the thread and goes straight to the coverage argument.
 
 **FIND:**
 ```
@@ -806,10 +821,19 @@ Reassuringly, the uni-moderator analyses returned positive means in all three ta
 
 **REPLACE:**
 ```latex
-That species identity accounted for a large share of the heterogeneity while phylogeny accounted for almost none indicates that biologically important variation lies among species but is not predicted by relatedness---precisely the situation in which a sample concentrated in two genera is least informative, and in which broader taxonomic coverage would be most valuable. Reassuringly, the uni-moderator analyses returned positive means in all three taxonomic groups on both scales, with only weak support for among-group differences, so we treat the apparent gradient cautiously. To gauge how far the pooled estimate reflects this uneven sampling, we also computed a mean marginalised over taxonomic groups, weighting groups rather than effect sizes equally: this gave ⟨⟨g_marg⟩⟩ on the Hedges' \textit{g} scale and ⟨⟨or_marg⟩⟩ on the odds ratio scale, compared with 0.45 and 1.81 in the observed sample~\cite{⟨⟨Kyle's two examples⟩⟩}.
+This is precisely the situation in which a sample concentrated in two genera is least informative, and in which broader taxonomic coverage would be most valuable. Reassuringly, the uni-moderator analyses returned positive means in all three taxonomic groups on both scales, with only weak support for among-group differences, so we treat the apparent gradient cautiously. Recalculating the pooled mean from those group means with the three groups weighted equally---an approximation to balanced taxonomic coverage---shifts it by less than 0.04 Hedges' \textit{g} units and by less than 0.01 log odds ratio units, so the estimates are not an artefact of the sample's concentration in arthropods.
 ```
 
-`orchaRd::marginalised_means()` (⚠️ confirm the exact function name in v2.2.0). Expect the marginalised mean to sit somewhat *higher* than the raw mean given the arthropod-heavy sample — a useful, honest counterweight to the bias-corrected results. Kyle's two examples: `10.1016/j.anbehav.2026.123542` and `10.1111/ele.14083` (Pottier et al., *Ecology Letters*).
+### If a reviewer asks for intervals
+
+Four additive lines, which cannot change any existing number:
+
+```r
+predict(res_tax_hedges$model, newmods = c(1/3, 1/3))
+predict(res_tax_or$model,     newmods = c(1/3, 1/3))
+```
+
+`predict()` takes the standard error from the model's variance–covariance matrix — the one quantity hand-arithmetic cannot reproduce. Kyle's two examples (`10.1016/j.anbehav.2026.123542`; `10.1111/ele.14083`, Pottier et al., *Ecology Letters*) would be worth citing at that point; under Option B the recalculation is simple enough not to need a methodological citation.
 
 ## E25 · `PASTE` · line 251 — Conclusion wording
 **Closes #41** (Christine) and **#42** (Iwo)
@@ -850,16 +874,60 @@ We thank ⟨⟨anyone who assisted with translation, screening, or data checking
 
 The thanks to the two source teams is worth doing explicitly — you rebuilt your synthesis on their data and, in places, correct it.
 
-## E27 · `WRITE` · line 340 — Author contributions
-**Closes #44** (your note + Anna on the initials clash)
+## E27 · `FILL` · line 340 — Author contributions
+**Closes #44** (your note + Anna on the initials clash) · updated 2026-08-05 with the contributions you supplied
 
-Only three of 17 authors currently have statements. Combined with **E2**, use MeRIT initials in the Methods plus a CRediT list here. Template:
+Two facts now fix most of the statement: **all 18 authors contributed to screening**, and **all except Sergio contributed to writing---review and editing**. In CRediT, screening records for eligibility maps to **Investigation**.
+
+That means only three things remain unknown: five surnames, the additional roles beyond those two, and Sergio's initials.
+
+### Option A — combined statement (recommended)
+
+Repeating the same two roles 18 times is unreadable and wastes space. Most journals accept a collective sentence plus per-author exceptions:
 
 ```latex
-Author contributions follow CRediT and are reported alongside in-line MeRIT initials in the Methods. \textbf{Eduardo S.~A. Santos (ESAS)}: conceptualisation, data curation, formal analysis, investigation, methodology, project administration, software, visualisation, writing---original draft, and writing---review and editing. \textbf{Aleksandra Milenovic (AMilenovic)}: ⟨⟨⟩⟩. \textbf{Aneta ⟨⟨surname⟩⟩ (A⟨⟨⟩⟩)}: ⟨⟨⟩⟩. \textbf{Anna Lenz (AL)}: ⟨⟨⟩⟩. \textbf{Ayumi Mizuno (AMizuno)}: ⟨⟨⟩⟩. \textbf{Cassidy Schneider (CSchneider)}: ⟨⟨⟩⟩. \textbf{Christine Sosiak (CSosiak)}: ⟨⟨⟩⟩. \textbf{Erick ⟨⟨surname⟩⟩}: ⟨⟨⟩⟩. \textbf{Hao Qin (HQ)}: ⟨⟨⟩⟩. \textbf{Iwo Gross (IG)}: ⟨⟨⟩⟩. \textbf{Jimuel ⟨⟨surname⟩⟩}: ⟨⟨⟩⟩. \textbf{Kyle ⟨⟨surname⟩⟩}: ⟨⟨⟩⟩. \textbf{Mahi Zakir (MZ)}: ⟨⟨⟩⟩. \textbf{Marija ⟨⟨surname⟩⟩}: ⟨⟨⟩⟩. \textbf{Santiago Ortega (SO)}: ⟨⟨⟩⟩. \textbf{Sergio ⟨⟨surname⟩⟩}: ⟨⟨⟩⟩. \textbf{Malgorzata Lagisz (ML)}: conceptualisation, investigation, methodology, and writing---review and editing. \textbf{Shinichi Nakagawa (SN)}: conceptualisation, funding acquisition, investigation, methodology, and writing---review and editing.
+All authors contributed to screening records for eligibility (investigation) and, with the exception of ⟨⟨Sergio surname⟩⟩, to writing---review and editing. Additional contributions were as follows. \textbf{Eduardo S.~A. Santos}: conceptualisation, data curation, formal analysis, methodology, project administration, software, visualisation, and writing---original draft. \textbf{Malgorzata Lagisz}: conceptualisation, methodology, and data validation. \textbf{Shinichi Nakagawa}: conceptualisation, funding acquisition, and methodology. Non-English records were screened by the authors with the relevant language expertise: AMizuno (Japanese), ML (Polish and Russian), ESAS (Portuguese), HQ (Simplified and Traditional Chinese), and SO (Spanish)⟨⟨add any further per-author roles here⟩⟩.
 ```
 
-Initial clashes to watch beyond Anna's point: **CS** (Cassidy Schneider / Christine Sosiak) and **SN**/**SO**/**S**ergio. Circulate the template and have people fill their own row.
+This is shorter, is consistent with the MeRIT initials introduced in **E2**, and already reflects the language-screening split stated in your Methods.
+
+### Option B — full per-author list (if the journal demands one)
+
+Circulate this table and have each author fill their own row; the two known columns are pre-ticked.
+
+| Author | Initials | Investigation (screening) | Writing — review & editing | Additional roles |
+|---|---|---|---|---|
+| Eduardo S. A. Santos | ESAS | ✔ | ✔ | conceptualisation, data curation, formal analysis, methodology, project administration, software, visualisation, writing — original draft |
+| Aleksandra Milenović | AMilenovic | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Aneta ⟨⟨surname⟩⟩ | ⟨⟨AA?⟩⟩ | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Anna Lenz | AL | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Ayumi Mizuno | AMizuno | ✔ (Japanese) | ✔ | ⟨⟨⟩⟩ |
+| Cassidy Schneider | CSchneider | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Christine Sosiak | CSosiak | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Erick Lundgren | EL | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Hao Qin | HQ | ✔ (Chinese) | ✔ | ⟨⟨⟩⟩ |
+| Iwo Gross | IG | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Jimuel ⟨⟨surname⟩⟩ | ⟨⟨⟩⟩ | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Kyle Morrison | KM | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Mahi Zakir | MZ | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Marija ⟨⟨surname⟩⟩ | ⟨⟨⟩⟩ | ✔ | ✔ | ⟨⟨⟩⟩ |
+| Santiago Ortega | SO | ✔ (Spanish) | ✔ | ⟨⟨⟩⟩ |
+| Sergio ⟨⟨surname⟩⟩ | ⟨⟨⟩⟩ | ✔ | **—** | ⟨⟨⟩⟩ |
+| Shinichi Nakagawa | SN | ✔ | ✔ | conceptualisation, funding acquisition, methodology |
+| Malgorzata Lagisz | ML | ✔ (Polish, Russian) | ✔ | conceptualisation, methodology, data validation |
+
+### Initials — Anna's point, resolved
+
+Ambiguous pairs and the proposed convention, to be defined once in **E2** and used throughout the Methods:
+
+| Clash | Resolution |
+|---|---|
+| **AM** — Ayumi Mizuno / Aleksandra Milenović | `AMizuno` / `AMilenovic` (already used for the language searches) |
+| **CS** — Cassidy Schneider / Christine Sosiak | `CSchneider` / `CSosiak` |
+| **A?** — Anna Lenz (AL) / Aneta ⟨⟨surname⟩⟩ | resolve once Aneta's surname is known; the Funding section refers to **AA**, which suggests her initials are already in use |
+| **S?** — Shinichi Nakagawa (SN) / Santiago Ortega (SO) / Sergio ⟨⟨surname⟩⟩ | SN and SO are distinct; check Sergio's surname does not collide |
+
+⚠️ Five surnames are still missing from the `\author{}` block itself (Aneta, Jimuel, Marija, Sergio, plus ORCIDs for several) — see **H1**. The same circulation that collects contributions should collect those.
 
 ## E28 · `PASTE` · lines 483 and 492 — trim the funnel captions
 **Completes #46** (Christine)
@@ -917,9 +985,9 @@ All 47 unresolved comment IDs → edit → status. IDs match `unresolved_comment
 | 11 | Erick | E4 + E4b | `RUN` |
 | 12 | Ayumi | E4 | `FILL` |
 | 13 | Iwo | E5 | `PASTE` ✔ |
-| 14 | Ayumi | E6 | `WRITE` |
-| 15 | Kyle ×3 | E6 | `WRITE` |
-| 16 | Kyle | E6 + E18 | `WRITE` |
+| 14 | Ayumi | E6 | `PASTE` ✔ |
+| 15 | Kyle ×3 | E6 | `PASTE` ✔ |
+| 16 | Kyle | E6 + E18 | `FILL` (verify PIs with `predict()`) |
 | 17 | Ayumi | E7 | `PASTE` |
 | 18 | Erick | E10 | `PASTE` ✔ |
 | 19 | Kyle | E8 | `PASTE` |
@@ -935,19 +1003,19 @@ All 47 unresolved comment IDs → edit → status. IDs match `unresolved_comment
 | 29 | Erick | E17 | `PASTE` |
 | 30 | Erick, Christine | E17 | `PASTE` |
 | 31 | Kyle ×2 | E18 | `FILL` |
-| 32 | Erick | E6 + E19 | `WRITE` |
+| 32 | Erick | E6 + E19 | `PASTE` ✔ |
 | 33 | Erick | E19 | `PASTE` |
-| 34 | Erick, Iwo | E6 + E19 | `WRITE` |
+| 34 | Erick, Iwo | E6 + E19 | `PASTE` ✔ |
 | 35 | Kyle | E20 | `PASTE` ✔ |
 | 36 | Christine | E20 | `PASTE` |
-| 37 | Kyle, Christine | E21 | `WRITE` |
+| 37 | Kyle, Christine | E21 | `PASTE` ✔ |
 | 38 | Iwo | E22 | `WRITE` |
 | 39 | Kyle | E23 | `WRITE` |
-| 40 | Kyle | E24 | `RUN` |
+| 40 | Kyle | E24 | `PASTE` ✔ |
 | 41 | Christine | E25 | `PASTE` |
 | 42 | Iwo | E25 | `PASTE` |
 | 43 | Kyle | E29 | none |
-| 44 | Eduardo, Anna | E2 + E27 | `WRITE` |
+| 44 | Eduardo, Anna | E2 + E27 | `FILL` |
 | 45 | Eduardo | E26 | `WRITE` |
 | 46 | Christine | E7 + E28 | `PASTE` |
 | 47 | Eduardo | E14 | `FILL` |

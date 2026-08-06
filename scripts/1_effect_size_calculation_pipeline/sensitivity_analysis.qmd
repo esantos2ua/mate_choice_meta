@@ -166,7 +166,8 @@ hedges_davies <- db_davies_raw %>%
     transmute(
         yi = Hedges_d_directional,
         vi = Variance,
-        identifierStudyId = as.character(Author),
+        # Davies' own study identifier -- see the note in overall_effect.qmd.
+        identifierStudyId = paste0(Author, " [", Study_no, "]"),
         identifierEffectSizeID = as.character(Effect_size_no),
         species_phylo = dplyr::recode(str_squish(as.character(Species_latin)), !!!recode_davies),
         taxonomySpecies = str_to_lower(word(as.character(Species_latin), -1)),

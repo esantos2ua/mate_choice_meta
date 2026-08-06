@@ -188,7 +188,9 @@ davies_hedges <- db_davies %>%
     filter(!is.na(yi), !is.na(vi), vi > 0) %>%
     transmute(
         yi, vi,
-        identifierStudyId = as.character(Author),
+        # Davies' own study identifier -- see the note in overall_effect.qmd.
+        # Keying on `Author` merges separate publications by the same authors.
+        identifierStudyId = paste0(Author, " [", Study_no, "]"),
         identifierEffectSizeID = as.character(Effect_size_no),
         taxonomySpecies = str_to_lower(word(as.character(Species_latin), -1)),
         mech = dplyr::recode(str_squish(Generalised_or_individual), "Generalised" = "Generalized"),

@@ -263,13 +263,16 @@ hedges_davies <- db_davies_raw %>%
         Year = as.numeric(Year),
         N_control = as.numeric(N_control),
         N_treatment = as.numeric(N_treatment),
-        Total_n_analysis = as.numeric(Total_n_analysis)
+        Total_n_analysis = as.numeric(Total_n_analysis),
+        .study_id = paste0(Author, " [", Study_no, "]")
     ) %>%
     filter(!is.na(Hedges_d_directional), !is.na(Variance), Variance > 0) %>%
     select(
         yi = Hedges_d_directional,
         vi = Variance,
-        identifierStudyId = Author,
+        # Davies' own study identifier -- see the note in overall_effect.qmd:
+        # keying on `Author` merges separate publications by the same authors.
+        identifierStudyId = .study_id,
         identifierEffectSizeID = Effect_size_no,
         taxonomySpecies = Species_latin,
         Year,

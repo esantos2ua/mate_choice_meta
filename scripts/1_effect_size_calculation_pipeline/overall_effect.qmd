@@ -188,13 +188,19 @@ hedges_new <- db_new %>%
 hedges_davies <- db_davies_raw %>%
     mutate(
         Hedges_d_directional = as.numeric(Hedges_d_directional),
-        Variance = as.numeric(Variance)
+        Variance = as.numeric(Variance),
+        .study_id = paste0(Author, " [", Study_no, "]")
     ) %>%
     filter(!is.na(Hedges_d_directional), !is.na(Variance), Variance > 0) %>%
     select(
         yi = Hedges_d_directional,
         vi = Variance,
-        identifierStudyId = Author,
+        # Davies' own study identifier. NOT `Author`: five author strings
+        # ("Brooks", "Dugatkin and Godin", "Nobel et al", "Ophir and Galef",
+        # "White and Galef") each cover 2-3 separate publications, so keying on
+        # Author merged 12 studies into 5, understated the study count by 7, and
+        # made vcalc() impose rho = 0.5 between effect sizes from DIFFERENT papers.
+        identifierStudyId = .study_id,
         identifierEffectSizeID = Effect_size_no,
         taxonomySpecies = Species_latin
     ) %>%
