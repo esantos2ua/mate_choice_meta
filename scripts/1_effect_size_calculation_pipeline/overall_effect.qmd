@@ -1507,6 +1507,35 @@ n_o_orig <- nrow(orchaRd::mod_results(res_or_orig$model, group = "identifierStud
 src_o_comb <- c(rep("New Extraction (Santos)", n_o_new), rep("Original (Jones & DuVal 2019)", n_o_orig))
 ```
 
+```{r}
+#| label: deliverable_fig_helper
+#| include: false
+
+# ---------------------------------------------------------------------------
+# Save a deliverable figure as BOTH vector PDF and raster PNG.
+#
+# Biology Open accepts only EPS/PDF/SVG for graphs and line art, so the PDF is
+# the file the manuscript must \includegraphics. A failed write is raised as an
+# ERROR rather than a warning: silently leaving a stale PDF next to a fresh PNG
+# is exactly how an out-of-date figure reaches a journal.
+# ---------------------------------------------------------------------------
+save_deliverable_fig <- function(plot_obj, basename, width, height) {
+    if (is.null(plot_obj)) stop("save_deliverable_fig(): NULL plot for ", basename)
+    d <- here::here("outputs", "1_effect_size_calculation_pipeline")
+    dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    pdf_path <- file.path(d, paste0(basename, ".pdf"))
+    png_path <- file.path(d, paste0(basename, ".png"))
+    ggplot2::ggsave(pdf_path, plot_obj, width = width, height = height)
+    ggplot2::ggsave(png_path, plot_obj, width = width, height = height, dpi = 300, bg = "white")
+    for (p in c(pdf_path, png_path)) {
+        if (!file.exists(p)) stop("save_deliverable_fig(): failed to write ", p)
+        if (difftime(Sys.time(), file.mtime(p), units = "mins") > 5)
+            stop("save_deliverable_fig(): ", p, " was not rewritten (stale mtime) -- is it open in a viewer?")
+    }
+    cat("saved:", basename, "(.pdf + .png)\n")
+}
+```
+
 ### Hedges' $g$ (Continuous outcomes)
 
 ```{r}
@@ -1536,6 +1565,8 @@ fig_hedges <- (ph_orig / ph_new / ph_comb) +
             plot.subtitle = ggplot2::element_text(size = 11, face = "italic", hjust = 0.5)
         )
     )
+
+save_deliverable_fig(fig_hedges, "correction_comparison_hedges", width = 9, height = 12)
 
 print(fig_hedges)
 ```
@@ -1569,6 +1600,8 @@ fig_or <- (po_orig / po_new / po_comb) +
             plot.subtitle = ggplot2::element_text(size = 11, face = "italic", hjust = 0.5)
         )
     )
+
+save_deliverable_fig(fig_or, "correction_comparison_or", width = 9, height = 12)
 
 print(fig_or)
 ```
@@ -2180,7 +2213,12 @@ save_taxon_fig <- function(plot_obj, basename, width = 10, height = 9) {
         dir.create(d, recursive = TRUE, showWarnings = FALSE)
         ggplot2::ggsave(file.path(d, paste0(basename, ".png")), plot_obj, width = width, height = height, dpi = 300, bg = "white")
         ggplot2::ggsave(file.path(d, paste0(basename, ".pdf")), plot_obj, width = width, height = height)
-    }, error = function(e) warning("Could not save ", basename, ": ", conditionMessage(e)))
+    }, error = function(e) stop("Could not save ", basename, ": ", conditionMessage(e)))
+    for (ext in c(".pdf", ".png")) {
+        p <- file.path(here::here("outputs", "1_effect_size_calculation_pipeline"), paste0(basename, ext))
+        if (!file.exists(p) || difftime(Sys.time(), file.mtime(p), units = "mins") > 5)
+            stop("Stale or missing figure: ", p, " -- is it open in a viewer?")
+    }
 }
 
 p_tax_h <- plot_taxon_orchard(res_tax_hedges, "Hedges' g", "Hedges' g by taxonomic group")

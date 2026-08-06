@@ -84,7 +84,12 @@ save_mod_fig <- function(plot_obj, basename, width = 10, height = 5) {
         dir.create(d, recursive = TRUE, showWarnings = FALSE)
         ggplot2::ggsave(file.path(d, paste0(basename, ".png")), plot_obj, width = width, height = height, dpi = 300, bg = "white")
         ggplot2::ggsave(file.path(d, paste0(basename, ".pdf")), plot_obj, width = width, height = height)
-    }, error = function(e) warning("Could not save ", basename, ": ", conditionMessage(e)))
+    }, error = function(e) stop("Could not save ", basename, ": ", conditionMessage(e)))
+    for (ext in c(".pdf", ".png")) {
+        p <- file.path(here::here("outputs", "1_effect_size_calculation_pipeline"), paste0(basename, ext))
+        if (!file.exists(p) || difftime(Sys.time(), file.mtime(p), units = "mins") > 5)
+            stop("Stale or missing figure: ", p, " -- is it open in a viewer?")
+    }
 }
 ```
 
