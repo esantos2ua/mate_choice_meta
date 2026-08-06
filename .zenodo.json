@@ -1,0 +1,49 @@
+{
+  "title": "Mate choice copying in non-human animals: an update of two meta-analyses",
+  "description": "<p>Reproducible workflow, data and analysis code accompanying an update and reconciliation of two published meta-analyses of mate choice copying (Davies et al. 2020; Jones &amp; DuVal 2019).</p><p>Using a multilingual, grey-literature-inclusive search across seven languages, 69 new effect sizes from 29 studies were added to the original datasets and the two source metrics harmonised onto common scales, giving 227 Hedges' <em>g</em> effect sizes from 87 studies and 172 log odds ratios from 69 studies across 33 species. The combined evidence was re-analysed with phylogenetically informed multilevel meta-analytic models (metafor::rma.mv), together with publication-bias corrections and a battery of sensitivity analyses.</p><p>This archive contains the raw extraction spreadsheet, the two original source datasets, the full Quarto analysis pipeline, and all derived figures, tables and model objects. The rendered reproducible supplement is published at https://esantos2ua.github.io/mate_choice_meta/ and the study was preregistered at https://osf.io/vfahk/overview.</p>",
+  "upload_type": "software",
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "language": "eng",
+  "keywords": [
+    "meta-analysis",
+    "mate choice copying",
+    "social learning",
+    "sexual selection",
+    "publication bias",
+    "phylogenetic multilevel model"
+  ],
+  "creators": [
+    { "name": "Santos, Eduardo S. A.",  "orcid": "0000-0002-0434-3655", "affiliation": "University of Alberta" },
+    { "name": "Milenović, Aleksandra",  "orcid": "0009-0001-6444-7317", "affiliation": "University of Alberta" },
+    { "name": "Arct, Aneta",            "orcid": "0000-0001-6324-6938", "affiliation": "University of Alberta" },
+    { "name": "Lenz, Anna",             "orcid": "0009-0002-5706-7815", "affiliation": "University of Alberta" },
+    { "name": "Mizuno, Ayumi",          "orcid": "0000-0003-0822-5637", "affiliation": "University of Alberta" },
+    { "name": "Schneider, Cassidy",     "orcid": "0009-0007-3917-0380", "affiliation": "University of Alberta" },
+    { "name": "Sosiak, Christine",      "orcid": "0000-0002-9057-8636", "affiliation": "University of Alberta" },
+    { "name": "Lundgren, Erick",        "orcid": "0000-0001-9893-3324", "affiliation": "University of Alberta" },
+    { "name": "Qin, Hao",               "orcid": "0009-0000-8261-6148", "affiliation": "University of Alberta" },
+    { "name": "Gross, Iwo",             "orcid": "0000-0001-6573-832X", "affiliation": "University of Alberta" },
+    { "name": "Celeste, Jimuel",        "orcid": "0000-0003-0224-4124", "affiliation": "University of Alberta" },
+    { "name": "Morrison, Kyle",         "orcid": "0000-0002-3700-2398", "affiliation": "University of Alberta" },
+    { "name": "Zakir, Mahi",            "orcid": "0009-0006-9145-6522", "affiliation": "University of Alberta" },
+    { "name": "Purgar, Marija",         "orcid": "0000-0002-7192-1486", "affiliation": "University of Alberta" },
+    { "name": "Ortega, Santiago",       "orcid": "0000-0002-3518-276X", "affiliation": "University of Alberta" },
+    { "name": "Hernandez, Sergio",      "orcid": "0000-0003-0155-645X", "affiliation": "University of Alberta" },
+    { "name": "Nakagawa, Shinichi",     "orcid": "0000-0002-7765-5182", "affiliation": "University of Alberta" },
+    { "name": "Lagisz, Malgorzata",     "orcid": "0000-0002-3993-6127", "affiliation": "University of Alberta" }
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://osf.io/vfahk/overview",
+      "relation": "isSupplementTo",
+      "scheme": "url",
+      "resource_type": "publication-preprint"
+    },
+    {
+      "identifier": "https://esantos2ua.github.io/mate_choice_meta/",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
+    }
+  ]
+}
