@@ -33,3 +33,23 @@ CLAUDE.md
 # Local-only manuscript notes & draft snippets (suggestions for the main
 # manuscript). Kept on disk for the author but never synced to GitHub.
 manuscript_notes/
+
+# ---- Internal working notes: never publish ----
+# Manuscript-review artefacts, reviewer comment logs, submission checklists.
+# These name individual coauthors and reviewers.
+unresolved_comments_*.md
+comment_revision_guide.md
+manuscript_review_checklist.md
+A1_*.md
+A2_*.md
+BiO_*.md
+final_check_*.md
+figure_format_fix.md
+supplement_build_notes.md
+repo_release_checklist.md
+discussion_revised.tex
+
+# ---- Build noise ----
+render.log
+overleaf_upload/
+main_trimmed.tex
