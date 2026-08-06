@@ -53,3 +53,9 @@ discussion_revised.tex
 render.log
 overleaf_upload/
 main_trimmed.tex
+# ---- Secrets: never commit ----
+# The Zenodo helper reads its token from $ZENODO_TOKEN, but guard against a
+# stray env file or token dump landing in the repo.
+.env
+*.token
+zenodo_token*
