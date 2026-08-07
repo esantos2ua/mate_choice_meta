@@ -25,7 +25,7 @@
 \title{Supplementary Information\\[4pt]
 \large Mate choice copying in non-human animals: an update of two meta-analyses}
 \author[1]{Eduardo S.~A. Santos\thanks{Corresponding author: esantos2@ualberta.ca}, on behalf of all authors}
-\affil[1]{\footnotesize Department of Biological Sciences, Faculty of Science, University of Alberta, Edmonton, AB, Canada}
+\affil[1]{\footnotesize Collaboration for Open Science and Synthesis in Ecology and Evolution (COSSEE), Department of Biological Sciences, Faculty of Science, University of Alberta, Edmonton, Canada}
 \date{}
 
 % Supplementary numbering: Fig. S1, Table S1, Eqn S1
@@ -130,6 +130,25 @@ Google Scholar (Spanish):
 \end{outline}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Supplementary Methods}
+\addcontentsline{toc}{section}{Supplementary Methods}
+\label{supplmethods}
+
+These are the detailed specifications of the small-study-effect, time-lag, and sensitivity analyses summarised in the Methods of the main article.
+
+\subsection*{Multilevel Egger's regression and the conservative bias-corrected mean}
+We tested whether study precision moderated the effect size using a two-step procedure~\cite{nakagawaMethodsTestingPublication2022, stanleyMetaregressionAnalysisEconomics2012, stanleyMetaregressionApproximationsReduce2014}: (1) we fitted a multilevel analogue of Egger's regression using the standard error as the precision proxy, where $v_i$ is the sampling variance of the $i$th effect size and $SE_i = \sqrt{v_i}$; and (2) where the slope of that model was statistically significant---indicating a biased estimate---we re-fitted the model with the sampling variance ($v_i$) as the moderator, whose intercept provides the bias-adjusted overall meta-analytic mean. We used the standard error rather than the effective sample size as the precision moderator. For standardised mean differences and log odds ratios the sampling variance is partly a function of the effect-size estimate itself, so a regression on $\sqrt{v_i}$ can register asymmetry that is in part an artefact of that dependence~\cite{nakagawaMethodsTestingPublication2022}. Because this artefact inflates rather than deflates apparent small-study effects, we read the resulting adjusted mean as a conservative bound on the true average effect rather than as a point estimate---the more pessimistic of our two correction frameworks.
+
+\subsection*{Bias-robust mean and its assumptions}
+The second correction framework follows Yang et al.~\cite{yangRobustPointVariance2024}: a bias-robust weighting scheme combined with cluster-robust (CR2) variance estimation. The weighting scheme is a multivariate fixed-effect generalised-least-squares estimator in which the weights derive from the sampling variance--covariance matrix (assuming $\rho = 0.5$, as elsewhere); inverse-covariance weighting downweights imprecise studies reporting large effects and prevents a study contributing many correlated effect sizes from accruing weight in proportion to their number, making the resulting mean less susceptible to selective reporting than a random-effects mean. Cluster-robust variance estimation, implemented with \lstinline{clubSandwich} and clustered by study, then restores valid inference under the non-independence of effect sizes within studies. Because this first-stage model contains no random effects, the CR2 small-sample correction is applicable, which it would not be for a multilevel model with crossed random terms~\cite{williamsModellingApproachesMetaanalyses2025}. It also follows, however, that dependence among effect sizes from the same species---crossed with, rather than nested within, study---is represented by neither the weighting nor the clustering. We therefore read the bias-robust mean as a point estimate that is robust to selective reporting but whose interval may be optimistic where species contribute effect sizes across several studies; our multilevel models, which represent species and phylogeny explicitly, supply the complementary uncorrected and bias-corrected estimates. Both corrected means are overlaid on the orchard plots in the main article using \lstinline{orchaRd::pub_bias_plot()}.
+
+\subsection*{Leave-one-out analyses}
+We assessed the influence of individual studies and species by re-fitting the combined multilevel model repeatedly, each time removing all effect sizes from a single study (leave-one-study-out) or from a single species (leave-one-species-out), and comparing each re-estimated pooled mean with the full-data estimate. Every refit used the same model structure as the main analysis: the sampling variance--covariance matrix was recomputed for the reduced dataset (assuming a within-study correlation of $\rho = 0.5$), and the phylogenetic random effect was retained, with the species correlation matrix subset to the species that remained. We ran both analyses for the continuous (Hedges' \textit{g}) and binary (log odds ratio) syntheses using the \lstinline{leave_one_out} and \lstinline{orchard_leave1out} functions in the \lstinline{orchaRd} package~\cite{nakagawaOrchaRd20Package2023}. Results are shown in \hyperref[fig:supplementaryloostudyhedges]{Supplementary Figures~\ref*{fig:supplementaryloostudyhedges}--\ref*{fig:supplementaryloospeciesor}}.
+
+\subsection*{Cross-dataset validation and the contentious effect sizes}
+For every study represented in both source datasets we compared the Hedges' \textit{g} reported by Davies et al.~\cite{daviesMetaanalysisFactorsInfluencing2020} with the \textit{g} implied by converting the odds ratio reported by Jones and DuVal~\cite{jonesMechanismsSocialInfluence2019} for the same experiment and outcome (Eqn~18 of the main article). This flagged seven studies whose two values disagreed by more than 0.5 Hedges' \textit{g} units. We refitted each combined model under three versions of the data, all using the same multilevel structure as the main analysis: the original data as analysed (\textit{Main}), a conservative version that discarded all effect sizes from the seven flagged studies (\textit{Leave-out}), and a best-estimate version that retained every flagged study but substituted outcomes re-extracted from the original sources (\textit{Corrected}). The effect-size count changes slightly relative to \textit{Main}, because the correction was not a one-to-one value swap: three over-counted binary (odds ratio) rows were removed, and on the continuous side, one effect size that had been pooled was kept as the original two outcomes reported, while another's non-target effects were not reinstated. The results of these sensitivity analyses are reported under \nameref{supplresults} and shown in \hyperref[fig:supplementarysensitivityhedges]{Supplementary Figures~\ref*{fig:supplementarysensitivityhedges} and~\ref*{fig:supplementarysensitivityor}}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Supplementary Results}
 \addcontentsline{toc}{section}{Supplementary Results}
 \label{supplresults}
@@ -145,7 +164,7 @@ Hedges' \textit{g} units for the continuous outcomes and 0.04 log-odds units for
 The combined estimates showed little sensitivity to the contentious effect sizes on both scales (Hedges' \textit{g} or odds ratio). The pooled Hedges' \textit{g} synthesis was essentially unchanged, the original 0.45 (95\% CI: 0.25 to  0.66, $k = 227$) became 0.41 (95\% CI: 0.22 to 0.60, $k = 213$) when the flagged studies were dropped, and 0.42 (95\% CI: 0.23 to 0.60, $k = 225$) when they were corrected, remaining significant throughout (\hyperref[fig:supplementarysensitivityhedges]{Supplementary
 Figure~\ref*{fig:supplementarysensitivityhedges}}). 
 The odds ratio synthesis was also stable: the pooled odds ratio of 1.81
-(95\% CI: 1.36 to 2.42, $k = 172$) became 1.77 (95\% CI: 1.32 to 2.38, $k = 156$) under leave-out and 1.79 (95\% CI: 1.36 to 2.34, $k = 169$) under correction (\hyperref[fig:supplementarysensitivityor]{Supplementary
+(95\% CI: 1.34 to 2.45, $k = 172$) became 1.77 (95\% CI: 1.32 to 2.38, $k = 156$) under leave-out and 1.79 (95\% CI: 1.36 to 2.34, $k = 169$) under correction (\hyperref[fig:supplementarysensitivityor]{Supplementary
 Figure~\ref*{fig:supplementarysensitivityor}}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -266,11 +285,11 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 % information, please provide a separate supplementary reference list and do
 % not include these in the main reference list."
 %
-% AUDIT (2026-08-06): this supplement cites only two works, and BOTH are also
+% AUDIT (2026-08-06): this supplement cites several methodological works, ALL of which are also
 % cited in the main article, so there are NO supplement-only references and no
 % separate list is strictly required. The list below is printed purely so that
 % this PDF is readable on its own; if the editorial office prefers, delete
-% this block and the two \cite commands will simply resolve against the main
+% this block and the \cite commands will simply resolve against the main
 % article's reference list.
 % ---------------------------------------------------------------------
 \clearpage
