@@ -149,18 +149,21 @@ taxon <- data.frame(
 tbl(taxon, "Table 4. Uni-moderator estimates by taxonomic group (combined datasets).")
 ```
 
-Among-group tests: Hedges' g, Wald $Q_M = 3.06$, *p* = 0.06 (total $I^2$ = 94.3%);
-log OR, Wald $Q_M = 1.17$, *p* = 0.33 (total $I^2$ = 89.5%).
+Among-group tests: Hedges' g, $F_{2,27} = 3.00$, *p* = 0.066 (total $I^2$ =
+94.3%); log OR, $F_{2,25} = 1.17$, *p* = 0.327 (total $I^2$ = 89.5%). These
+models are fitted with `test = "t"`, so the omnibus test is an $F$-statistic with
+containment degrees of freedom rather than a Wald $Q_M$ chi-square.
 
 ![**Taxon moderator.** (a) Hedges' g and (b) log odds ratio, by taxonomic group.](supplement_summary/assets/taxon_moderator_orchard.png){#fig-taxon}
 
 # Exploratory (non-pre-registered) moderators
 
-Beyond taxonomic group we examined copying mechanism, cue modality, observer
-mating status, and demonstrator age. These were exploratory, several levels are
-sparsely sampled, and **no moderator explained a detectable share of the
-heterogeneity** (all Wald $Q_M$, *p* > 0.2; total $I^2$ stayed above 80%). Two
-contrasts are worth noting.
+Beyond taxonomic group we examined observer sex, copying mechanism, cue
+modality, and observer mating status; demonstrator age showed no variation in the
+new extraction and could not be analysed. These were exploratory, several levels
+are sparsely sampled, and **no moderator explained a detectable share of the
+heterogeneity** (all omnibus $F$-tests, *p* $\geq$ 0.17; total $I^2$ stayed above
+80%). Three contrasts are worth noting.
 
 ```{r}
 #| label: tbl-mods
@@ -168,25 +171,33 @@ mods <- data.frame(
   Contrast = c("Copying mechanism (combined, Hedges' g)",
                "Copying mechanism (new, Hedges' g)",
                "Observer status (new, Hedges' g)",
-               "Observer status (combined, OR)"),
-  Comparison = c("generalized 0.44 vs individual 0.44",
+               "Observer status (combined, OR)",
+               "Observer sex (new, Hedges' g)"),
+  Comparison = c("generalized 0.43 vs individual 0.46",
                  "generalized 0.26 vs individual 0.16",
                  "virgin 0.09 vs non-virgin 0.36",
-                 "virgin 1.75 vs non-virgin 1.91"),
-  Test = c("Q_M = 0.003, p = 0.96",
-           "p > 0.5",
-           "Q_M = 1.61, p = 0.22",
-           "p = 0.72")
+                 "virgin 1.75 vs non-virgin 1.91",
+                 "male 0.51 vs female 0.16"),
+  Test = c("F(1, 225) = 0.05, p = 0.82",
+           "F(1, 27) = 0.31, p = 0.58",
+           "F(1, 27) = 1.61, p = 0.22",
+           "F(1, 170) = 0.13, p = 0.72",
+           "F(1, 67) = 1.95, p = 0.17")
 )
 tbl(mods, "Table 5. Selected exploratory moderator contrasts. None was statistically distinct.")
 ```
 
-Generalized and individual copying were statistically indistinguishable (if
-anything, generalized was marginally stronger). Unlike Jones & DuVal (2019), the
-new extraction did **not** reproduce stronger copying among virgin observers —
-it tended to reverse it — and the difference vanished once pooled with the
-original binary data. Full model summaries and orchard plots for every moderator
-are in the **Overall Effect** and **Moderator** chapters (see sidebar).
+Generalized and individual copying were statistically indistinguishable:
+essentially identical in the combined data, and in the new extraction the
+generalized estimate was, if anything, marginally larger. Unlike Jones & DuVal
+(2019), the new extraction did **not** reproduce stronger copying among virgin
+observers — it tended to reverse it — and the difference vanished once pooled
+with the original binary data. Male observers copied at least as strongly as
+females, though with only 8 effect sizes from 5 studies at the male level this is
+a weak test: it is better read as no evidence of a sex difference than as
+evidence the sexes are alike. Full model summaries and orchard plots for every
+moderator are in the **Overall Effect** and **Moderator** chapters (see
+sidebar).
 
 # Small-study effects, time-lag, and sensitivity
 

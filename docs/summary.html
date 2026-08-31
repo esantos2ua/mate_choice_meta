@@ -895,7 +895,7 @@ Table&nbsp;5.1: Table 4. Uni-moderator estimates by taxonomic group (combined da
 </figure>
 </div>
 </div>
-<p>Among-group tests: Hedges’ g, Wald <span class="math inline">\(Q_M = 3.06\)</span>, <em>p</em> = 0.06 (total <span class="math inline">\(I^2\)</span> = 94.3%); log OR, Wald <span class="math inline">\(Q_M = 1.17\)</span>, <em>p</em> = 0.33 (total <span class="math inline">\(I^2\)</span> = 89.5%).</p>
+<p>Among-group tests: Hedges’ g, <span class="math inline">\(F_{2,27} = 3.00\)</span>, <em>p</em> = 0.066 (total <span class="math inline">\(I^2\)</span> = 94.3%); log OR, <span class="math inline">\(F_{2,25} = 1.17\)</span>, <em>p</em> = 0.327 (total <span class="math inline">\(I^2\)</span> = 89.5%). These models are fitted with <code>test = "t"</code>, so the omnibus test is an <span class="math inline">\(F\)</span>-statistic with containment degrees of freedom rather than a Wald <span class="math inline">\(Q_M\)</span> chi-square.</p>
 <div id="fig-taxon" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-taxon-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -909,7 +909,7 @@ Figure&nbsp;5.1: <strong>Taxon moderator.</strong> (a) Hedges’ g and (b) log o
 </section>
 <section id="exploratory-non-pre-registered-moderators" class="level1">
 <h1>Exploratory (non-pre-registered) moderators</h1>
-<p>Beyond taxonomic group we examined copying mechanism, cue modality, observer mating status, and demonstrator age. These were exploratory, several levels are sparsely sampled, and <strong>no moderator explained a detectable share of the heterogeneity</strong> (all Wald <span class="math inline">\(Q_M\)</span>, <em>p</em> &gt; 0.2; total <span class="math inline">\(I^2\)</span> stayed above 80%). Two contrasts are worth noting.</p>
+<p>Beyond taxonomic group we examined observer sex, copying mechanism, cue modality, and observer mating status; demonstrator age showed no variation in the new extraction and could not be analysed. These were exploratory, several levels are sparsely sampled, and <strong>no moderator explained a detectable share of the heterogeneity</strong> (all omnibus <span class="math inline">\(F\)</span>-tests, <em>p</em> <span class="math inline">\(\geq\)</span> 0.17; total <span class="math inline">\(I^2\)</span> stayed above 80%). Three contrasts are worth noting.</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Show R code</summary>
@@ -917,17 +917,20 @@ Figure&nbsp;5.1: <strong>Taxon moderator.</strong> (a) Hedges’ g and (b) log o
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">Contrast =</span> <span class="fu">c</span>(<span class="st">"Copying mechanism (combined, Hedges' g)"</span>,</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Copying mechanism (new, Hedges' g)"</span>,</span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer status (new, Hedges' g)"</span>,</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer status (combined, OR)"</span>),</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">Comparison =</span> <span class="fu">c</span>(<span class="st">"generalized 0.44 vs individual 0.44"</span>,</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"generalized 0.26 vs individual 0.16"</span>,</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"virgin 0.09 vs non-virgin 0.36"</span>,</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"virgin 1.75 vs non-virgin 1.91"</span>),</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">Test =</span> <span class="fu">c</span>(<span class="st">"Q_M = 0.003, p = 0.96"</span>,</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>           <span class="st">"p &gt; 0.5"</span>,</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Q_M = 1.61, p = 0.22"</span>,</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>           <span class="st">"p = 0.72"</span>)</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(mods, <span class="st">"Table 5. Selected exploratory moderator contrasts. None was statistically distinct."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer status (combined, OR)"</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer sex (new, Hedges' g)"</span>),</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">Comparison =</span> <span class="fu">c</span>(<span class="st">"generalized 0.43 vs individual 0.46"</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"generalized 0.26 vs individual 0.16"</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"virgin 0.09 vs non-virgin 0.36"</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"virgin 1.75 vs non-virgin 1.91"</span>,</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"male 0.51 vs female 0.16"</span>),</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">Test =</span> <span class="fu">c</span>(<span class="st">"F(1, 225) = 0.05, p = 0.82"</span>,</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>           <span class="st">"F(1, 27) = 0.31, p = 0.58"</span>,</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>           <span class="st">"F(1, 27) = 1.61, p = 0.22"</span>,</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>           <span class="st">"F(1, 170) = 0.13, p = 0.72"</span>,</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>           <span class="st">"F(1, 67) = 1.95, p = 0.17"</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(mods, <span class="st">"Table 5. Selected exploratory moderator contrasts. None was statistically distinct."</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div id="tbl-mods" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
@@ -938,9 +941,9 @@ Table&nbsp;6.1: Table 5. Selected exploratory moderator contrasts. None was stat
 <div class="cell-output-display">
 <table class="cell caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 40%">
-<col style="width: 36%">
-<col style="width: 22%">
+<col style="width: 38%">
+<col style="width: 34%">
+<col style="width: 26%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -952,23 +955,28 @@ Table&nbsp;6.1: Table 5. Selected exploratory moderator contrasts. None was stat
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Copying mechanism (combined, Hedges’ g)</td>
-<td style="text-align: left;">generalized 0.44 vs individual 0.44</td>
-<td style="text-align: left;">Q_M = 0.003, p = 0.96</td>
+<td style="text-align: left;">generalized 0.43 vs individual 0.46</td>
+<td style="text-align: left;">F(1, 225) = 0.05, p = 0.82</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Copying mechanism (new, Hedges’ g)</td>
 <td style="text-align: left;">generalized 0.26 vs individual 0.16</td>
-<td style="text-align: left;">p &gt; 0.5</td>
+<td style="text-align: left;">F(1, 27) = 0.31, p = 0.58</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Observer status (new, Hedges’ g)</td>
 <td style="text-align: left;">virgin 0.09 vs non-virgin 0.36</td>
-<td style="text-align: left;">Q_M = 1.61, p = 0.22</td>
+<td style="text-align: left;">F(1, 27) = 1.61, p = 0.22</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Observer status (combined, OR)</td>
 <td style="text-align: left;">virgin 1.75 vs non-virgin 1.91</td>
-<td style="text-align: left;">p = 0.72</td>
+<td style="text-align: left;">F(1, 170) = 0.13, p = 0.72</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Observer sex (new, Hedges’ g)</td>
+<td style="text-align: left;">male 0.51 vs female 0.16</td>
+<td style="text-align: left;">F(1, 67) = 1.95, p = 0.17</td>
 </tr>
 </tbody>
 </table>
@@ -977,7 +985,7 @@ Table&nbsp;6.1: Table 5. Selected exploratory moderator contrasts. None was stat
 </figure>
 </div>
 </div>
-<p>Generalized and individual copying were statistically indistinguishable (if anything, generalized was marginally stronger). Unlike Jones &amp; DuVal (2019), the new extraction did <strong>not</strong> reproduce stronger copying among virgin observers — it tended to reverse it — and the difference vanished once pooled with the original binary data. Full model summaries and orchard plots for every moderator are in the <strong>Overall Effect</strong> and <strong>Moderator</strong> chapters (see sidebar).</p>
+<p>Generalized and individual copying were statistically indistinguishable: essentially identical in the combined data, and in the new extraction the generalized estimate was, if anything, marginally larger. Unlike Jones &amp; DuVal (2019), the new extraction did <strong>not</strong> reproduce stronger copying among virgin observers — it tended to reverse it — and the difference vanished once pooled with the original binary data. Male observers copied at least as strongly as females, though with only 8 effect sizes from 5 studies at the male level this is a weak test: it is better read as no evidence of a sex difference than as evidence the sexes are alike. Full model summaries and orchard plots for every moderator are in the <strong>Overall Effect</strong> and <strong>Moderator</strong> chapters (see sidebar).</p>
 </section>
 <section id="small-study-effects-time-lag-and-sensitivity" class="level1">
 <h1>Small-study effects, time-lag, and sensitivity</h1>
@@ -1988,143 +1996,154 @@ Figure&nbsp;7.10: <strong>Contentious effect sizes — odds ratio</strong> (Main
 <span id="cb9-159"><a href="#cb9-159" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(taxon, <span class="st">"Table 4. Uni-moderator estimates by taxonomic group (combined datasets)."</span>)</span>
 <span id="cb9-160"><a href="#cb9-160" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb9-161"><a href="#cb9-161" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-162"><a href="#cb9-162" aria-hidden="true" tabindex="-1"></a>Among-group tests: Hedges' g, Wald $Q_M = 3.06$, *p* = 0.06 (total $I^2$ = 94.3%);</span>
-<span id="cb9-163"><a href="#cb9-163" aria-hidden="true" tabindex="-1"></a>log OR, Wald $Q_M = 1.17$, *p* = 0.33 (total $I^2$ = 89.5%).</span>
-<span id="cb9-164"><a href="#cb9-164" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-165"><a href="#cb9-165" aria-hidden="true" tabindex="-1"></a><span class="al">![**Taxon moderator.** (a) Hedges' g and (b) log odds ratio, by taxonomic group.](supplement_summary/assets/taxon_moderator_orchard.png)</span>{#fig-taxon}</span>
+<span id="cb9-162"><a href="#cb9-162" aria-hidden="true" tabindex="-1"></a>Among-group tests: Hedges' g, $F_{2,27} = 3.00$, *p* = 0.066 (total $I^2$ =</span>
+<span id="cb9-163"><a href="#cb9-163" aria-hidden="true" tabindex="-1"></a>94.3%); log OR, $F_{2,25} = 1.17$, *p* = 0.327 (total $I^2$ = 89.5%). These</span>
+<span id="cb9-164"><a href="#cb9-164" aria-hidden="true" tabindex="-1"></a>models are fitted with <span class="in">`test = "t"`</span>, so the omnibus test is an $F$-statistic with</span>
+<span id="cb9-165"><a href="#cb9-165" aria-hidden="true" tabindex="-1"></a>containment degrees of freedom rather than a Wald $Q_M$ chi-square.</span>
 <span id="cb9-166"><a href="#cb9-166" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-167"><a href="#cb9-167" aria-hidden="true" tabindex="-1"></a><span class="fu"># Exploratory (non-pre-registered) moderators</span></span>
+<span id="cb9-167"><a href="#cb9-167" aria-hidden="true" tabindex="-1"></a><span class="al">![**Taxon moderator.** (a) Hedges' g and (b) log odds ratio, by taxonomic group.](supplement_summary/assets/taxon_moderator_orchard.png)</span>{#fig-taxon}</span>
 <span id="cb9-168"><a href="#cb9-168" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-169"><a href="#cb9-169" aria-hidden="true" tabindex="-1"></a>Beyond taxonomic group we examined copying mechanism, cue modality, observer</span>
-<span id="cb9-170"><a href="#cb9-170" aria-hidden="true" tabindex="-1"></a>mating status, and demonstrator age. These were exploratory, several levels are</span>
-<span id="cb9-171"><a href="#cb9-171" aria-hidden="true" tabindex="-1"></a>sparsely sampled, and **no moderator explained a detectable share of the</span>
-<span id="cb9-172"><a href="#cb9-172" aria-hidden="true" tabindex="-1"></a>heterogeneity** (all Wald $Q_M$, *p* &gt; 0.2; total $I^2$ stayed above 80%). Two</span>
-<span id="cb9-173"><a href="#cb9-173" aria-hidden="true" tabindex="-1"></a>contrasts are worth noting.</span>
-<span id="cb9-174"><a href="#cb9-174" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-177"><a href="#cb9-177" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb9-178"><a href="#cb9-178" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-mods</span></span>
-<span id="cb9-179"><a href="#cb9-179" aria-hidden="true" tabindex="-1"></a>mods <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb9-180"><a href="#cb9-180" aria-hidden="true" tabindex="-1"></a>  <span class="at">Contrast =</span> <span class="fu">c</span>(<span class="st">"Copying mechanism (combined, Hedges' g)"</span>,</span>
-<span id="cb9-181"><a href="#cb9-181" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Copying mechanism (new, Hedges' g)"</span>,</span>
-<span id="cb9-182"><a href="#cb9-182" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer status (new, Hedges' g)"</span>,</span>
-<span id="cb9-183"><a href="#cb9-183" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer status (combined, OR)"</span>),</span>
-<span id="cb9-184"><a href="#cb9-184" aria-hidden="true" tabindex="-1"></a>  <span class="at">Comparison =</span> <span class="fu">c</span>(<span class="st">"generalized 0.44 vs individual 0.44"</span>,</span>
-<span id="cb9-185"><a href="#cb9-185" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"generalized 0.26 vs individual 0.16"</span>,</span>
-<span id="cb9-186"><a href="#cb9-186" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"virgin 0.09 vs non-virgin 0.36"</span>,</span>
-<span id="cb9-187"><a href="#cb9-187" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"virgin 1.75 vs non-virgin 1.91"</span>),</span>
-<span id="cb9-188"><a href="#cb9-188" aria-hidden="true" tabindex="-1"></a>  <span class="at">Test =</span> <span class="fu">c</span>(<span class="st">"Q_M = 0.003, p = 0.96"</span>,</span>
-<span id="cb9-189"><a href="#cb9-189" aria-hidden="true" tabindex="-1"></a>           <span class="st">"p &gt; 0.5"</span>,</span>
-<span id="cb9-190"><a href="#cb9-190" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Q_M = 1.61, p = 0.22"</span>,</span>
-<span id="cb9-191"><a href="#cb9-191" aria-hidden="true" tabindex="-1"></a>           <span class="st">"p = 0.72"</span>)</span>
-<span id="cb9-192"><a href="#cb9-192" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb9-193"><a href="#cb9-193" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(mods, <span class="st">"Table 5. Selected exploratory moderator contrasts. None was statistically distinct."</span>)</span>
-<span id="cb9-194"><a href="#cb9-194" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb9-195"><a href="#cb9-195" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-196"><a href="#cb9-196" aria-hidden="true" tabindex="-1"></a>Generalized and individual copying were statistically indistinguishable (if</span>
-<span id="cb9-197"><a href="#cb9-197" aria-hidden="true" tabindex="-1"></a>anything, generalized was marginally stronger). Unlike Jones &amp; DuVal (2019), the</span>
-<span id="cb9-198"><a href="#cb9-198" aria-hidden="true" tabindex="-1"></a>new extraction did **not** reproduce stronger copying among virgin observers —</span>
-<span id="cb9-199"><a href="#cb9-199" aria-hidden="true" tabindex="-1"></a>it tended to reverse it — and the difference vanished once pooled with the</span>
-<span id="cb9-200"><a href="#cb9-200" aria-hidden="true" tabindex="-1"></a>original binary data. Full model summaries and orchard plots for every moderator</span>
-<span id="cb9-201"><a href="#cb9-201" aria-hidden="true" tabindex="-1"></a>are in the **Overall Effect** and **Moderator** chapters (see sidebar).</span>
-<span id="cb9-202"><a href="#cb9-202" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-203"><a href="#cb9-203" aria-hidden="true" tabindex="-1"></a><span class="fu"># Small-study effects, time-lag, and sensitivity</span></span>
-<span id="cb9-204"><a href="#cb9-204" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-205"><a href="#cb9-205" aria-hidden="true" tabindex="-1"></a>We found **strong small-study effects on both scales** and **a time-lag decline</span>
-<span id="cb9-206"><a href="#cb9-206" aria-hidden="true" tabindex="-1"></a>only for the binary outcomes**. Under the more conservative correction the</span>
-<span id="cb9-207"><a href="#cb9-207" aria-hidden="true" tabindex="-1"></a>adjusted mean approached zero — and for Hedges' g fell significantly below it —</span>
-<span id="cb9-208"><a href="#cb9-208" aria-hidden="true" tabindex="-1"></a>whereas the bias-robust estimator kept a positive but reduced effect.</span>
-<span id="cb9-209"><a href="#cb9-209" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-212"><a href="#cb9-212" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb9-213"><a href="#cb9-213" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-eggers</span></span>
-<span id="cb9-214"><a href="#cb9-214" aria-hidden="true" tabindex="-1"></a>eggers <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb9-215"><a href="#cb9-215" aria-hidden="true" tabindex="-1"></a>  <span class="at">Scale =</span> <span class="fu">c</span>(<span class="st">"Odds ratio"</span>, <span class="st">"Hedges' g"</span>),</span>
-<span id="cb9-216"><a href="#cb9-216" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">Egger slope (√v_i)</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"2.11 (1.23 to 2.99)"</span>, <span class="st">"4.36 (3.22 to 5.49)"</span>),</span>
-<span id="cb9-217"><a href="#cb9-217" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">Time-lag slope (year)</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"-0.028 (-0.048 to -0.007)"</span>, <span class="st">"-0.002 (-0.014 to 0.01)"</span>),</span>
-<span id="cb9-218"><a href="#cb9-218" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">Time-lag?</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"yes (declining)"</span>, <span class="st">"no"</span>),</span>
-<span id="cb9-219"><a href="#cb9-219" aria-hidden="true" tabindex="-1"></a>  <span class="at">check.names =</span> <span class="cn">FALSE</span></span>
-<span id="cb9-220"><a href="#cb9-220" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb9-221"><a href="#cb9-221" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(eggers, <span class="st">"Table 6. Small-study (Egger-type) and time-lag slopes on the combined data."</span>)</span>
-<span id="cb9-222"><a href="#cb9-222" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb9-223"><a href="#cb9-223" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-226"><a href="#cb9-226" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb9-227"><a href="#cb9-227" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-corrections</span></span>
-<span id="cb9-228"><a href="#cb9-228" aria-hidden="true" tabindex="-1"></a>corr <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb9-229"><a href="#cb9-229" aria-hidden="true" tabindex="-1"></a>  <span class="at">Scale =</span> <span class="fu">c</span>(<span class="st">"Hedges' g"</span>, <span class="st">"Hedges' g"</span>, <span class="st">"Hedges' g"</span>,</span>
-<span id="cb9-230"><a href="#cb9-230" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Log OR (OR)"</span>, <span class="st">"Log OR (OR)"</span>, <span class="st">"Log OR (OR)"</span>),</span>
-<span id="cb9-231"><a href="#cb9-231" aria-hidden="true" tabindex="-1"></a>  <span class="at">Estimator =</span> <span class="fu">c</span>(<span class="st">"Uncorrected"</span>, <span class="st">"Bias-corrected (Nakagawa)"</span>, <span class="st">"Bias-robust (Yang)"</span>,</span>
-<span id="cb9-232"><a href="#cb9-232" aria-hidden="true" tabindex="-1"></a>                <span class="st">"Uncorrected"</span>, <span class="st">"Bias-corrected (Nakagawa)"</span>, <span class="st">"Bias-robust (Yang)"</span>),</span>
-<span id="cb9-233"><a href="#cb9-233" aria-hidden="true" tabindex="-1"></a>  <span class="at">Mean =</span> <span class="fu">c</span>(<span class="st">"0.45"</span>, <span class="st">"-0.21"</span>, <span class="st">"0.34"</span>,</span>
-<span id="cb9-234"><a href="#cb9-234" aria-hidden="true" tabindex="-1"></a>           <span class="st">"0.59 (OR 1.81)"</span>, <span class="st">"0.10 (OR 1.11)"</span>, <span class="st">"0.57 (OR 1.77)"</span>),</span>
-<span id="cb9-235"><a href="#cb9-235" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">95% CI</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"0.24 to 0.65"</span>, <span class="st">"-0.41 to -0.01"</span>, <span class="st">"0.24 to 0.44"</span>,</span>
-<span id="cb9-236"><a href="#cb9-236" aria-hidden="true" tabindex="-1"></a>               <span class="st">"0.30 to 0.89"</span>, <span class="st">"-0.22 to 0.42"</span>, <span class="st">"0.42 to 0.73"</span>),</span>
-<span id="cb9-237"><a href="#cb9-237" aria-hidden="true" tabindex="-1"></a>  <span class="at">check.names =</span> <span class="cn">FALSE</span></span>
-<span id="cb9-238"><a href="#cb9-238" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb9-239"><a href="#cb9-239" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(corr, <span class="st">"Table 7. Uncorrected vs. the two publication-bias-corrected means (combined data)."</span>)</span>
-<span id="cb9-240"><a href="#cb9-240" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb9-241"><a href="#cb9-241" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-242"><a href="#cb9-242" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
-<span id="cb9-243"><a href="#cb9-243" aria-hidden="true" tabindex="-1"></a><span class="al">![**Publication-bias diagnostic — odds ratio.** Effect size vs (a) √variance and (b) publication year.](supplement_summary/assets/dashboard_eggers_timelag_or.png)</span>{#fig-egor}</span>
-<span id="cb9-244"><a href="#cb9-244" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-245"><a href="#cb9-245" aria-hidden="true" tabindex="-1"></a><span class="al">![**Publication-bias diagnostic — Hedges' g.** Effect size vs (a) √variance and (b) publication year.](supplement_summary/assets/dashboard_eggers_timelag_hedges.png)</span>{#fig-eghedges}</span>
-<span id="cb9-246"><a href="#cb9-246" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb9-247"><a href="#cb9-247" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-248"><a href="#cb9-248" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
-<span id="cb9-249"><a href="#cb9-249" aria-hidden="true" tabindex="-1"></a><span class="al">![**Funnel plot — odds ratio** (marginal vs conditional residuals).](supplement_summary/assets/funnel_or.png)</span>{#fig-funor}</span>
-<span id="cb9-250"><a href="#cb9-250" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-251"><a href="#cb9-251" aria-hidden="true" tabindex="-1"></a><span class="al">![**Funnel plot — Hedges' g** (marginal vs conditional residuals).](supplement_summary/assets/funnel_hedges.png)</span>{#fig-funhedges}</span>
-<span id="cb9-252"><a href="#cb9-252" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb9-253"><a href="#cb9-253" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-254"><a href="#cb9-254" aria-hidden="true" tabindex="-1"></a><span class="fu">## Robustness: leave-one-out and contentious effect sizes</span></span>
+<span id="cb9-169"><a href="#cb9-169" aria-hidden="true" tabindex="-1"></a><span class="fu"># Exploratory (non-pre-registered) moderators</span></span>
+<span id="cb9-170"><a href="#cb9-170" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-171"><a href="#cb9-171" aria-hidden="true" tabindex="-1"></a>Beyond taxonomic group we examined observer sex, copying mechanism, cue</span>
+<span id="cb9-172"><a href="#cb9-172" aria-hidden="true" tabindex="-1"></a>modality, and observer mating status; demonstrator age showed no variation in the</span>
+<span id="cb9-173"><a href="#cb9-173" aria-hidden="true" tabindex="-1"></a>new extraction and could not be analysed. These were exploratory, several levels</span>
+<span id="cb9-174"><a href="#cb9-174" aria-hidden="true" tabindex="-1"></a>are sparsely sampled, and **no moderator explained a detectable share of the</span>
+<span id="cb9-175"><a href="#cb9-175" aria-hidden="true" tabindex="-1"></a>heterogeneity** (all omnibus $F$-tests, *p* $\geq$ 0.17; total $I^2$ stayed above</span>
+<span id="cb9-176"><a href="#cb9-176" aria-hidden="true" tabindex="-1"></a>80%). Three contrasts are worth noting.</span>
+<span id="cb9-177"><a href="#cb9-177" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-180"><a href="#cb9-180" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb9-181"><a href="#cb9-181" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-mods</span></span>
+<span id="cb9-182"><a href="#cb9-182" aria-hidden="true" tabindex="-1"></a>mods <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb9-183"><a href="#cb9-183" aria-hidden="true" tabindex="-1"></a>  <span class="at">Contrast =</span> <span class="fu">c</span>(<span class="st">"Copying mechanism (combined, Hedges' g)"</span>,</span>
+<span id="cb9-184"><a href="#cb9-184" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Copying mechanism (new, Hedges' g)"</span>,</span>
+<span id="cb9-185"><a href="#cb9-185" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer status (new, Hedges' g)"</span>,</span>
+<span id="cb9-186"><a href="#cb9-186" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer status (combined, OR)"</span>,</span>
+<span id="cb9-187"><a href="#cb9-187" aria-hidden="true" tabindex="-1"></a>               <span class="st">"Observer sex (new, Hedges' g)"</span>),</span>
+<span id="cb9-188"><a href="#cb9-188" aria-hidden="true" tabindex="-1"></a>  <span class="at">Comparison =</span> <span class="fu">c</span>(<span class="st">"generalized 0.43 vs individual 0.46"</span>,</span>
+<span id="cb9-189"><a href="#cb9-189" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"generalized 0.26 vs individual 0.16"</span>,</span>
+<span id="cb9-190"><a href="#cb9-190" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"virgin 0.09 vs non-virgin 0.36"</span>,</span>
+<span id="cb9-191"><a href="#cb9-191" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"virgin 1.75 vs non-virgin 1.91"</span>,</span>
+<span id="cb9-192"><a href="#cb9-192" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"male 0.51 vs female 0.16"</span>),</span>
+<span id="cb9-193"><a href="#cb9-193" aria-hidden="true" tabindex="-1"></a>  <span class="at">Test =</span> <span class="fu">c</span>(<span class="st">"F(1, 225) = 0.05, p = 0.82"</span>,</span>
+<span id="cb9-194"><a href="#cb9-194" aria-hidden="true" tabindex="-1"></a>           <span class="st">"F(1, 27) = 0.31, p = 0.58"</span>,</span>
+<span id="cb9-195"><a href="#cb9-195" aria-hidden="true" tabindex="-1"></a>           <span class="st">"F(1, 27) = 1.61, p = 0.22"</span>,</span>
+<span id="cb9-196"><a href="#cb9-196" aria-hidden="true" tabindex="-1"></a>           <span class="st">"F(1, 170) = 0.13, p = 0.72"</span>,</span>
+<span id="cb9-197"><a href="#cb9-197" aria-hidden="true" tabindex="-1"></a>           <span class="st">"F(1, 67) = 1.95, p = 0.17"</span>)</span>
+<span id="cb9-198"><a href="#cb9-198" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-199"><a href="#cb9-199" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(mods, <span class="st">"Table 5. Selected exploratory moderator contrasts. None was statistically distinct."</span>)</span>
+<span id="cb9-200"><a href="#cb9-200" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb9-201"><a href="#cb9-201" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-202"><a href="#cb9-202" aria-hidden="true" tabindex="-1"></a>Generalized and individual copying were statistically indistinguishable:</span>
+<span id="cb9-203"><a href="#cb9-203" aria-hidden="true" tabindex="-1"></a>essentially identical in the combined data, and in the new extraction the</span>
+<span id="cb9-204"><a href="#cb9-204" aria-hidden="true" tabindex="-1"></a>generalized estimate was, if anything, marginally larger. Unlike Jones &amp; DuVal</span>
+<span id="cb9-205"><a href="#cb9-205" aria-hidden="true" tabindex="-1"></a>(2019), the new extraction did **not** reproduce stronger copying among virgin</span>
+<span id="cb9-206"><a href="#cb9-206" aria-hidden="true" tabindex="-1"></a>observers — it tended to reverse it — and the difference vanished once pooled</span>
+<span id="cb9-207"><a href="#cb9-207" aria-hidden="true" tabindex="-1"></a>with the original binary data. Male observers copied at least as strongly as</span>
+<span id="cb9-208"><a href="#cb9-208" aria-hidden="true" tabindex="-1"></a>females, though with only 8 effect sizes from 5 studies at the male level this is</span>
+<span id="cb9-209"><a href="#cb9-209" aria-hidden="true" tabindex="-1"></a>a weak test: it is better read as no evidence of a sex difference than as</span>
+<span id="cb9-210"><a href="#cb9-210" aria-hidden="true" tabindex="-1"></a>evidence the sexes are alike. Full model summaries and orchard plots for every</span>
+<span id="cb9-211"><a href="#cb9-211" aria-hidden="true" tabindex="-1"></a>moderator are in the **Overall Effect** and **Moderator** chapters (see</span>
+<span id="cb9-212"><a href="#cb9-212" aria-hidden="true" tabindex="-1"></a>sidebar).</span>
+<span id="cb9-213"><a href="#cb9-213" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-214"><a href="#cb9-214" aria-hidden="true" tabindex="-1"></a><span class="fu"># Small-study effects, time-lag, and sensitivity</span></span>
+<span id="cb9-215"><a href="#cb9-215" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-216"><a href="#cb9-216" aria-hidden="true" tabindex="-1"></a>We found **strong small-study effects on both scales** and **a time-lag decline</span>
+<span id="cb9-217"><a href="#cb9-217" aria-hidden="true" tabindex="-1"></a>only for the binary outcomes**. Under the more conservative correction the</span>
+<span id="cb9-218"><a href="#cb9-218" aria-hidden="true" tabindex="-1"></a>adjusted mean approached zero — and for Hedges' g fell significantly below it —</span>
+<span id="cb9-219"><a href="#cb9-219" aria-hidden="true" tabindex="-1"></a>whereas the bias-robust estimator kept a positive but reduced effect.</span>
+<span id="cb9-220"><a href="#cb9-220" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-223"><a href="#cb9-223" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb9-224"><a href="#cb9-224" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-eggers</span></span>
+<span id="cb9-225"><a href="#cb9-225" aria-hidden="true" tabindex="-1"></a>eggers <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb9-226"><a href="#cb9-226" aria-hidden="true" tabindex="-1"></a>  <span class="at">Scale =</span> <span class="fu">c</span>(<span class="st">"Odds ratio"</span>, <span class="st">"Hedges' g"</span>),</span>
+<span id="cb9-227"><a href="#cb9-227" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">Egger slope (√v_i)</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"2.11 (1.23 to 2.99)"</span>, <span class="st">"4.36 (3.22 to 5.49)"</span>),</span>
+<span id="cb9-228"><a href="#cb9-228" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">Time-lag slope (year)</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"-0.028 (-0.048 to -0.007)"</span>, <span class="st">"-0.002 (-0.014 to 0.01)"</span>),</span>
+<span id="cb9-229"><a href="#cb9-229" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">Time-lag?</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"yes (declining)"</span>, <span class="st">"no"</span>),</span>
+<span id="cb9-230"><a href="#cb9-230" aria-hidden="true" tabindex="-1"></a>  <span class="at">check.names =</span> <span class="cn">FALSE</span></span>
+<span id="cb9-231"><a href="#cb9-231" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-232"><a href="#cb9-232" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(eggers, <span class="st">"Table 6. Small-study (Egger-type) and time-lag slopes on the combined data."</span>)</span>
+<span id="cb9-233"><a href="#cb9-233" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb9-234"><a href="#cb9-234" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-237"><a href="#cb9-237" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb9-238"><a href="#cb9-238" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-corrections</span></span>
+<span id="cb9-239"><a href="#cb9-239" aria-hidden="true" tabindex="-1"></a>corr <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb9-240"><a href="#cb9-240" aria-hidden="true" tabindex="-1"></a>  <span class="at">Scale =</span> <span class="fu">c</span>(<span class="st">"Hedges' g"</span>, <span class="st">"Hedges' g"</span>, <span class="st">"Hedges' g"</span>,</span>
+<span id="cb9-241"><a href="#cb9-241" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Log OR (OR)"</span>, <span class="st">"Log OR (OR)"</span>, <span class="st">"Log OR (OR)"</span>),</span>
+<span id="cb9-242"><a href="#cb9-242" aria-hidden="true" tabindex="-1"></a>  <span class="at">Estimator =</span> <span class="fu">c</span>(<span class="st">"Uncorrected"</span>, <span class="st">"Bias-corrected (Nakagawa)"</span>, <span class="st">"Bias-robust (Yang)"</span>,</span>
+<span id="cb9-243"><a href="#cb9-243" aria-hidden="true" tabindex="-1"></a>                <span class="st">"Uncorrected"</span>, <span class="st">"Bias-corrected (Nakagawa)"</span>, <span class="st">"Bias-robust (Yang)"</span>),</span>
+<span id="cb9-244"><a href="#cb9-244" aria-hidden="true" tabindex="-1"></a>  <span class="at">Mean =</span> <span class="fu">c</span>(<span class="st">"0.45"</span>, <span class="st">"-0.21"</span>, <span class="st">"0.34"</span>,</span>
+<span id="cb9-245"><a href="#cb9-245" aria-hidden="true" tabindex="-1"></a>           <span class="st">"0.59 (OR 1.81)"</span>, <span class="st">"0.10 (OR 1.11)"</span>, <span class="st">"0.57 (OR 1.77)"</span>),</span>
+<span id="cb9-246"><a href="#cb9-246" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">95% CI</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"0.24 to 0.65"</span>, <span class="st">"-0.41 to -0.01"</span>, <span class="st">"0.24 to 0.44"</span>,</span>
+<span id="cb9-247"><a href="#cb9-247" aria-hidden="true" tabindex="-1"></a>               <span class="st">"0.30 to 0.89"</span>, <span class="st">"-0.22 to 0.42"</span>, <span class="st">"0.42 to 0.73"</span>),</span>
+<span id="cb9-248"><a href="#cb9-248" aria-hidden="true" tabindex="-1"></a>  <span class="at">check.names =</span> <span class="cn">FALSE</span></span>
+<span id="cb9-249"><a href="#cb9-249" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-250"><a href="#cb9-250" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(corr, <span class="st">"Table 7. Uncorrected vs. the two publication-bias-corrected means (combined data)."</span>)</span>
+<span id="cb9-251"><a href="#cb9-251" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb9-252"><a href="#cb9-252" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-253"><a href="#cb9-253" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
+<span id="cb9-254"><a href="#cb9-254" aria-hidden="true" tabindex="-1"></a><span class="al">![**Publication-bias diagnostic — odds ratio.** Effect size vs (a) √variance and (b) publication year.](supplement_summary/assets/dashboard_eggers_timelag_or.png)</span>{#fig-egor}</span>
 <span id="cb9-255"><a href="#cb9-255" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-256"><a href="#cb9-256" aria-hidden="true" tabindex="-1"></a>The pooled estimates were **robust**. In leave-one-study-out and</span>
-<span id="cb9-257"><a href="#cb9-257" aria-hidden="true" tabindex="-1"></a>leave-one-species-out analyses every interval overlapped the full-sample</span>
-<span id="cb9-258"><a href="#cb9-258" aria-hidden="true" tabindex="-1"></a>estimate; the largest shift in any pooled mean was **≤ 0.07 units** (0.02 g /</span>
-<span id="cb9-259"><a href="#cb9-259" aria-hidden="true" tabindex="-1"></a>0.04 log-OR leaving out studies; 0.04 g / 0.07 log-OR leaving out species).</span>
-<span id="cb9-260"><a href="#cb9-260" aria-hidden="true" tabindex="-1"></a>Removing *Poecilia reticulata* — the strongest-copying, most-sampled species —</span>
-<span id="cb9-261"><a href="#cb9-261" aria-hidden="true" tabindex="-1"></a>nudged the mean toward zero but changed neither sign nor significance.</span>
-<span id="cb9-262"><a href="#cb9-262" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-265"><a href="#cb9-265" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb9-266"><a href="#cb9-266" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-sensitivity</span></span>
-<span id="cb9-267"><a href="#cb9-267" aria-hidden="true" tabindex="-1"></a>sens <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb9-268"><a href="#cb9-268" aria-hidden="true" tabindex="-1"></a>  <span class="at">Scale =</span> <span class="fu">c</span>(<span class="st">"Hedges' g"</span>, <span class="st">"Hedges' g"</span>, <span class="st">"Hedges' g"</span>,</span>
-<span id="cb9-269"><a href="#cb9-269" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Odds ratio"</span>, <span class="st">"Odds ratio"</span>, <span class="st">"Odds ratio"</span>),</span>
-<span id="cb9-270"><a href="#cb9-270" aria-hidden="true" tabindex="-1"></a>  <span class="at">Version =</span> <span class="fu">c</span>(<span class="st">"Main"</span>, <span class="st">"Leave-out (7 flagged studies)"</span>, <span class="st">"Corrected"</span>,</span>
-<span id="cb9-271"><a href="#cb9-271" aria-hidden="true" tabindex="-1"></a>              <span class="st">"Main"</span>, <span class="st">"Leave-out (7 flagged studies)"</span>, <span class="st">"Corrected"</span>),</span>
-<span id="cb9-272"><a href="#cb9-272" aria-hidden="true" tabindex="-1"></a>  <span class="at">Mean =</span> <span class="fu">c</span>(<span class="st">"0.44"</span>, <span class="st">"0.42"</span>, <span class="st">"0.42"</span>, <span class="st">"1.81"</span>, <span class="st">"1.77"</span>, <span class="st">"1.79"</span>),</span>
-<span id="cb9-273"><a href="#cb9-273" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">95% CI</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"0.24 to 0.65"</span>, <span class="st">"0.22 to 0.61"</span>, <span class="st">"0.23 to 0.62"</span>,</span>
-<span id="cb9-274"><a href="#cb9-274" aria-hidden="true" tabindex="-1"></a>               <span class="st">"1.35 to 2.42"</span>, <span class="st">"1.32 to 2.38"</span>, <span class="st">"1.36 to 2.34"</span>),</span>
-<span id="cb9-275"><a href="#cb9-275" aria-hidden="true" tabindex="-1"></a>  <span class="at">k =</span> <span class="fu">c</span>(<span class="st">"227"</span>, <span class="st">"213"</span>, <span class="st">"225"</span>, <span class="st">"172"</span>, <span class="st">"156"</span>, <span class="st">"169"</span>),</span>
-<span id="cb9-276"><a href="#cb9-276" aria-hidden="true" tabindex="-1"></a>  <span class="at">check.names =</span> <span class="cn">FALSE</span></span>
-<span id="cb9-277"><a href="#cb9-277" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb9-278"><a href="#cb9-278" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(sens, <span class="st">"Table 8. Sensitivity of the combined means to the seven contentious cross-dataset studies."</span>)</span>
-<span id="cb9-279"><a href="#cb9-279" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb9-280"><a href="#cb9-280" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-281"><a href="#cb9-281" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
-<span id="cb9-282"><a href="#cb9-282" aria-hidden="true" tabindex="-1"></a><span class="al">![**Leave-one-study-out — Hedges' g.**](supplement_summary/assets/loo_study_hedges.png)</span>{#fig-loostudyh}</span>
-<span id="cb9-283"><a href="#cb9-283" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-284"><a href="#cb9-284" aria-hidden="true" tabindex="-1"></a><span class="al">![**Leave-one-study-out — odds ratio.**](supplement_summary/assets/loo_study_or.png)</span>{#fig-loostudyor}</span>
-<span id="cb9-285"><a href="#cb9-285" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb9-286"><a href="#cb9-286" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-287"><a href="#cb9-287" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
-<span id="cb9-288"><a href="#cb9-288" aria-hidden="true" tabindex="-1"></a><span class="al">![**Leave-one-species-out — Hedges' g.**](supplement_summary/assets/loo_species_hedges.png)</span>{#fig-loospeciesh}</span>
-<span id="cb9-289"><a href="#cb9-289" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-290"><a href="#cb9-290" aria-hidden="true" tabindex="-1"></a><span class="al">![**Leave-one-species-out — odds ratio.**](supplement_summary/assets/loo_species_or.png)</span>{#fig-loospeciesor}</span>
-<span id="cb9-291"><a href="#cb9-291" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb9-292"><a href="#cb9-292" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-293"><a href="#cb9-293" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
-<span id="cb9-294"><a href="#cb9-294" aria-hidden="true" tabindex="-1"></a><span class="al">![**Contentious effect sizes — Hedges' g** (Main / Leave-out / Corrected).](supplement_summary/assets/sensitivity_contentious_hedges.png)</span>{#fig-senshedges}</span>
-<span id="cb9-295"><a href="#cb9-295" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-296"><a href="#cb9-296" aria-hidden="true" tabindex="-1"></a><span class="al">![**Contentious effect sizes — odds ratio** (Main / Leave-out / Corrected).](supplement_summary/assets/sensitivity_contentious_or.png)</span>{#fig-sensor}</span>
-<span id="cb9-297"><a href="#cb9-297" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb9-298"><a href="#cb9-298" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-299"><a href="#cb9-299" aria-hidden="true" tabindex="-1"></a><span class="fu"># Bottom line</span></span>
+<span id="cb9-256"><a href="#cb9-256" aria-hidden="true" tabindex="-1"></a><span class="al">![**Publication-bias diagnostic — Hedges' g.** Effect size vs (a) √variance and (b) publication year.](supplement_summary/assets/dashboard_eggers_timelag_hedges.png)</span>{#fig-eghedges}</span>
+<span id="cb9-257"><a href="#cb9-257" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb9-258"><a href="#cb9-258" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-259"><a href="#cb9-259" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
+<span id="cb9-260"><a href="#cb9-260" aria-hidden="true" tabindex="-1"></a><span class="al">![**Funnel plot — odds ratio** (marginal vs conditional residuals).](supplement_summary/assets/funnel_or.png)</span>{#fig-funor}</span>
+<span id="cb9-261"><a href="#cb9-261" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-262"><a href="#cb9-262" aria-hidden="true" tabindex="-1"></a><span class="al">![**Funnel plot — Hedges' g** (marginal vs conditional residuals).](supplement_summary/assets/funnel_hedges.png)</span>{#fig-funhedges}</span>
+<span id="cb9-263"><a href="#cb9-263" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb9-264"><a href="#cb9-264" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-265"><a href="#cb9-265" aria-hidden="true" tabindex="-1"></a><span class="fu">## Robustness: leave-one-out and contentious effect sizes</span></span>
+<span id="cb9-266"><a href="#cb9-266" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-267"><a href="#cb9-267" aria-hidden="true" tabindex="-1"></a>The pooled estimates were **robust**. In leave-one-study-out and</span>
+<span id="cb9-268"><a href="#cb9-268" aria-hidden="true" tabindex="-1"></a>leave-one-species-out analyses every interval overlapped the full-sample</span>
+<span id="cb9-269"><a href="#cb9-269" aria-hidden="true" tabindex="-1"></a>estimate; the largest shift in any pooled mean was **≤ 0.07 units** (0.02 g /</span>
+<span id="cb9-270"><a href="#cb9-270" aria-hidden="true" tabindex="-1"></a>0.04 log-OR leaving out studies; 0.04 g / 0.07 log-OR leaving out species).</span>
+<span id="cb9-271"><a href="#cb9-271" aria-hidden="true" tabindex="-1"></a>Removing *Poecilia reticulata* — the strongest-copying, most-sampled species —</span>
+<span id="cb9-272"><a href="#cb9-272" aria-hidden="true" tabindex="-1"></a>nudged the mean toward zero but changed neither sign nor significance.</span>
+<span id="cb9-273"><a href="#cb9-273" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-276"><a href="#cb9-276" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb9-277"><a href="#cb9-277" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tbl-sensitivity</span></span>
+<span id="cb9-278"><a href="#cb9-278" aria-hidden="true" tabindex="-1"></a>sens <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb9-279"><a href="#cb9-279" aria-hidden="true" tabindex="-1"></a>  <span class="at">Scale =</span> <span class="fu">c</span>(<span class="st">"Hedges' g"</span>, <span class="st">"Hedges' g"</span>, <span class="st">"Hedges' g"</span>,</span>
+<span id="cb9-280"><a href="#cb9-280" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Odds ratio"</span>, <span class="st">"Odds ratio"</span>, <span class="st">"Odds ratio"</span>),</span>
+<span id="cb9-281"><a href="#cb9-281" aria-hidden="true" tabindex="-1"></a>  <span class="at">Version =</span> <span class="fu">c</span>(<span class="st">"Main"</span>, <span class="st">"Leave-out (7 flagged studies)"</span>, <span class="st">"Corrected"</span>,</span>
+<span id="cb9-282"><a href="#cb9-282" aria-hidden="true" tabindex="-1"></a>              <span class="st">"Main"</span>, <span class="st">"Leave-out (7 flagged studies)"</span>, <span class="st">"Corrected"</span>),</span>
+<span id="cb9-283"><a href="#cb9-283" aria-hidden="true" tabindex="-1"></a>  <span class="at">Mean =</span> <span class="fu">c</span>(<span class="st">"0.44"</span>, <span class="st">"0.42"</span>, <span class="st">"0.42"</span>, <span class="st">"1.81"</span>, <span class="st">"1.77"</span>, <span class="st">"1.79"</span>),</span>
+<span id="cb9-284"><a href="#cb9-284" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">95% CI</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"0.24 to 0.65"</span>, <span class="st">"0.22 to 0.61"</span>, <span class="st">"0.23 to 0.62"</span>,</span>
+<span id="cb9-285"><a href="#cb9-285" aria-hidden="true" tabindex="-1"></a>               <span class="st">"1.35 to 2.42"</span>, <span class="st">"1.32 to 2.38"</span>, <span class="st">"1.36 to 2.34"</span>),</span>
+<span id="cb9-286"><a href="#cb9-286" aria-hidden="true" tabindex="-1"></a>  <span class="at">k =</span> <span class="fu">c</span>(<span class="st">"227"</span>, <span class="st">"213"</span>, <span class="st">"225"</span>, <span class="st">"172"</span>, <span class="st">"156"</span>, <span class="st">"169"</span>),</span>
+<span id="cb9-287"><a href="#cb9-287" aria-hidden="true" tabindex="-1"></a>  <span class="at">check.names =</span> <span class="cn">FALSE</span></span>
+<span id="cb9-288"><a href="#cb9-288" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-289"><a href="#cb9-289" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(sens, <span class="st">"Table 8. Sensitivity of the combined means to the seven contentious cross-dataset studies."</span>)</span>
+<span id="cb9-290"><a href="#cb9-290" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb9-291"><a href="#cb9-291" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-292"><a href="#cb9-292" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
+<span id="cb9-293"><a href="#cb9-293" aria-hidden="true" tabindex="-1"></a><span class="al">![**Leave-one-study-out — Hedges' g.**](supplement_summary/assets/loo_study_hedges.png)</span>{#fig-loostudyh}</span>
+<span id="cb9-294"><a href="#cb9-294" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-295"><a href="#cb9-295" aria-hidden="true" tabindex="-1"></a><span class="al">![**Leave-one-study-out — odds ratio.**](supplement_summary/assets/loo_study_or.png)</span>{#fig-loostudyor}</span>
+<span id="cb9-296"><a href="#cb9-296" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb9-297"><a href="#cb9-297" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-298"><a href="#cb9-298" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
+<span id="cb9-299"><a href="#cb9-299" aria-hidden="true" tabindex="-1"></a><span class="al">![**Leave-one-species-out — Hedges' g.**](supplement_summary/assets/loo_species_hedges.png)</span>{#fig-loospeciesh}</span>
 <span id="cb9-300"><a href="#cb9-300" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-301"><a href="#cb9-301" aria-hidden="true" tabindex="-1"></a>The qualitative conclusion of both original syntheses survives an expanded, more</span>
-<span id="cb9-302"><a href="#cb9-302" aria-hidden="true" tabindex="-1"></a>rigorous update: animals do copy the mate choices of others, and the pooled</span>
-<span id="cb9-303"><a href="#cb9-303" aria-hidden="true" tabindex="-1"></a>effect is positive and significant on both scales. But the effect is **more</span>
-<span id="cb9-304"><a href="#cb9-304" aria-hidden="true" tabindex="-1"></a>modest and more context-dependent** than previously implied — roughly half the</span>
-<span id="cb9-305"><a href="#cb9-305" aria-hidden="true" tabindex="-1"></a>original magnitude on its own, surrounded by large heterogeneity, and drawn</span>
-<span id="cb9-306"><a href="#cb9-306" aria-hidden="true" tabindex="-1"></a>close to (or below) zero under the more conservative bias correction.</span>
+<span id="cb9-301"><a href="#cb9-301" aria-hidden="true" tabindex="-1"></a><span class="al">![**Leave-one-species-out — odds ratio.**](supplement_summary/assets/loo_species_or.png)</span>{#fig-loospeciesor}</span>
+<span id="cb9-302"><a href="#cb9-302" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb9-303"><a href="#cb9-303" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-304"><a href="#cb9-304" aria-hidden="true" tabindex="-1"></a>::: {layout-ncol=2}</span>
+<span id="cb9-305"><a href="#cb9-305" aria-hidden="true" tabindex="-1"></a><span class="al">![**Contentious effect sizes — Hedges' g** (Main / Leave-out / Corrected).](supplement_summary/assets/sensitivity_contentious_hedges.png)</span>{#fig-senshedges}</span>
+<span id="cb9-306"><a href="#cb9-306" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-307"><a href="#cb9-307" aria-hidden="true" tabindex="-1"></a><span class="al">![**Contentious effect sizes — odds ratio** (Main / Leave-out / Corrected).](supplement_summary/assets/sensitivity_contentious_or.png)</span>{#fig-sensor}</span>
+<span id="cb9-308"><a href="#cb9-308" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb9-309"><a href="#cb9-309" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-310"><a href="#cb9-310" aria-hidden="true" tabindex="-1"></a><span class="fu"># Bottom line</span></span>
+<span id="cb9-311"><a href="#cb9-311" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-312"><a href="#cb9-312" aria-hidden="true" tabindex="-1"></a>The qualitative conclusion of both original syntheses survives an expanded, more</span>
+<span id="cb9-313"><a href="#cb9-313" aria-hidden="true" tabindex="-1"></a>rigorous update: animals do copy the mate choices of others, and the pooled</span>
+<span id="cb9-314"><a href="#cb9-314" aria-hidden="true" tabindex="-1"></a>effect is positive and significant on both scales. But the effect is **more</span>
+<span id="cb9-315"><a href="#cb9-315" aria-hidden="true" tabindex="-1"></a>modest and more context-dependent** than previously implied — roughly half the</span>
+<span id="cb9-316"><a href="#cb9-316" aria-hidden="true" tabindex="-1"></a>original magnitude on its own, surrounded by large heterogeneity, and drawn</span>
+<span id="cb9-317"><a href="#cb9-317" aria-hidden="true" tabindex="-1"></a>close to (or below) zero under the more conservative bias correction.</span>
 </code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
