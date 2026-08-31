@@ -1,0 +1,95 @@
+canonical,in_jones,in_davies,in_new,year,species,k_jones,k_davies,k_new,n_sources,membership
+APP2000THE,APP2000THE,Applebaum and Cruz [3],,2000,perugiae,2,4,0,2,JD
+AUL2009DO,AUL2009DO,Auld et al [5],,2009,serrata,2,2,0,2,JD
+BRI1996MAT,BRI1996MAT,Briggs et al [10],,1996,reticulata,2,2,0,2,JD
+BRO1996COP,BRO1996COP,Brooks [11],,1996,reticulata,1,2,0,2,JD
+BRO1999MAT,BRO1999MAT,Brooks [12],,1999,reticulata,1,6,0,2,JD
+DAG2016DRO,DAG2016DRO,Dagaeff et al [15],,2016,melanogaster,3,4,0,2,JD
+DAN2018CUL,DAN2018CUL,Danchin et al [16],,2018,melanogaster,17,2,0,2,JD
+DRU2008MAT,DRU2008MAT,Drullion and Dubois [18],,2008,guttata,1,2,0,2,JD
+DUG1992SEX,DUG1992SEX,Dugatkin and Godin [27],,1992,reticulata,2,2,0,2,JD
+DUG1993FEM,DUG1993FEM,Dugatkin and Godin [20],,1993,reticulata,2,2,0,2,JD
+DUG1998EFF,DUG1998EFF,Dugatkin and Godin [22],,1998,reticulata,4,4,0,2,JD
+DUG1998GEN,DUG1998GEN,Dugatkin [23],,1998,reticulata,3,3,0,2,JD
+DUG2003THE,DUG2003THE,Dugatkin et al [24],,2003,reticulata,2,4,0,2,JD
+FOR1996FEM,FOR1996FEM,Forsgren et al [30],,1996,minutu|minutus,2,2,0,2,JD
+FOW2015THE,FOW2015THE,Fowler-Finn et al [31],,2015,ocreata|schizocosa,2,1,0,2,JD
+GER2016MAT,GER2016MAT,Germain et al [35],,2016,melanogaster,4,8,0,2,JD
+GIE2018MAT,GIE2018MAT; GIE2018USI,Gierzewski et al [36],,2018,latipinna,4,2,0,2,JD
+GOD2009MAT,GOD2009MAT,Godin and Hair [37],,2009,reticulata,1,2,0,2,JD
+GOL1993SEL,GOL1993SEL,Goldschmidt et al [39],,1993,aculeatus,1,1,0,2,JD
+GRA1996MAT,GRA1996MAT,Grant and Green [42],,1996,latipes,2,1,0,2,JD
+HOW1998MAT,HOW1998MAT,Howard et al [46],,1998,latipes,1,1,0,2,JD
+LAF1997FEM,LAF1997FEM,Lafleur et al [52],,1997,reticulata,1,3,0,2,JD
+MAT2013FEM,MAT2013FEM,Matsumoto and Takegaki [55],,2013,nitidus,1,2,0,2,JD
+MER2009PUB,MER2009PUB,Mery et al [57],,2009,melanogaster,2,3,0,2,JD
+MIL2011NON,MIL2011NON,Milner et al [58],,2011,mjoebergi,1,1,0,2,JD
+MUN2004MAT,MUN2004MAT,Munger et al [61],,2004,nigrofasciata,2,4,0,2,JD
+Moran et al [48],,Moran et al [48],Moran_2013_Behaviour,2013,flabellare|zonale,0,4,4,2,DN
+NOB2018COP,NOB2018COP,Nobel et al [62],,2018,melanogaster,2,4,0,2,JD
+Ophir and Galef [65],,Ophir and Galef [65],Ophir_2009_Unknown,2003,japonica,0,1,4,2,DN
+PAT1998DO,PAT1998DO,Patriquin-Meldrum and Godin [67],,1998,aculeatus,1,3,0,2,JD
+SLA1999MAT,SLA1999MAT,Slagsvold and Viljugrein [73],,1999,hypoleuca,1,1,0,2,JD
+VUK2007SIZ,VUK2007SIZ,Vukomanovic and Rodd [76],,2007,reticulata,4,12,0,2,JD
+Araújo_2024_RoyalSocietyOpenScience,,,Araújo_2024_RoyalSocietyOpenScience,2024,melanogaster,0,0,3,1,N
+Auld and Godin [4],,Auld and Godin [4],,2015,reticulata,0,3,0,1,D
+Belkina_2021_AnimalBehaviour,,,Belkina_2021_AnimalBehaviour,2021,melanogaster,0,0,1,1,N
+Bierbach_2011_BehavioralEcologyAndSociobiology,,,Bierbach_2011_BehavioralEcologyAndSociobiology,2011,mexicana,0,0,2,1,N
+Cirino_2023_AnimalBehaviour,,,Cirino_2023_AnimalBehaviour,2023,binotata,0,0,6,1,N
+Clemente_2012_UniversidadeLisboa,,,Clemente_2012_UniversidadeLisboa,2012,melanogaster,0,0,1,1,N
+Clutton-Brock and McComb [14],,Clutton-Brock and McComb [14],,1993,dama,0,1,0,1,D
+DUG1992REV,DUG1992REV,,,1992,reticulata,1,0,0,1,J
+DUG1996INT,DUG1996INT,,,1996,reticulata,4,0,0,1,J
+Doucet et al [17],,Doucet et al [17],,2004,guttata,0,1,0,1,D
+Duffy_2025_AnimalBehaviour,,,Duffy_2025_AnimalBehaviour,2025,rhabdophora,0,0,1,1,N
+FRE2009ACO,FRE2009ACO,,,2009,ater,2,0,0,1,J
+Frommen et al [32],,Frommen et al [32],,2009,aculeatus,0,2,0,1,D
+GOD2005SOC,GOD2005SOC,,,2005,latipinna,2,0,0,1,J
+GOU1997REP,GOU1997REP,,,1997,leucogaster,2,0,0,1,J
+GOU2006NON,GOU2006NON,,,2006,leucogaster,2,0,0,1,J
+Galef and White [33],,Galef and White [33],,1998,japonica,0,1,0,1,D
+Galef et al [34],,Galef et al [34],,2008,norvegicus,0,3,0,1,D
+Harrison-Weiss_2024_McMasterUniversity,,,Harrison-Weiss_2024_McMasterUniversity,2024,notatus,0,0,3,1,N
+Heubel et al [43],,Heubel et al [43],,2008,formosa|latipinna|mexicana,0,8,0,1,D
+Hill and Ryan [44],,Hill and Ryan [44],,2006,latipinna,0,1,0,1,D
+Kavaliers_2019_HormonesAndBehavior,,,Kavaliers_2019_HormonesAndBehavior,2019,musculus,0,0,1,1,N
+Kavaliers_2022_AnimalCognition,,,Kavaliers_2022_AnimalCognition,2022,musculus,0,0,1,1,N
+Kniel_2015_FrontiersInZoology,,,Kniel_2015_FrontiersInZoology,2015,castanotis,0,0,1,1,N
+Kniel_2017_Ethology,,,Kniel_2017_Ethology,2017,castanotis,0,0,2,1,N
+Kobayashi_2026_JournalOfEthology,,,Kobayashi_2026_JournalOfEthology,2026,reticulata,0,0,5,1,N
+Loyau et al [53],,Loyau et al [53],,2012,melanogaster,0,6,0,1,D
+MON2018EFF,MON2018EFF,,,2018,melanogaster,4,0,0,1,J
+MON2019DOP,MON2019DOP,,,2019,melanogaster,10,0,0,1,J
+MacLaren_2019_Ethology,,,MacLaren_2019_Ethology,2019,latipinna,0,0,2,1,N
+MacLaren_2024_PlosOne,,,MacLaren_2024_PlosOne,2024,latipinna,0,0,5,1,N
+Marcos_2019_ISPA,,,Marcos_2019_ISPA,2019,melanogaster,0,0,1,1,N
+McComb and Clutton-Brock [56],,McComb and Clutton-Brock [56],,1994,dama,0,2,0,1,D
+Miller_2013_CarletonUniversity,,,Miller_2013_CarletonUniversity,2013,reticulata,0,0,1,1,N
+Mitchell_2025_AmericanNaturalist,,,Mitchell_2025_AmericanNaturalist,2025,melanogaster,0,0,5,1,N
+Nobel et al [63],,Nobel et al [63],,2018,melanogaster,0,2,0,1,D
+Nöbel_2022_BehavioralEcology,,,Nöbel_2022_BehavioralEcology,2022,melanogaster,0,0,3,1,N
+Nöbel_2022_ScientificReports,,,Nöbel_2022_ScientificReports,2022,melanogaster,0,0,1,1,N
+Nöbel_2023_BehaviouralProcesses,,,Nöbel_2023_BehaviouralProcesses,2023,rerio,0,0,1,1,N
+Nöbel_2023_Iscience,,,Nöbel_2023_Iscience,2023,melanogaster,0,0,2,1,N
+Nöbel_2025_BiologyLetters,,,Nöbel_2025_BiologyLetters,2025,simulans,0,0,1,1,N
+Nöbel_2025_ScientificReports,,,Nöbel_2025_ScientificReports,2025,melanogaster,0,0,4,1,N
+Ophir and Galef [66],,Ophir and Galef [66],,2004,japonica,0,2,0,1,D
+Pusiak_2020_AnimalBehaviour,,,Pusiak_2020_AnimalBehaviour,2020,reticulata,0,0,1,1,N
+STI2011ALL,STI2011ALL,,,2011,olmstedi,2,0,0,1,J
+Schlupp and Ryan [72],,Schlupp and Ryan [72],,1996,latipinna,0,1,0,1,D
+Schlupp et al [71],,Schlupp et al [71],,1994,latipinna,0,1,0,1,D
+Silva_2014_UniversidadeLisboa,,,Silva_2014_UniversidadeLisboa,2014,subobscura,0,0,4,1,N
+Swaddle and Clelland [75],,Swaddle and Clelland [75],,2009,guttata,0,1,0,1,D
+Swaddle et al [74],,Swaddle et al [74],,2005,guttata,0,3,0,1,D
+White and Galef [77],,White and Galef [77],,1999,japonica,0,1,0,1,D
+White and Galef [78],,White and Galef [78],,2000,japonica,0,2,0,1,D
+White and Galef [79],,White and Galef [79],,2000,japonica,0,1,0,1,D
+White et al [80],,White et al [80],,2017,reticulata,0,2,0,1,D
+Widemo [81],,Widemo [81],,2005,typhle,0,4,0,1,D
+Witte and Massmann [84],,Witte and Massmann [84],,2003,latipinna,0,3,0,1,D
+Witte and Noltemeier [83],,Witte and Noltemeier [83],,2002,latipinna,0,6,0,1,D
+Witte and Ryan [82],,Witte and Ryan [82],,1998,latipinna,0,2,0,1,D
+Witte and Ueding [87],,Witte and Ueding [87],,2003,latipinna,0,2,0,1,D
+Witte_2018_Biology,,,Witte_2018_Biology,2018,mexicana,0,0,2,1,N
+Wong and McCarthy [88],,Wong and McCarthy [88],,2009,holbrooki,0,2,0,1,D
+Ziege_2012_CurrentZoology,,,Ziege_2012_CurrentZoology,2012,mexicana,0,0,2,1,N
