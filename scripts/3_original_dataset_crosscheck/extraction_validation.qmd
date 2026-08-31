@@ -1002,4 +1002,3 @@ sensitivity analyses reported elsewhere in this supplement.
   average; most large discrepancies trace to **different outcomes extracted**
   (behaviour-type columns) or **different effect-size partitioning**, not to the
   metric conversion.
-```
