@@ -46,17 +46,23 @@ prisma     <- PRISMA_data(prisma_raw)
 # --- 3. Build the diagram ----------------------------------------------------
 # Layout matches the reference figure:
 #   previous = TRUE   -> left "Previous studies" column
-#                        (Jones & DuVal 2019 = 40; Davies et al. 2020 = 58)
+#                        (Jones & DuVal 2019 = 40; Davies et al. 2020 = 58,
+#                         of which 30 are shared -- see the boxtext in the CSV)
 #   other    = FALSE  -> no "other methods" column (no websites/citations)
+#   detail_databases = TRUE -> break the identification box down per database
+#                        and platform, so the per-source counts can be read
+#                        directly from the diagram. The
+#                        eleven per-source counts live in the CSV's
+#                        `database_specific_results` row and sum to 2,855.
 #   side_boxes = TRUE, Helvetica 12 (shiny defaults)
-# NOTE: detail_databases / detail_registers / meta_analysis are only available
-#       in the GitHub build of {PRISMA2020}; they are omitted here so the
-#       script runs against the CRAN release (1.1.1).
+# NOTE: detail_registers / meta_analysis are only available in the GitHub build
+#       of {PRISMA2020}; they are omitted so this runs against CRAN (1.1.1).
 plot <- PRISMA_flowdiagram(
   prisma,
   interactive = FALSE,
   previous    = TRUE,
   other       = FALSE,
+  detail_databases = TRUE,
   side_boxes  = TRUE,
   fontsize    = 12,
   font        = "Helvetica"
@@ -134,7 +140,11 @@ prisma_export_svg <- function(obj, drop_total_reports = TRUE) {
   tmp_svg
 }
 
-svg_file <- prisma_export_svg(plot)
+# drop_total_reports = FALSE: the final grey box's second line is deliberately
+# repurposed here (via `total_reports` in the CSV) to carry the count of
+# duplicate study records removed when the three sources were resolved to
+# unique studies, so it must be kept rather than stripped.
+svg_file <- prisma_export_svg(plot, drop_total_reports = FALSE)
 file.copy(svg_file, file.path(out_dir, "prisma_flowdiagram.svg"), overwrite = TRUE)
 rsvg::rsvg_pdf(svg_file, file.path(out_dir, "prisma_flowdiagram.pdf"))
 rsvg::rsvg_png(svg_file, file.path(out_dir, "prisma_flowdiagram.png"))

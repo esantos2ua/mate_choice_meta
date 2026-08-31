@@ -338,7 +338,7 @@ unmatched %>%
     kable()
 ```
 
-## Re-extraction: what happens when we return to the source PDFs
+## Re-extraction: what happens when we return to the source PDFs {#sec-reextraction}
 
 The agreement analysis flags *where* the two datasets disagree, but not *which*
 is correct. To resolve that for the worst cases, we pulled the primary-study
@@ -534,6 +534,437 @@ only the *magnitude* (the 2 + √3 artifact) is wrong — while Jones's third re
 value for this study (lnOR 2.234) is spurious: it reproduces from no pair of the
 paper's six experiments and should be dropped.
 
+## How many *unique* primary studies are there? {#sec-unique-studies}
+
+The PRISMA flowchart counts 40 studies carried over from Jones & DuVal
+[-@jonesMechanismsSocialInfluence2019], 58 from Davies et al.
+[-@daviesMetaanalysisFactorsInfluencing2020] and 29 from our own extraction.
+Those three numbers do **not** sum to a count of unique primary studies, because
+the sources overlap, which is worth making explicit.
+This section resolves the corpus to distinct primary studies.
+
+A **study** here is one primary publication contributing at least one usable
+effect size. Three things have to be settled to count them:
+
+1. **Matches across sources.** No two sources share an identifier, so candidates
+   are generated from metadata and then adjudicated.
+2. **Duplicates *within* a source.** One source can carry the same primary study
+   under two identifiers.
+3. **Records that look like matches but are not** — same author, adjacent year,
+   same species, different paper.
+
+### Candidate generation, then explicit adjudication
+
+Candidates are generated deliberately generously: same first-author surname
+prefix (three letters, accent-folded) and publication year within ±1. Species is
+reported alongside but never used to *filter*, so no potential match is silently
+discarded. Every candidate the data produce is then resolved by hand — accepted
+or rejected, with the reason recorded — against the source records (authors,
+year, species, sample size, outcome construct) and, where the two source teams
+disagreed, against the primary PDFs already consulted for the
+[re-extraction](#sec-reextraction) above.
+
+The adjudication is an explicit list rather than a threshold rule, and the code
+**fails loudly** if the data ever change such that a candidate is left
+unresolved, or a hand-coded decision no longer corresponds to a real candidate.
+That way the count cannot drift silently.
+
+```{r}
+#| label: crosswalk-inventories
+#| message: false
+#| warning: false
+suppressPackageStartupMessages({library(readxl); library(dplyr); library(stringr); library(tidyr)})
+
+deaccent    <- function(x) iconv(x, from = "UTF-8", to = "ASCII//TRANSLIT")
+pfx3        <- function(surname) str_to_upper(str_sub(str_remove_all(deaccent(surname), "[^A-Za-z]"), 1, 3))
+epithet     <- function(x) str_to_lower(word(str_squish(as.character(x)), -1))
+collapse_sp <- function(x) paste(sort(unique(epithet(x))), collapse = "|")
+
+inv_jones <- readr::read_csv(
+        here::here("data", "original_meta_analyses_datasets", "Jones_DuVal_2019_data.CSV"),
+        show_col_types = FALSE) %>%
+    filter(!is.na(lnOR), !is.na(VlnOR), VlnOR > 0) %>%
+    group_by(study) %>%
+    summarise(year = as.integer(first(year)), species = collapse_sp(Species),
+              k = dplyr::n(), .groups = "drop") %>%
+    transmute(src = "jones", id = study, pfx = str_sub(study, 1, 3), year, species, k)
+
+inv_davies <- readxl::read_excel(
+        here::here("data", "original_meta_analyses_datasets", "Davies_et_al_2020_Final_data.xlsx"),
+        sheet = "Data") %>%
+    mutate(yi = as.numeric(Hedges_d_directional), vi = as.numeric(Variance)) %>%
+    filter(!is.na(yi), !is.na(vi), vi > 0) %>%
+    group_by(Study_no, Author) %>%
+    summarise(year = as.integer(first(Year)), species = collapse_sp(Species_latin),
+              k = dplyr::n(), .groups = "drop") %>%
+    transmute(src = "davies", id = paste0(Author, " [", Study_no, "]"),
+              pfx = pfx3(word(Author, 1)), year, species, k)
+
+inv_new <- readxl::read_excel(
+        here::here("data", "1_effect_size_calculation_pipeline",
+                   "Data Extraction Mate Choice Meta Analysis.xlsx"),
+        sheet = "EduardoExtraction") %>%
+    filter(is.na(RemoveFromDataset) | RemoveFromDataset != "Yes") %>%
+    group_by(identifierStudyId) %>%
+    summarise(year = as.integer(first(identifierStudyYear)),
+              species = collapse_sp(taxonomySpecies), k = dplyr::n(), .groups = "drop") %>%
+    transmute(src = "new", id = identifierStudyId,
+              pfx = pfx3(word(identifierStudyId, 1, sep = "_")), year, species, k)
+
+inventories <- bind_rows(inv_jones, inv_davies, inv_new)
+
+candidate_pairs <- function(a, b, lab) {
+    inner_join(a, b, by = "pfx", suffix = c("_a", "_b"), relationship = "many-to-many") %>%
+        filter(abs(year_a - year_b) <= 1) %>%
+        transmute(pair = lab, key = paste0(id_a, " || ", id_b),
+                  id_a, year_a, species_a, k_a, id_b, year_b, species_b, k_b)
+}
+cands <- bind_rows(
+    candidate_pairs(inv_jones, inv_davies, "Jones vs Davies"),
+    candidate_pairs(inv_new,   inv_jones,  "New vs Jones"),
+    candidate_pairs(inv_new,   inv_davies, "New vs Davies")
+)
+```
+
+```{r}
+#| label: crosswalk-adjudication
+#| message: false
+#| warning: false
+# Accepted: these identifier pairs are the same primary study.
+ACCEPT <- c(
+    "APP2000THE || Applebaum and Cruz [3]",
+    "AUL2009DO || Auld et al [5]",
+    "BRI1996MAT || Briggs et al [10]",
+    "BRO1996COP || Brooks [11]",
+    "BRO1999MAT || Brooks [12]",
+    "DAG2016DRO || Dagaeff et al [15]",
+    "DAN2018CUL || Danchin et al [16]",
+    "DRU2008MAT || Drullion and Dubois [18]",
+    "DUG1992SEX || Dugatkin and Godin [27]",
+    "DUG1993FEM || Dugatkin and Godin [20]",
+    "DUG1998EFF || Dugatkin and Godin [22]",
+    "DUG1998GEN || Dugatkin [23]",
+    "DUG2003THE || Dugatkin et al [24]",
+    "FOR1996FEM || Forsgren et al [30]",
+    "FOW2015THE || Fowler-Finn et al [31]",
+    "GER2016MAT || Germain et al [35]",
+    "GIE2018MAT || Gierzewski et al [36]",
+    "GOD2009MAT || Godin and Hair [37]",
+    "GOL1993SEL || Goldschmidt et al [39]",
+    "GRA1996MAT || Grant and Green [42]",
+    "HOW1998MAT || Howard et al [46]",
+    "LAF1997FEM || Lafleur et al [52]",
+    "MAT2013FEM || Matsumoto and Takegaki [55]",
+    "MER2009PUB || Mery et al [57]",
+    "MIL2011NON || Milner et al [58]",
+    "MUN2004MAT || Munger et al [61]",
+    "NOB2018COP || Nobel et al [62]",
+    "PAT1998DO || Patriquin-Meldrum and Godin [67]",
+    "SLA1999MAT || Slagsvold and Viljugrein [73]",
+    "VUK2007SIZ || Vukomanovic and Rodd [76]",
+    "Moran_2013_Behaviour || Moran et al [48]",
+    "Ophir_2009_Unknown || Ophir and Galef [65]"
+)
+# Rejected: generated as a candidate, but not the same study. Reason recorded.
+REJECT <- c(
+    "DUG1992REV || Dugatkin and Godin [20]" =
+        "year mismatch (1992 vs 1993)",
+    "DUG1992REV || Dugatkin and Godin [27]" =
+        "Davies [27], labelled 'Dugatkin and Godin 1992', is in fact the single-authored Dugatkin (1992) and pairs with DUG1992SEX; DUG1992REV (Dugatkin and Godin 1992, choice reversal) has no Davies counterpart",
+    "DUG1992SEX || Dugatkin and Godin [20]" =
+        "year mismatch (1992 vs 1993)",
+    "DUG1993FEM || Dugatkin and Godin [27]" =
+        "year mismatch (1993 vs 1992)",
+    "DUG1998EFF || Dugatkin [23]" =
+        "DUG1998EFF pairs with the co-authored Davies [22]; Davies [23] is the single-authored Dugatkin (1998)",
+    "DUG1998GEN || Dugatkin and Godin [22]" =
+        "DUG1998GEN pairs with the single-authored Davies [23]",
+    "GIE2018USI || Gierzewski et al [36]" =
+        "GIE2018USI duplicates GIE2018MAT within Jones & DuVal (the same two reversal-vs-control contrasts under two study codes); folded into GIE2018MAT",
+    "NOB2018COP || Nobel et al [63]" =
+        "NOB2018COP pairs with Davies [62]; Davies [63] is the second Nobel et al. (2018) publication and is present in Davies only",
+    "Ophir_2009_Unknown || Ophir and Galef [66]" =
+        "the new-extraction record is Ophir and Galef (2003) Anim. Behav. 66:369-375 (DOI 10.1006/anbe.2003.2229; its n = 15 matches Davies [65] exactly). Davies [66] is their separate 2004 paper"
+)
+# Duplicates within a single source: two identifiers, one primary study.
+WITHIN_SRC_DUP <- c("GIE2018USI" = "GIE2018MAT")
+
+unresolved <- setdiff(cands$key, c(ACCEPT, names(REJECT)))
+stale      <- setdiff(c(ACCEPT, names(REJECT)), cands$key)
+if (length(unresolved))
+    stop("Unadjudicated candidate study pair(s) -- resolve each one explicitly:\n  ",
+         paste(unresolved, collapse = "\n  "))
+if (length(stale))
+    stop("Adjudication refers to pair(s) the data no longer generate:\n  ",
+         paste(stale, collapse = "\n  "))
+```
+
+```{r}
+#| label: crosswalk-build
+#| message: false
+#| warning: false
+# Collapse accepted matches into canonical studies: connected components over
+# the accepted cross-source pairs plus the within-source duplicates.
+edges <- bind_rows(
+    tibble::tibble(a = str_split_fixed(ACCEPT, fixed(" || "), 2)[, 1],
+                   b = str_split_fixed(ACCEPT, fixed(" || "), 2)[, 2]),
+    tibble::tibble(a = names(WITHIN_SRC_DUP), b = unname(WITHIN_SRC_DUP))
+)
+comp <- setNames(inventories$id, inventories$id)
+repeat {
+    before <- comp
+    for (i in seq_len(nrow(edges))) {
+        r <- min(comp[[edges$a[i]]], comp[[edges$b[i]]])
+        comp[comp == comp[[edges$a[i]]] | comp == comp[[edges$b[i]]]] <- r
+    }
+    if (identical(before, comp)) break
+}
+
+crosswalk <- inventories %>%
+    mutate(canonical = unname(comp[id])) %>%
+    group_by(canonical) %>%
+    summarise(
+        in_jones  = paste(sort(id[src == "jones"]),  collapse = "; "),
+        in_davies = paste(sort(id[src == "davies"]), collapse = "; "),
+        in_new    = paste(sort(id[src == "new"]),    collapse = "; "),
+        year      = min(year),
+        species   = paste(sort(unique(unlist(str_split(species, fixed("|"))))), collapse = "|"),
+        k_jones   = sum(k[src == "jones"]),
+        k_davies  = sum(k[src == "davies"]),
+        k_new     = sum(k[src == "new"]),
+        .groups   = "drop"
+    ) %>%
+    mutate(n_sources = (in_jones != "") + (in_davies != "") + (in_new != ""),
+           membership = paste0(ifelse(in_jones  != "", "J", ""),
+                               ifelse(in_davies != "", "D", ""),
+                               ifelse(in_new    != "", "N", ""))) %>%
+    arrange(desc(n_sources), canonical)
+
+n_unique  <- nrow(crosswalk)
+n_jd      <- sum(crosswalk$membership == "JD")
+n_dn      <- sum(crosswalk$membership == "DN")
+n_jn      <- sum(crosswalk$membership == "JN")
+n_jdn     <- sum(crosswalk$membership == "JDN")
+n_j_only  <- sum(crosswalk$membership == "J")
+n_d_only  <- sum(crosswalk$membership == "D")
+n_n_only  <- sum(crosswalk$membership == "N")
+n_j_std   <- sum(crosswalk$in_jones  != "")
+n_d_std   <- sum(crosswalk$in_davies != "")
+n_n_std   <- sum(crosswalk$in_new    != "")
+n_naive   <- nrow(inv_jones) + nrow(inv_davies) + nrow(inv_new)
+
+# Deliverable for the PRISMA flowchart and for auditing.
+tryCatch({
+    d <- here::here("outputs", "3_original_dataset_crosscheck")
+    dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    readr::write_csv(crosswalk, file.path(d, "study_crosswalk.csv"))
+}, error = function(e) warning("Could not write study_crosswalk.csv: ", conditionMessage(e)))
+```
+
+### The reconciliation
+
+```{r}
+#| label: crosswalk-recon-table
+#| echo: false
+recon <- tibble::tribble(
+    ~Quantity, ~n,
+    "Jones & DuVal (2019) study codes",                nrow(inv_jones),
+    "Jones & DuVal distinct primary studies",          n_j_std,
+    "Davies et al. (2020) study records",              nrow(inv_davies),
+    "Davies et al. distinct primary studies",          n_d_std,
+    "New extraction distinct primary studies",         n_n_std,
+    "Naive sum of the three source counts",            n_naive,
+    "Shared: Jones & DuVal AND Davies et al.",         n_jd,
+    "Shared: Davies et al. AND new extraction",        n_dn,
+    "Shared: Jones & DuVal AND new extraction",        n_jn,
+    "Shared: all three sources",                       n_jdn,
+    "Unique to Jones & DuVal",                         n_j_only,
+    "Unique to Davies et al.",                         n_d_only,
+    "Unique to the new extraction",                    n_n_only,
+    "UNIQUE PRIMARY STUDIES IN THE COMBINED CORPUS",   n_unique
+)
+DT::datatable(
+    recon,
+    caption = "Reconciling the three source counts to unique primary studies.",
+    options = list(dom = "t", pageLength = 20,
+                   columnDefs = list(list(className = "dt-left", targets = 0),
+                                     list(className = "dt-center", targets = 1))),
+    rownames = FALSE
+)
+```
+
+The combined corpus contains **`r n_unique` unique primary studies**, not the
+`r n_naive` the three source counts suggest. The `r n_naive - n_unique`-study
+difference comes from three places:
+
+* **`r n_jd` studies are in both source meta-analyses.** This is the large
+  correction.
+* **`r n_dn` studies in our new extraction were already in Davies et al.** —
+  `r paste(crosswalk$in_new[crosswalk$membership == "DN"], collapse = " and ")`.
+  Both are pre-2019 papers that our multilingual search recovered independently
+  and that we re-extracted from the primary PDFs; each is counted once here.
+* **`r nrow(inv_jones) - n_j_std` study code in Jones & DuVal duplicates**
+  another code in the same dataset (`GIE2018USI` repeats `GIE2018MAT`).
+
+There is **no** overlap between our new extraction and Jones & DuVal
+(`r n_jn` studies), and no study appears in all three sources.
+
+```{r}
+#| label: crosswalk-multi-table
+#| echo: false
+DT::datatable(
+    crosswalk %>%
+        filter(n_sources > 1) %>%
+        transmute(Sources = membership, Year = year, Species = species,
+                  `Jones & DuVal` = in_jones, `Davies et al.` = in_davies,
+                  `New extraction` = in_new,
+                  `k (J / D / N)` = paste(k_jones, k_davies, k_new, sep = " / ")),
+    caption = "Every study present in more than one source. 'J' = Jones & DuVal (2019), 'D' = Davies et al. (2020), 'N' = new extraction.",
+    options = list(pageLength = 15, columnDefs = list(list(className = "dt-left", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+```{r}
+#| label: crosswalk-reject-table
+#| echo: false
+DT::datatable(
+    tibble::tibble(`Candidate pair` = names(REJECT), `Why it is not a match` = unname(REJECT)),
+    caption = "Candidate pairs generated by the author-prefix/year rule and rejected on inspection. Listing them makes the judgement calls auditable rather than implicit.",
+    options = list(dom = "t", pageLength = 12, columnDefs = list(list(className = "dt-left", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+### Supplementary table for the manuscript {#sec-supp-crosswalk}
+
+The Results state that "the full study-level crosswalk, with the reason recorded
+for every accepted and rejected match, is provided in Supplementary
+Information". This chunk emits it as LaTeX so that claim is backed by a file
+that ships with the manuscript.
+
+```{r}
+#| label: supp_crosswalk_table
+#| echo: false
+#| message: false
+#| warning: false
+tex_escape <- function(x) {
+    x <- as.character(x)
+    # Protect the \allowbreak{} break hints inserted by breakable() before the
+    # backslash and brace escaping runs, then restore them afterwards.
+    x <- gsub("\\allowbreak{}", "\u0001", x, fixed = TRUE)
+    x <- gsub("\\", "\\textbackslash{}", x, fixed = TRUE)
+    for (ch in c("&", "%", "$", "#", "_", "{", "}"))
+        x <- gsub(ch, paste0("\\", ch), x, fixed = TRUE)
+    x <- gsub("\u0001", "\\allowbreak{}", x, fixed = TRUE)
+    x <- gsub("—", "---", x, fixed = TRUE)
+    x <- gsub("’", "'", x, fixed = TRUE)
+    # U+2212 MINUS SIGN and U+00D7 come out of orchaRd/emmeans labels and are not
+    # in pdfLaTeX's default encoding; map them to maths mode.
+    x <- gsub("\u2212", "$-$", x, fixed = TRUE)
+    x <- gsub("\u00d7", "$\\times$", x, fixed = TRUE)
+    x
+}
+
+# The new-extraction study IDs run to 46 characters as a single unbreakable
+# token (e.g. Bierbach_2011_BehavioralEcologyAndSociobiology). LaTeX cannot
+# hyphenate across an escaped underscore or inside CamelCase, so without
+# explicit break opportunities the last column overflows the right margin.
+# `breakable()` inserts zero-width \allowbreak points after each underscore and
+# at CamelCase boundaries, leaving the identifier readable and copy-pasteable.
+breakable <- function(x) {
+    x <- as.character(x)
+    x <- gsub("_", "_\\allowbreak{}", x, fixed = TRUE)
+    # break before a capital that follows a lower-case letter or a digit
+    x <- gsub("([a-z0-9])([A-Z])", "\\1\\\\allowbreak{}\\2", x)
+    x
+}
+
+cw_tex <- crosswalk %>%
+    transmute(
+        Sources = membership,
+        Year    = year,
+        Species = gsub("|", ", ", species, fixed = TRUE),
+        `Jones & DuVal (2019)` = breakable(ifelse(in_jones  == "", "--", in_jones)),
+        `Davies et al. (2020)` = breakable(ifelse(in_davies == "", "--", in_davies)),
+        `New extraction`       = breakable(ifelse(in_new    == "", "--", in_new))
+    )
+
+rej_tex <- tibble::tibble(
+    `Candidate pair` = names(REJECT),
+    `Why it is not the same study` = unname(REJECT)
+)
+
+emit <- function(df, file, caption, label, align) {
+    body <- apply(
+        vapply(df, function(v) tex_escape(ifelse(is.na(v), "--", as.character(v))),
+               character(nrow(df))),
+        1, function(r) paste0(paste(r, collapse = " & "), " \\\\"))
+    header <- paste(paste0("\\textbf{", tex_escape(names(df)), "}"), collapse = " & ")
+    out <- c(
+        paste0("% === ", caption, " ==="),
+        "% GENERATED by scripts/3_original_dataset_crosscheck/extraction_validation.qmd",
+        "% Do not edit by hand -- re-render instead.",
+        "% Preamble needs: \\usepackage{booktabs,longtable}",
+        paste0("\\begin{longtable}{", align, "}"),
+        paste0("\\caption{", caption, "}\\label{", label, "}\\\\"),
+        "\\toprule", paste0(header, " \\\\"), "\\midrule", "\\endfirsthead",
+        "\\toprule", paste0(header, " \\\\"), "\\midrule", "\\endhead",
+        "\\bottomrule", "\\endfoot", body, "\\end{longtable}")
+    d <- here::here("outputs", "3_original_dataset_crosscheck")
+    dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    writeLines(out, file.path(d, file))
+    cat("wrote", file, "-", nrow(df), "rows\n")
+}
+
+emit(cw_tex, "supp_study_crosswalk.tex",
+     paste("Study-level crosswalk across the three sources.", n_unique,
+           "unique primary studies; \\textbf{J} = Jones \\& DuVal (2019),",
+           "\\textbf{D} = Davies et al. (2020), \\textbf{N} = the new extraction.",
+           "A row listing two sources is one primary study that both hold. Match",
+           "candidates were generated from author prefix and year (within $\\pm$1)",
+           "and then adjudicated individually; the rejected candidates are in the",
+           "next table."),
+     "tab:supp-crosswalk",
+     paste0("@{}ll",
+            ">{\\raggedright\\arraybackslash}p{0.15\\textwidth}",
+            ">{\\raggedright\\arraybackslash}p{0.14\\textwidth}",
+            ">{\\raggedright\\arraybackslash}p{0.20\\textwidth}",
+            ">{\\raggedright\\arraybackslash}p{0.26\\textwidth}@{}"))
+
+emit(rej_tex, "supp_crosswalk_rejected.tex",
+     paste("Candidate study matches generated by the author-prefix and year rule",
+           "and rejected on inspection, with the reason. Listing them makes the",
+           "judgement calls in the unique-study count auditable rather than implicit."),
+     "tab:supp-crosswalk-rejected",
+     paste0("@{}>{\\raggedright\\arraybackslash}p{0.30\\textwidth}",
+            ">{\\raggedright\\arraybackslash}p{0.62\\textwidth}@{}"))
+```
+
+---
+
+### Two judgement calls worth flagging
+
+Neither changes the count, but both are decisions rather than deductions.
+
+* **Which Jones & DuVal 1992 code pairs with Davies' 1992 record.** Davies'
+  study 27 is labelled "Dugatkin and Godin 1992" but carries the data of the
+  single-authored Dugatkin (1992), which is `DUG1992SEX`; `DUG1992REV` is then
+  Jones-only. Pairing them the other way round would swap which study is
+  Jones-only without altering any total, since 1992 contributes two distinct
+  publications either way.
+* **Treating `GIE2018USI` as a within-Jones duplicate.** This follows the
+  [re-extraction finding](#sec-reextraction) that the two codes carry the same
+  two reversal-vs-control contrasts. Counting them as two studies instead would
+  make the corpus `r n_unique + 1` studies rather than `r n_unique`.
+
+The full study-level crosswalk, one row per unique study with its identifier in
+each source, is written to
+`outputs/3_original_dataset_crosscheck/study_crosswalk.csv` for the PRISMA
+flowchart and for auditing.
+
+---
+
 ## Summary of the cross-check
 
 Four findings emerge from the comparison, and they are the basis for the
@@ -551,7 +982,15 @@ sensitivity analyses reported elsewhere in this supplement.
   counts and the variance was no longer reverse-engineered to match.
 * **Overlap.** Of `r nrow(shared) + nrow(unmatched)` Jones & DuVal studies,
   **`r n_shared` are shared** with Davies; `r nrow(unmatched)` are unique to
-  Jones (`r sum(unmatched$n_effect_sizes)` effect sizes).
+  Jones (`r sum(unmatched$n_effect_sizes)` effect sizes). Those counts key on
+  (author prefix, year), which merges the two distinct Dugatkin 1998
+  publications into one; the [study-level crosswalk](#sec-unique-studies)
+  separates them and puts the shared count at `r n_jd`.
+* **Unique primary studies.** Resolving all three sources to distinct
+  publications gives **`r n_unique` unique primary studies**, not the
+  `r n_naive` implied by summing the source counts: `r n_jd` studies sit in
+  both source meta-analyses, `r n_dn` of our new studies were already in
+  Davies et al., and one Jones & DuVal study code is an internal duplicate.
 * **Agreement.** Across `r n_pairs` comparable effect-size pairs, Jones-converted
   and Davies magnitudes correlate at Pearson *r* = `r fmt(pear$estimate,2)`
   (`r fmt(100*n_match/n_pairs,0)`% within tolerance), rising to

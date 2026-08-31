@@ -935,6 +935,85 @@ print(dashboard_or)
 save_gg_pdf(dashboard_or, "dashboard_eggers_timelag_or", width = 10, height = 12)
 ```
 
+## Figure 6 — both scales in one two-column display item {#sec-fig6-composite}
+
+The manuscript needs these two dashboards as a **single** display item. Supplying
+them stacked in one column forced each to about a third of the text height, which
+shrank the labels. They are therefore placed side by side, as in Figures 3 and
+5. This chunk composes the same four scatter panels as a 2 (scale) $\times$ 2
+(diagnostic) grid at Biology Open's maximum display size, 180 $\times$ 210 mm.
+
+Column order is **Hedges' $g$ = A, log odds ratio = B**, matching Figures 3, 4
+and 5.
+
+```{r}
+#| label: dashboard_combined
+#| message: false
+#| warning: false
+#| fig.width: 7.09
+#| fig.height: 8.27
+# Same rescaling problem as Figure 3: ggplot2 sizes points, strokes and line
+# widths in mm, so they do not shrink with the panel. Each panel here is roughly
+# 0.5 of its former linear size, so every size-like parameter is scaled to match
+# and the precision bubbles get an explicit, smaller output range.
+GEOM_SCALE <- 0.5
+
+shrink_panel <- function(p, keep_x_title = TRUE) {
+    if (is.null(p)) return(NULL)
+    for (j in seq_along(p$layers)) {
+        cls <- class(p$layers[[j]]$geom)[1]
+        ap  <- p$layers[[j]]$aes_params
+        if (cls == "GeomText" || cls == "GeomLabel") {
+            # Set this unconditionally: a text layer with no explicit size keeps
+            # ggplot2's 3.88 mm (~11 pt) default, which is what left the "k = N"
+            # annotation looking oversized on the smaller canvas.
+            p$layers[[j]]$aes_params$size <- 2.0
+            next
+        }
+        for (k in c("size", "stroke", "linewidth")) {
+            if (!is.null(ap[[k]]) && is.numeric(ap[[k]]))
+                p$layers[[j]]$aes_params[[k]] <- ap[[k]] * GEOM_SCALE
+        }
+    }
+    out <- p + ggplot2::theme(
+        plot.title   = ggplot2::element_text(size = 7.5, face = "bold", hjust = 0.5),
+        plot.subtitle = ggplot2::element_text(size = 6),
+        axis.text    = ggplot2::element_text(size = 5.5),
+        axis.title   = ggplot2::element_text(size = 6.5),
+        legend.position = "none",
+        plot.tag     = ggplot2::element_text(size = 8, face = "bold"),
+        plot.margin  = ggplot2::margin(1, 2, 1, 1, "mm")
+    )
+    if (!keep_x_title) out <- out + ggplot2::labs(x = NULL)
+    suppressMessages(out + ggplot2::scale_size_continuous(range = c(0.3, 2.0)))
+}
+
+# No inner letters. Biology Open wants bold UPPERCASE panel letters, and this
+# figure already uses A and B for the two scale columns; adding a second,
+# lowercase level would either clash with those or break the journal's
+# convention. The row titles ("Egger's Meta-Regression", "Decline Effect /
+# Time-Lag Bias") already identify the two diagnostics unambiguously, so the
+# letters are simply dropped and the legend describes the rows in words --
+# exactly how Figure 3 handles its three dataset rows.
+col_h <- (shrink_panel(p_egger_hedges) / shrink_panel(p_decline_hedges_relabeled))
+col_o <- (shrink_panel(p_egger_or) / shrink_panel(p_decline_or_relabeled))
+
+hdr <- function(x, lab) patchwork::wrap_elements(
+    x + patchwork::plot_annotation(
+        title = lab,
+        theme = ggplot2::theme(
+            plot.title  = ggplot2::element_text(size = 9, face = "bold", hjust = 0.5),
+            plot.margin = ggplot2::margin(0, 0, 0, 0, "mm"))))
+
+dashboard_combined <- patchwork::wrap_plots(
+    hdr(col_h, "(A)  Hedges' g scale"),
+    hdr(col_o, "(B)  Log odds ratio scale"), ncol = 2)
+
+save_gg_pdf(dashboard_combined, "dashboard_eggers_timelag_combined",
+            width = 180 / 25.4, height = 210 / 25.4)
+dashboard_combined
+```
+
 :::
 
 ---

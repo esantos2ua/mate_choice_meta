@@ -230,8 +230,12 @@ or_new <- db_new %>%
         vi = logOddsRatioVariance,
         identifierStudyId,
         identifierEffectSizeID,
-        taxonomySpecies
+        taxonomySpecies,
+        experimentalTypeSex
     ) %>%
+    mutate(observer_sex = factor(str_squish(as.character(experimentalTypeSex)),
+                                 levels = c("Female", "Male"))) %>%
+    select(-experimentalTypeSex) %>%
     mutate(
         identifierStudyId = as.character(identifierStudyId),
         identifierEffectSizeID = as.character(identifierEffectSizeID),
@@ -262,6 +266,11 @@ or_jones <- db_jones_raw %>%
         identifierStudyId = as.character(identifierStudyId),
         identifierEffectSizeID = as.character(identifierEffectSizeID),
         taxonomySpecies = str_to_lower(as.character(taxonomySpecies)),
+        # Jones & DuVal synthesised female mate-choice copying only, so their
+        # dataset carries no sex column: every observer is female by
+        # construction. Coding it explicitly is what makes the female-only
+        # sensitivity analysis below possible.
+        observer_sex = factor("Female", levels = c("Female", "Male")),
         Dataset_Source = "Original (Jones & DuVal 2019)"
     )
 
@@ -276,6 +285,13 @@ if (any(is.na(or_jones$species_phylo))) {
 # C. Unified Log Odds Ratio Dataset
 db_or <- bind_rows(or_new, or_jones) %>%
     mutate(across(c(identifierStudyId, taxonomySpecies, species_phylo, Dataset_Source), as.factor))
+
+# Sanity check: observer sex must be complete in the analysed OR data, or the
+# female-only sensitivity analysis would silently drop rows of unknown sex.
+if (any(is.na(db_or$observer_sex))) {
+    warning("Missing observer sex in the log OR dataset: ",
+            sum(is.na(db_or$observer_sex)), " effect size(s)")
+}
 ```
 
 ---
@@ -1293,6 +1309,111 @@ if (!is.null(res_or_comb_corr)) {
 
 ---
 
+## Female-Only Sensitivity Analysis (log odds ratio) {#sec-female-only}
+
+Jones & DuVal [-@jonesMechanismsSocialInfluence2019] synthesised **female**
+mate-choice copying only. Our combined log odds ratio dataset includes male
+observers as well, so setting our pooled OR against their 2.71 compares two
+different scopes. This section refits the combined odds ratio model on female
+observers alone, which is the estimate that *can* be set against theirs on
+like-for-like terms.
+
+The model is identical to the combined model above in every other respect —
+same `rma.mv` structure, same `vcalc` sampling variance–covariance matrix with
+$\rho = 0.5$, same study / effect-size / species random effects plus the
+phylogenetic correlation matrix, REML, `test = "t"`, `dfs = "contain"` — so the
+only thing that changes is which rows enter it.
+
+```{r}
+#| label: or_female_only_fit
+#| message: false
+#| warning: false
+db_or_female <- db_or %>% filter(observer_sex == "Female")
+
+# Audit the scope difference so it is reportable, not just assumed.
+or_sex_audit <- db_or %>%
+    count(Dataset_Source, observer_sex, name = "k") %>%
+    arrange(Dataset_Source, observer_sex)
+
+n_or_male_es      <- sum(db_or$observer_sex == "Male", na.rm = TRUE)
+studies_lost_male <- setdiff(as.character(unique(db_or$identifierStudyId)),
+                             as.character(unique(db_or_female$identifierStudyId)))
+
+res_or_comb_female <- fit_overall_mv(db_or_female, phylo_cor = phylo_cor_or)
+```
+
+```{r}
+#| label: or_female_only_audit
+#| echo: false
+DT::datatable(
+    or_sex_audit,
+    caption = "Observer sex by source in the combined log odds ratio dataset. Jones & DuVal rows are female by construction; the male-observer effect sizes all come from the new extraction.",
+    options = list(dom = "t", columnDefs = list(list(className = "dt-center", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+```{r}
+#| label: or_female_only_stats
+#| echo: false
+or_summary_row <- function(res, label) {
+    if (is.null(res) || is.null(res$model)) return(NULL)
+    m <- res$model; d <- res$data
+    tibble::tibble(
+        Model        = label,
+        `k (effect sizes)` = m$k,
+        Studies      = dplyr::n_distinct(d$identifierStudyId),
+        Species      = dplyr::n_distinct(d$taxonomySpecies),
+        `log OR`     = round(as.numeric(m$b)[1], 3),
+        `OR`         = round(exp(as.numeric(m$b)[1]), 2),
+        `OR CI lower`= round(exp(m$ci.lb[1]), 2),
+        `OR CI upper`= round(exp(m$ci.ub[1]), 2),
+        `p`          = signif(m$pval[1], 3),
+        `% favoured` = round(100 * exp(as.numeric(m$b)[1]) / (1 + exp(as.numeric(m$b)[1])), 1)
+    )
+}
+or_female_tbl <- dplyr::bind_rows(
+    or_summary_row(res_or_comb,        "Combined — all observers"),
+    or_summary_row(res_or_comb_female, "Combined — female observers only")
+)
+DT::datatable(
+    or_female_tbl,
+    caption = "Combined log odds ratio model, all observers versus female observers only. Odds ratios are back-transformed from the log scale on which the models were fitted; '% favoured' is the implied probability of choosing the socially favoured male against a 50:50 chance expectation.",
+    options = list(dom = "t", columnDefs = list(list(className = "dt-center", targets = "_all"))),
+    rownames = FALSE
+)
+```
+
+```{r}
+#| label: or_female_only_inline
+#| include: false
+fo   <- res_or_comb_female$model
+fo_or <- exp(as.numeric(fo$b)[1]); fo_lo <- exp(fo$ci.lb[1]); fo_hi <- exp(fo$ci.ub[1])
+fo_k  <- fo$k
+fo_st <- dplyr::n_distinct(res_or_comb_female$data$identifierStudyId)
+ao    <- res_or_comb$model
+ao_or <- exp(as.numeric(ao$b)[1])
+```
+
+Restricting the combined odds ratio dataset to female observers drops
+`r n_or_male_es` male-observer effect sizes, all of them from the new extraction,
+and removes `r length(studies_lost_male)` studies entirely
+(`r paste(studies_lost_male, collapse = ", ")`). The female-only mean OR is
+**`r fmt(fo_or, 2)`** (95% CI: `r fmt(fo_lo, 2)` to `r fmt(fo_hi, 2)`; $k$ =
+`r fo_k` effect sizes from `r fo_st` studies), against `r fmt(ao_or, 2)` for the
+all-observer model.
+
+The two are effectively identical, which is the substantive point: the gap
+between our pooled estimate and the 2.71 of Jones & DuVal
+[-@jonesMechanismsSocialInfluence2019] is **not** an artefact of our having
+included male observers. It reflects the added evidence and the different
+analytical framework, not the change in scope. This is consistent with the
+[observer-sex moderator analysis](moderator_analysis.qmd#sec-bio-sex), which
+finds no detectable difference between female and male observers on either
+scale.
+
+---
+
 ## Combined Correction Comparison {#sec-correction-comparison}
 
 The tabs above present the uncorrected and bias-corrected estimates on separate plots. To make the comparison easier to read, we produce **two figures** — one for Hedges' $g$ and one for the log odds ratio — using the same `orchaRd::pub_bias_plot()` approach as the publication-bias chapter. Each figure stacks the three model levels (New Extraction, Original, Combined) as rows; within each row a single orchard trunk shows the uncorrected multilevel mean drawn over its raw effect sizes **once**, with the two corrected means overlaid on top. The raw points are coloured by data source and the legend is boxed in the corner, matching the side-by-side comparison plots above.
@@ -1604,6 +1725,92 @@ fig_or <- (po_orig / po_new / po_comb) +
 save_deliverable_fig(fig_or, "correction_comparison_or", width = 9, height = 12)
 
 print(fig_or)
+```
+
+### Figure 3 — both scales in one two-column display item {#sec-fig3-composite}
+
+The manuscript needs these two stacks as a **single** display item. Supplying
+them as two full-width images stacked in one column forced each to about a third
+of the text height, which shrank the labels and clashed with Figure 5's
+two-column design. This chunk therefore composes the
+same six sub-plots as a 2 (scale) $\times$ 3 (dataset) grid, drawn at Biology
+Open's maximum display size of 180 $\times$ 210 mm so nothing is scaled down at
+typesetting.
+
+Column order is **Hedges' $g$ = A, log odds ratio = B**, matching Figures 4 and
+5 so the effect-size scales appear in the same order in every display item.
+
+```{r}
+#| label: correction_comparison_combined
+#| message: false
+#| warning: false
+#| fig.width: 7.09
+#| fig.height: 8.27
+# Rescale for the smaller canvas: six sub-plots at 180 x 210 mm instead of one
+# stack at 9 x 12 in. ggplot2 sizes points, strokes and line widths in mm, i.e.
+# in ABSOLUTE units, so they do not shrink with the panel -- leaving them alone
+# is what made the markers and bubbles look oversized. Each panel is about 0.45
+# of its former linear size, so every size-like parameter is scaled to match and
+# the bubble size scale is given an explicit, smaller output range.
+GEOM_SCALE <- 0.45
+
+shrink <- function(p) {
+    if (is.null(p)) return(NULL)
+    for (j in seq_along(p$layers)) {
+        cls <- class(p$layers[[j]]$geom)[1]
+        ap  <- p$layers[[j]]$aes_params
+        if (cls != "GeomText") {
+            # points, diamonds, CI bars and whiskers
+            for (k in c("size", "stroke", "linewidth")) {
+                if (!is.null(ap[[k]]) && is.numeric(ap[[k]]))
+                    p$layers[[j]]$aes_params[[k]] <- ap[[k]] * GEOM_SCALE
+            }
+            next
+        }
+        # Unconditional: a text layer with no explicit size would otherwise keep
+        # ggplot2's 3.88 mm (~11 pt) default and dominate the smaller canvas.
+        p$layers[[j]]$aes_params$size <- 1.8
+        # Half the panel width, so the full method names no longer fit and the
+        # right-hand annotation clipped. The caption and the colours identify
+        # which estimator is which, so the prefixes can be abbreviated.
+        lab <- p$layers[[j]]$aes_params$label
+        if (!is.null(lab) && is.character(lab)) {
+            lab <- sub("Bias-Corrected \\(Nakagawa\\): ", "Corrected: ", lab)
+            lab <- sub("Bias-Robust \\(Yang\\): ",        "Robust: ",    lab)
+            p$layers[[j]]$aes_params$label <- lab
+        }
+    }
+    suppressMessages(
+        p +
+        # the precision bubbles: default output range is 1-6 mm, far too big here
+        ggplot2::scale_size_continuous(range = c(0.3, 2.3)) +
+        ggplot2::theme(
+            plot.title  = ggplot2::element_text(size = 7, face = "bold", hjust = 0.5),
+            axis.text   = ggplot2::element_text(size = 5.5),
+            axis.title  = ggplot2::element_text(size = 6.5),
+            legend.position = "none",
+            plot.margin = ggplot2::margin(1, 2, 1, 1, "mm")
+        )
+    )
+}
+
+col_A <- (shrink(ph_orig) / shrink(ph_new) / shrink(ph_comb))
+col_B <- (shrink(po_orig) / shrink(po_new) / shrink(po_comb))
+
+hdr <- function(x, lab) patchwork::wrap_elements(
+    x + patchwork::plot_annotation(
+        title = lab,
+        theme = ggplot2::theme(
+            plot.title  = ggplot2::element_text(size = 9, face = "bold", hjust = 0.5),
+            plot.margin = ggplot2::margin(0, 0, 0, 0, "mm"))))
+
+fig_corr_combined <- patchwork::wrap_plots(
+    hdr(col_A, "(A)  Hedges' g scale"),
+    hdr(col_B, "(B)  Log odds ratio scale"), ncol = 2)
+
+save_deliverable_fig(fig_corr_combined, "correction_comparison_combined",
+                     width = 180 / 25.4, height = 210 / 25.4)
+fig_corr_combined
 ```
 
 ---
@@ -2229,11 +2436,19 @@ save_taxon_fig(p_tax_h, "taxon_moderator_orchard_hedges", width = 10, height = 5
 save_taxon_fig(p_tax_o, "taxon_moderator_orchard_or", width = 10, height = 5)
 
 if (!is.null(p_tax_h) && !is.null(p_tax_o)) {
+    # Biology Open specifies bold UPPERCASE panel letters (A, B, C, ...) at 12 pt
+    # final size. This figure is drawn at 10 in (254 mm) wide and the journal
+    # caps a display item at 180 mm, so it is reduced to about 71% at
+    # typesetting; the tag is therefore drawn at 17 pt to land near 12 pt on the
+    # page.
     fig_tax <- (p_tax_h / p_tax_o) +
         patchwork::plot_annotation(
-            tag_levels = "a", tag_prefix = "(", tag_suffix = ")",
+            tag_levels = "A", tag_prefix = "(", tag_suffix = ")",
             title = "Mate-choice copying by taxonomic group (heteroscedastic moderator model)",
-            theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 15, face = "bold", hjust = 0.5))
+            theme = ggplot2::theme(
+                plot.title = ggplot2::element_text(size = 15, face = "bold", hjust = 0.5),
+                plot.tag   = ggplot2::element_text(size = 17, face = "bold")
+            )
         )
     print(fig_tax)
     # Combined stacked figure = the main deliverable.

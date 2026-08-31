@@ -1,10 +1,10 @@
 data,node,box,description,boxtext,tooltips,url,n
 NA,node4,prevstud,Grey title box; Previous studies,Previous studies,Grey title box; Previous studies,prevstud.html,0
 previous_studies,node5,box1,Studies included in previous version of review,Studies included in Jones and DuVal (2019),Studies included in Jones and DuVal (2019),previous_studies.html,40
-previous_reports,NA,box1,Reports of studies included in previous version of review,Studies included in Davies et al. (2020),NA,previous_reports.html,58
+previous_reports,NA,box1,Reports of studies included in previous version of review,"Studies included in Davies et al. (2020), of which 30 also in Jones and DuVal (2019)",NA,previous_reports.html,58
 NA,node6,newstud,Yellow title box; Identification of new studies via databases and registers,Identification of new studies via databases and registers,Yellow title box; Identification of new studies via databases and registers,newstud.html,0
 database_results,node7,box2,Records identified from: Databases,Databases,Records identified from: Databases,database_results.html,2855
-database_specific_results,NA,box2,Records identified from: specific databases,Specific Databases,NA,database_results.html,NA
+database_specific_results,NA,box2,Records identified from: specific databases,Specific Databases,Records identified from each database/platform,database_results.html,"Web of Science Core Collection, 891; Scopus (Davies et al. terms), 718; Scopus (Jones & DuVal terms), 474; BASE, 212; SciELO, 11; Google Scholar (Spanish), 218; Google Scholar (Simplified Chinese), 93; Google Scholar (Portuguese), 89; Google Scholar (Polish), 77; Google Scholar (Russian), 70; Google Scholar (Japanese), 2"
 register_results,NA,box2,Records identified from: Registers,Registers,NA,NA,NA
 register_specific_results,NA,box2,Records identified from: specific registers,Specific Registers,NA,database_results.html,NA
 NA,node16,othstud,Grey title box; Identification of new studies via other methods,Identification of new studies via other methods,Grey title box; Identification of new studies via other methods,othstud.html,0
@@ -13,7 +13,7 @@ organisation_results,,box11,Records identified from: Organisations,Organisations
 citations_results,NA,box11,Records identified from: Citation searching,Citation searching,NA,NA,NA
 duplicates,node8,box3,Duplicate records,Duplicate records,Duplicate records,duplicates.html,901
 excluded_automatic,NA,box3,Records marked as ineligible by automation tools,Records marked as ineligible by automation tools,NA,NA,NA
-excluded_other,NA,box3,Records removed for other reasons,Records retrieved by Jones & DuVal and Davies et al. < 2019,NA,NA,898
+excluded_other,NA,box3,Records removed for other reasons,"Pre-2019 records already screened by the two previous reviews; exclusion inherited, not re-screened",NA,NA,898
 records_screened,node9,box4,Records screened (databases and registers),Records screened,Records screened (databases and registers),records_screened.html,1056
 records_excluded,node10,box5,Records excluded (databases and registers),Records excluded,Records excluded (databases and registers),records_excluded.html,1008
 dbr_sought_reports,node11,box6,Reports sought for retrieval (databases and registers),Reports sought for retrieval,Reports sought for retrieval (databases and registers),dbr_sought_reports.html,48
@@ -26,8 +26,8 @@ other_assessed,node20,box14,Reports assessed for eligibility (other),Reports ass
 other_excluded,node21,box15,"Reports excluded (other): [separate reasons and numbers using ; e.g. Reason1, xxx; Reason2, xxx; Reason3, xxx]",Reports excluded,Reports excluded (other),other_excluded.html,NA
 new_studies,node15,box10,New studies included in review,New studies included in review,New studies included in review,new_studies.html,29
 new_reports,NA,box10,Reports of new included studies,Reports of new included studies,NA,NA,NA
-total_studies,node22,box16,Total studies included in review,Total studies included in review,Total studies included in review,total_studies.html,127
-total_reports,NA,box16,Reports of total included studies,Reports of total included studies,NA,NA,NA
+total_studies,node22,box16,Total studies included in review,Total unique studies included in review,Total studies included in review,total_studies.html,94
+total_reports,NA,box16,Reports of total included studies,"Duplicate study records across sources, counted once",NA,NA,33
 identification,node1,identification,Blue identification box,Identification,Blue identification box,identification.html,0
 screening,node2,screening,Blue screening box,Screening,Blue screening box,screening.html,0
 included,node3,included,Blue included box,Included,Blue included box,included.html,0
