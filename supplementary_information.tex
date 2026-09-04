@@ -14,11 +14,18 @@
 
 \addbibresource{10_MainTextReferences.bib}
 
+% Added at revision for Supplementary Table S1 (search strings)
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{ragged2e}
+
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{Supplementary Information --- Mate choice copying: an update}
 \fancyhead[R]{\thepage}
+\fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\thepage}{S\arabic{page}}
 
@@ -39,133 +46,28 @@
 \maketitle
 \thispagestyle{fancy}
 
-\noindent This document contains the supplementary search strings, results,
-figures and tables referred to in the main article. Figures and tables are
-numbered separately from the main article (Fig.~S1, Table~S1, and so on) and
-each is cited at least once in the main text.
+\noindent This document contains the supplementary figures and tables referred
+to in the main article. Figures and tables are numbered separately from the main
+article (Fig.~S1, Table~S1, and so on) and each is cited at least once in the
+main text.
+
+\vskip6pt
+\noindent\textbf{Note on this revision.} Following the editor's formatting
+instructions, the sections that previously provided supplementary Methods and
+Results have been moved into the main article: the detailed specifications of
+the Egger's regression, bias-robust estimator, leave-one-out procedure and
+cross-dataset validation now appear in \textit{Materials and Methods}, and the
+small-study, time-lag and sensitivity findings now appear in \textit{Results}.
+The search strings, previously given as running text, are presented here as
+Table~S1 with access dates and per-database record counts.
+
+\vskip6pt
+\noindent\textbf{Contents.} Every supplementary figure and table is listed below
+with the page on which it appears; pages are numbered S1, S2, and so on, in both
+the running head and the footer.
 
 \tableofcontents
 \clearpage
-
-\section*{Search strings}
-\addcontentsline{toc}{section}{Search strings}
-\label{searchstrings}
-All searches were conducted across the full range of available publication dates in all databases and search platforms (1900 to 2026 inclusive). Search strings were adapted to the structure of each database or search platform.
-
-Web of Science (combined and optimised search terms):
-\begin{outline}
-    \1 Access date: 04 February 2026;
-    \1 Query: TS = (("mate choice" AND "copy*") OR ("mate-choice" AND "copy*") OR "mate-copy*" OR "mate copy*" OR "female* copy*"); and
-    \1 Total records retrieved: 891.
-\end{outline}
-
-Scopus (Davies et al. search terms):
-\begin{outline}
-    \1 Access date: 23 February 2026;
-    \1 Query: TITLE-ABS-KEY("mate choice" AND (copying OR nonindependent OR learning)); and
-    \1 Total records retrieved: 718.
-\end{outline}
-
-Scopus (Jones and DuVal search terms):
-\begin{outline}
-    \1 Access date: 04 February 2026;
-    \1 Query: TITLE-ABS-KEY ( ( "mate choice" AND "copy*" ) OR ( "mate-choice" AND "copy*" ) OR "mate-copy*" OR "mate copy*" OR "female* copy*" ); and
-    \1 Total records retrieved: 474.
-\end{outline}
-
-BASE:
-\begin{outline}
-    \1 Access date: 05 February 2026;
-    \1 Query: ( "mate choice" AND "copy*" ) OR ( "mate-choice" AND "copy*" ) OR "mate-copy*" OR "mate copy*" OR "female* copy*"; and
-    \1 Total records retrieved: 212.
-\end{outline}
-
-SciELO:
-\begin{outline}
-    \1 Access date: 06 February 2026;
-    \1 Query: (title:("mate choice" OR "mate copying" OR "escolha de parceiro" OR "cópia de escolha") OR abstract:("mate choice" OR "mate copying" OR "escolha de parceiro" OR "cópia de escolha") OR subject:("mate choice" OR "mate copying" OR "escolha de parceiro" OR "cópia de escolha")); and
-    \1 Total records retrieved: 11.
-\end{outline}
-
-Google Scholar (Japanese):
-\begin{outline}
-    \1 Access date: 26 February 2026;
-    \1 Query: "配偶者選択" "コピー" OR "交尾選択" "コピー" OR "選択のコピー" OR "配偶者のコピー"; and
-    \1 Total records retrieved: 2.
-\end{outline}
-
-Google Scholar (Polish):
-\begin{outline}
-    \1 Access date: 26 February 2026;
-    \1 Query: "wybór partnera" "kopiowanie" OR "wybór do rozrodu" "kopiowanie" OR "kopiowanie wyboru" OR "kopiowanie partnera"; and
-    \1 Total records retrieved: 77.
-\end{outline}
-
-Google Scholar (Portuguese):
-\begin{outline}
-    \1 Access date: 26 February 2026;
-    \1 Query: "escolha de parceiro" "cópia" OR "escolha de acasalamento" "cópia" OR "cópia de escolha" OR "cópia de parceiro"; and
-    \1 Total records retrieved: 89.
-\end{outline}
-
-Google Scholar (Russian):
-\begin{outline}
-    \1 Access date: 26 February 2026;
-    \1 Query: \textrussian{"выбор партнера" "копирование" OR "выбор для спаривания" "копирование" OR "копирование выбора" OR "копирование партнера"}; and
-    \1 Total records retrieved: 70.
-\end{outline}
-
-Google Scholar (Simplified Chinese):
-\begin{outline}
-    \1 Access date: 26 February 2026;
-    \1 Query: "配偶选择" "复制" OR "交配选择" "复制" OR "选择复制" OR "配偶复制"; and
-    \1 Total records retrieved: 93.
-\end{outline}
-
-Google Scholar (Spanish):
-\begin{outline}
-    \1 Access date: 26 February 2026;
-    \1 Query: "elección de pareja" "copia" OR "elección de apareamiento" "copia" OR "copia de elección" OR "copia de pareja"; and
-    \1 Total records retrieved: 218.
-\end{outline}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section*{Supplementary Methods}
-\addcontentsline{toc}{section}{Supplementary Methods}
-\label{supplmethods}
-
-These are the detailed specifications of the small-study-effect, time-lag, and sensitivity analyses summarised in the Methods of the main article.
-
-\subsection*{Multilevel Egger's regression and the conservative bias-corrected mean}
-We tested whether study precision moderated the effect size using a two-step procedure~\cite{nakagawaMethodsTestingPublication2022, stanleyMetaregressionAnalysisEconomics2012, stanleyMetaregressionApproximationsReduce2014}: (1) we fitted a multilevel analogue of Egger's regression using the standard error as the precision proxy, where $v_i$ is the sampling variance of the $i$th effect size and $SE_i = \sqrt{v_i}$; and (2) where the slope of that model was statistically significant---indicating a biased estimate---we re-fitted the model with the sampling variance ($v_i$) as the moderator, whose intercept provides the bias-adjusted overall meta-analytic mean. We used the standard error rather than the effective sample size as the precision moderator. For standardised mean differences and log odds ratios the sampling variance is partly a function of the effect-size estimate itself, so a regression on $\sqrt{v_i}$ can register asymmetry that is in part an artefact of that dependence~\cite{nakagawaMethodsTestingPublication2022}. Because this artefact inflates rather than deflates apparent small-study effects, we read the resulting adjusted mean as a conservative bound on the true average effect rather than as a point estimate---the more pessimistic of our two correction frameworks.
-
-\subsection*{Bias-robust mean and its assumptions}
-The second correction framework follows Yang et al.~\cite{yangRobustPointVariance2024}: a bias-robust weighting scheme combined with cluster-robust (CR2) variance estimation. The weighting scheme is a multivariate fixed-effect generalised-least-squares estimator in which the weights derive from the sampling variance--covariance matrix (assuming $\rho = 0.5$, as elsewhere); inverse-covariance weighting downweights imprecise studies reporting large effects and prevents a study contributing many correlated effect sizes from accruing weight in proportion to their number, making the resulting mean less susceptible to selective reporting than a random-effects mean. Cluster-robust variance estimation, implemented with \lstinline{clubSandwich} and clustered by study, then restores valid inference under the non-independence of effect sizes within studies. Because this first-stage model contains no random effects, the CR2 small-sample correction is applicable, which it would not be for a multilevel model with crossed random terms~\cite{williamsModellingApproachesMetaanalyses2025}. It also follows, however, that dependence among effect sizes from the same species---crossed with, rather than nested within, study---is represented by neither the weighting nor the clustering. We therefore read the bias-robust mean as a point estimate that is robust to selective reporting but whose interval may be optimistic where species contribute effect sizes across several studies; our multilevel models, which represent species and phylogeny explicitly, supply the complementary uncorrected and bias-corrected estimates. Both corrected means are overlaid on the orchard plots in the main article using \lstinline{orchaRd::pub_bias_plot()}.
-
-\subsection*{Leave-one-out analyses}
-We assessed the influence of individual studies and species by re-fitting the combined multilevel model repeatedly, each time removing all effect sizes from a single study (leave-one-study-out) or from a single species (leave-one-species-out), and comparing each re-estimated pooled mean with the full-data estimate. Every refit used the same model structure as the main analysis: the sampling variance--covariance matrix was recomputed for the reduced dataset (assuming a within-study correlation of $\rho = 0.5$), and the phylogenetic random effect was retained, with the species correlation matrix subset to the species that remained. We ran both analyses for the continuous (Hedges' \textit{g}) and binary (log odds ratio) syntheses using the \lstinline{leave_one_out} and \lstinline{orchard_leave1out} functions in the \lstinline{orchaRd} package~\cite{nakagawaOrchaRd20Package2023}. Results are shown in \hyperref[fig:supplementaryloostudyhedges]{Supplementary Figures~\ref*{fig:supplementaryloostudyhedges}--\ref*{fig:supplementaryloospeciesor}}.
-
-\subsection*{Cross-dataset validation and the contentious effect sizes}
-For every study represented in both source datasets we compared the Hedges' \textit{g} reported by Davies et al.~\cite{daviesMetaanalysisFactorsInfluencing2020} with the \textit{g} implied by converting the odds ratio reported by Jones and DuVal~\cite{jonesMechanismsSocialInfluence2019} for the same experiment and outcome (Eqn~18 of the main article). This flagged seven studies whose two values disagreed by more than 0.5 Hedges' \textit{g} units. We refitted each combined model under three versions of the data, all using the same multilevel structure as the main analysis: the original data as analysed (\textit{Main}), a conservative version that discarded all effect sizes from the seven flagged studies (\textit{Leave-out}), and a best-estimate version that retained every flagged study but substituted outcomes re-extracted from the original sources (\textit{Corrected}). The effect-size count changes slightly relative to \textit{Main}, because the correction was not a one-to-one value swap: three over-counted binary (odds ratio) rows were removed, and on the continuous side, one effect size that had been pooled was kept as the original two outcomes reported, while another's non-target effects were not reinstated. The results of these sensitivity analyses are reported under \nameref{supplresults} and shown in \hyperref[fig:supplementarysensitivityhedges]{Supplementary Figures~\ref*{fig:supplementarysensitivityhedges} and~\ref*{fig:supplementarysensitivityor}}.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section*{Supplementary Results}
-\addcontentsline{toc}{section}{Supplementary Results}
-\label{supplresults}
-\subsection*{Small-study effects, time-lag patterns, and sensitivity analyses}
-
-We found strong evidence of small-study effects, while mixed evidence of time-lag bias using the combined dataset (original + new primary studies). Funnel plots based on model residuals showed clear asymmetry for both types of effect size (\hyperref[fig:supplementaryfunnelhedges]{Supplementary Figure~\ref*{fig:supplementaryfunnelhedges}} and \hyperref[fig:supplementaryfunnelor]{Supplementary Figure~\ref*{fig:supplementaryfunnelor}}). The Egger's-type multilevel regression slopes of sampling variance were positive and statistically significant for both datasets (Odds ratio: $\beta_{\sqrt{v_i}}$ = 2.11, 95\% CI: 1.23 to 2.99, Fig.~6 of the main article; Hedges' \textit{g}: $\beta_{\sqrt{v_i}}$ = 4.84, 95\% CI: 3.59 to 6.09, Fig.~7 of the main article). For the odds ratio dataset, we found evidence that publication year was negatively associated with effect size magnitude ($\beta_{year}$ = -0.028, 95\% CI: -0.048 to -0.007; Fig.~6 of the main article). However, for the Hedges' \textit{g} dataset, we found little evidence that publication year was negatively associated with effect size magnitude ($\beta_{year}$ = -0.005, 95\% CI: -0.018 to 0.008;  Fig.~7 of the main article). 
-
-The two correction frameworks we used gave divergent adjusted means and provided smaller estimates than the uncorrected overall estimates. On the Hedges' \textit{g} scale, the bias-corrected intercept~\cite{nakagawaMethodsTestingPublication2022} fell to $-0.21$ (95\% CI: $-0.48$ to $0.06$), a mean indistinguishable from zero, whereas the bias-robust estimator~\cite{yangRobustPointVariance2024} retained a positive but reduced mean of $0.34$ (95\% CI: 0.25 to 0.42). The odds ratio scale showed the same pattern: the bias-corrected mean approached the null at a log odds ratio of $0.10$ (95\% CI: $-0.23$ to 0.43; \textit{i.e.}, OR = 1.11), while the bias-robust mean remained clearly positive at a log odds ratio of $0.55$ (95\% CI: 0.39 to 0.71; OR = 1.73). Both corrected means are shown alongside the uncorrected estimate in Fig.~3 of the main article and Fig.~4 of the main article.
-
-Leave-one-out analyses confirmed the robustness of both the overall odds ratio and Hedges' \textit{g} on the combined datasets. Sequential exclusion of individual studies yielded consistent pooled estimates, with every confidence interval overlapping the full-sample estimate and no single study exerting disproportionate influence. The largest shift in the pooled mean was only 0.02
-Hedges' \textit{g} units for the continuous outcomes and 0.04 log-odds units for the binary outcomes (\hyperref[fig:supplementaryloostudyhedges]{Supplementary Figure~\ref*{fig:supplementaryloostudyhedges}} and \hyperref[fig:supplementaryloostudyor]{Supplementary Figure~\ref*{fig:supplementaryloostudyor}}). The results are also robust to the more rigorous leave-one-species-out analyses, which remove entire species, despite the uneven phylogenetic sampling, with all overall effect sizes remaining significantly positive (\hyperref[fig:supplementaryloospecieshedges]{Supplementary Figure~\ref*{fig:supplementaryloospecieshedges}} and \hyperref[fig:supplementaryloospeciesor]{Supplementary Figure~\ref*{fig:supplementaryloospeciesor}}). Here, the largest shift was 0.04 Hedges' \textit{g} units (when omitting \textit{Poecilia latipinna}) and 0.07 log-odds units. Removing \textit{Poecilia reticulata}---the most-studied and strongest-copying species, which alone contributes nearly a quarter of the continuous effect sizes---nudged the Hedges' \textit{g} mean toward zero, as expected, but did not change the sign or significance of either synthesis.
-
-The combined estimates showed little sensitivity to the contentious effect sizes on both scales (Hedges' \textit{g} or odds ratio). The pooled Hedges' \textit{g} synthesis was essentially unchanged, the original 0.45 (95\% CI: 0.25 to  0.66, $k = 227$) became 0.41 (95\% CI: 0.22 to 0.60, $k = 213$) when the flagged studies were dropped, and 0.42 (95\% CI: 0.23 to 0.60, $k = 225$) when they were corrected, remaining significant throughout (\hyperref[fig:supplementarysensitivityhedges]{Supplementary
-Figure~\ref*{fig:supplementarysensitivityhedges}}). 
-The odds ratio synthesis was also stable: the pooled odds ratio of 1.81
-(95\% CI: 1.34 to 2.45, $k = 172$) became 1.77 (95\% CI: 1.32 to 2.38, $k = 156$) under leave-out and 1.79 (95\% CI: 1.36 to 2.34, $k = 169$) under correction (\hyperref[fig:supplementarysensitivityor]{Supplementary
-Figure~\ref*{fig:supplementarysensitivityor}}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \setcounter{figure}{0}
@@ -179,6 +81,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Supplementary Figures}
 \addcontentsline{toc}{section}{Supplementary Figures}
+\addcontentsline{toc}{subsection}{Figure S1 --- Phylogenetic tree (combined dataset)}
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=5in]{figures/phylogeny_combined.pdf}
@@ -188,6 +91,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \end{figure}
 \newpage
 
+\addcontentsline{toc}{subsection}{Figure S2 --- Funnel plots, Hedges' \textit{g}}
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=6in]{figures/funnel_hedges.pdf}
@@ -197,6 +101,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \end{figure}
 \newpage
 
+\addcontentsline{toc}{subsection}{Figure S3 --- Funnel plots, log odds ratio}
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=6in]{figures/funnel_or.pdf}
@@ -206,6 +111,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \end{figure}
 \newpage
 
+\addcontentsline{toc}{subsection}{Figure S4 --- Leave-one-study-out, Hedges' \textit{g}}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.7\textheight,keepaspectratio]{figures/loo_study_hedges.pdf}
@@ -217,6 +123,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \end{figure}
 \newpage
 
+\addcontentsline{toc}{subsection}{Figure S5 --- Leave-one-study-out, log odds ratio}
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=6in]{figures/loo_study_or.pdf}
@@ -226,6 +133,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \end{figure}
 \newpage
 
+\addcontentsline{toc}{subsection}{Figure S6 --- Leave-one-species-out, Hedges' \textit{g}}
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=6in]{figures/loo_species_hedges.pdf}
@@ -235,6 +143,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \end{figure}
 \newpage
 
+\addcontentsline{toc}{subsection}{Figure S7 --- Leave-one-species-out, log odds ratio}
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=6in]{figures/loo_species_or.pdf}
@@ -244,6 +153,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \end{figure}
 \newpage
 
+\addcontentsline{toc}{subsection}{Figure S8 --- Contentious effect sizes, Hedges' \textit{g}}
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=6in]{figures/sensitivity_contentious_hedges.pdf}
@@ -253,6 +163,7 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \end{figure}
 \newpage
 
+\addcontentsline{toc}{subsection}{Figure S9 --- Contentious effect sizes, log odds ratio}
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=6in]{figures/sensitivity_contentious_or.pdf}
@@ -266,15 +177,63 @@ Figure~\ref*{fig:supplementarysensitivityor}}).
 \section*{Supplementary Tables}
 \addcontentsline{toc}{section}{Supplementary Tables}
 
+% Table S1 -- new at revision (former "Search strings" section)
+\addcontentsline{toc}{subsection}{Table S1 --- Literature search strings, access dates and records retrieved}
+\input{tables/search_strings_table}
+
+\newpage
+
+\addcontentsline{toc}{subsection}{Table S2 --- PRISMA-EcoEvo reporting checklist}
 \input{tables/prisma_ecoevo_checklist}
 
 \newpage
 
+\addcontentsline{toc}{subsection}{Table S3 --- Studies included in the new extraction}
 \input{tables/included_studies_table}
 
 \newpage
 
+\addcontentsline{toc}{subsection}{Table S4 --- Studies excluded at full-text screening}
 \input{tables/excluded_studies_table}
+
+\newpage
+
+% Tables S5-S8 -- new at revision. The Results state that "full diagnostics,
+% model summaries and between-level contrasts are provided in Supplementary
+% Information"; these four tables are that material. All are GENERATED by
+% scripts/1_effect_size_calculation_pipeline/moderator_analysis.qmd -- do not
+% edit by hand, re-render instead.
+\addcontentsline{toc}{subsection}{Table S5 --- Moderator coverage in the new extraction}
+\input{tables/supp_moderator_coverage}
+
+\newpage
+
+\addcontentsline{toc}{subsection}{Table S6 --- Uni-moderator model summaries}
+\input{tables/supp_moderator_models}
+
+\newpage
+
+\addcontentsline{toc}{subsection}{Table S7 --- Marginalised mean per moderator level}
+\input{tables/supp_moderator_level_means}
+
+\newpage
+
+\addcontentsline{toc}{subsection}{Table S8 --- Between-level contrasts}
+\input{tables/supp_moderator_contrasts}
+
+\newpage
+
+% Tables S9-S10 -- new at revision. The Results state that "the full study-level
+% crosswalk, with the reason recorded for every accepted and rejected match, is
+% provided in Supplementary Information"; these two tables are that material.
+% GENERATED by scripts/3_original_dataset_crosscheck/extraction_validation.qmd.
+\addcontentsline{toc}{subsection}{Table S9 --- Study-level crosswalk across the three sources}
+\input{tables/supp_study_crosswalk}
+
+\newpage
+
+\addcontentsline{toc}{subsection}{Table S10 --- Rejected match candidates}
+\input{tables/supp_crosswalk_rejected}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
