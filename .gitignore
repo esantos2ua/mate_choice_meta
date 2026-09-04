@@ -55,6 +55,7 @@ discussion_revised.tex
 # ---- Build noise ----
 render.log
 overleaf_upload/
+submission_figures/
 main_trimmed.tex
 # ---- Secrets: never commit ----
 # The Zenodo helper reads its token from $ZENODO_TOKEN, but guard against a
